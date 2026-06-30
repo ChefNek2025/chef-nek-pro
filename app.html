@@ -1061,6 +1061,10 @@ function renderApp(userData) {
             Notifications
             <div id="sidebar-notif-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:#E53935;margin-left:auto;flex-shrink:0;"></div>
           </button>` : ''}
+          ${!isAdmin ? `<button onclick="navigate('billing')" style="width:100%;height:44px;border-radius:10px;border:none;background:rgba(242,166,35,0.1);color:#F2A623;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;padding:0 14px;margin-bottom:8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="4" width="14" height="10" rx="2"/><path d="M1 8h14"/><path d="M4 12h2"/><path d="M9 12h3"/></svg>
+            Billing & Plan
+          </button>` : ''}
           <button class="signout-btn" onclick="handleSignOut()">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><polyline points="10,5 13,8 10,11"/><line x1="13" y1="8" x2="5" y2="8"/></svg>
             Sign out
@@ -1198,6 +1202,7 @@ function renderPage(userData) {
     case 'foodcost':    renderFoodCost(main, userData); break;
     case 'templog':     renderTempLog(main, userData); break;
     case 'clients':   renderClients(main, userData); break;
+    case 'billing':     renderBilling(main, userData); break;
     case 'teamhub':     renderTeamHub(main, userData); break;
     case 'staff':       renderStaff(main, userData); break;
     case 'schedule':    renderSchedule(main, userData); break;
@@ -9492,11 +9497,12 @@ function renderTeamHub(main, userData) {
         btn.textContent = name;
         btn.onclick = () => {
           localStorage.setItem('cnp-staff-name', name);
-          // Store the restaurant ID from the staff record so queries work correctly
+          // Store the restaurant ID + doc id from the staff record so queries work correctly
           const staffData = d.data();
           if (staffData.restaurantId) {
             localStorage.setItem('cnp-restaurant-id', staffData.restaurantId);
           }
+          localStorage.setItem('cnp-staff-doc-id', d.id);
           renderTeamHub(main, userData);
         };
         container.appendChild(btn);
@@ -10272,9 +10278,13 @@ window.staffCheckIn = async function(i) {
   const rid = currentRestaurantId() || window._userData?.uid;
   localStorage.setItem('cnp-staff-name', staff.name);
 
-  // Store the restaurant ID so employees can query the right data
+  // Store the restaurant ID + doc id so employees always query the right data,
+  // even if this localStorage value was set before a deploy fix shipped
   if (staff.restaurantId) {
     localStorage.setItem('cnp-restaurant-id', staff.restaurantId);
+  }
+  if (staff.id) {
+    localStorage.setItem('cnp-staff-doc-id', staff.id);
   }
 
   // Record check-in to Firestore so admin can see
@@ -11818,6 +11828,146 @@ window.tcExportWeek = async function(rid) {
 }
 
 // ============================================
+// BILLING & STRIPE PAYMENT
+// ============================================
+async function renderBilling(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  main.innerHTML = '';
+
+  const plan = userData.plan || 'trial';
+  const trialStart = userData.trialStart ? new Date(userData.trialStart) : new Date();
+  const daysUsed = Math.floor((new Date() - trialStart) / (1000*60*60*24));
+  const daysLeft = Math.max(0, (userData.trialDays||30) - daysUsed);
+  const isFounder = plan === 'founding';
+  const isPaid = plan === 'pro' || plan === 'starter' || plan === 'growth';
+  const isTrial = plan === 'trial';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `<h1 class="page-title">💳 Billing & Plan</h1>
+    <p class="page-sub">Manage your Chef Nek Pro subscription</p>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Current plan card
+  const planCard = document.createElement('div');
+  planCard.style.cssText = 'border-radius:20px;padding:28px;margin-bottom:20px;'
+    + (isFounder ? 'background:linear-gradient(135deg,#FFF8ED,#FFF4D6);border:2px solid #F2A623;'
+    : isPaid ? 'background:linear-gradient(135deg,#EDFAF4,#D4F5E8);border:2px solid #1D9E75;'
+    : 'background:var(--white);border:2px solid var(--border);');
+
+  const planIcon = isFounder ? '🏆' : isPaid ? '✅' : '⏳';
+  const planName = isFounder ? 'Founding Partner — Free Forever'
+    : isPaid ? 'Chef Nek Pro — $49/month'
+    : `Free Trial — ${daysLeft} day${daysLeft!==1?'s':''} left`;
+  const planColor = isFounder ? '#C17F3A' : isPaid ? '#0A5C3F' : '#1A1A14';
+
+  planCard.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <div style="font-size:2.5rem;">${planIcon}</div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:800;color:${planColor};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Current Plan</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--ink);">${planName}</div>
+      </div>
+    </div>
+    <div style="font-size:0.82rem;color:var(--ink-muted);line-height:1.7;">
+      ${isFounder ? 'You are one of Chef Nek\'s 3 founding restaurant partners. Chef Nek Pro is <strong>free forever</strong> for you. Thank you for believing in us from the start! 🙏'
+      : isPaid ? 'Your subscription is active. You have access to all Chef Nek Pro features including AI Food Scanner, Time Clock, Advanced Scheduling, and more.'
+      : `Your free trial ${daysLeft > 0 ? 'ends in <strong>${daysLeft} days</strong>' : 'has ended'}. Upgrade to keep access to all features.`}
+    </div>
+    ${isPaid ? `<div style="margin-top:14px;font-size:0.78rem;color:var(--ink-muted);">Next billing date · Contact Chef Nek to manage subscription</div>` : ''}`;
+  body.appendChild(planCard);
+
+  // Upgrade section (trial only)
+  if (isTrial || (!isPaid && !isFounder)) {
+    const upgradeCard = document.createElement('div');
+    upgradeCard.style.cssText = 'background:linear-gradient(135deg,#0B2818,#0A0A14);border-radius:20px;padding:28px;margin-bottom:20px;color:#fff;';
+    upgradeCard.innerHTML = `
+      <div style="font-size:0.72rem;font-weight:800;color:#5DCAA5;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Upgrade to Chef Nek Pro</div>
+      <div style="font-size:2rem;font-weight:800;color:#fff;margin-bottom:4px;">$49<span style="font-size:1rem;font-weight:500;color:rgba(255,255,255,0.5);">/month</span></div>
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.5);margin-bottom:24px;">Everything included. No hidden fees. Cancel anytime.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px;">
+        ${['📋 Recipe Book','📅 Advanced Schedule','⏱️ Time Clock + Kiosk','🤖 AI Food Scanner','👥 Staff Management','💬 Team Hub','✅ Opening & Closing','💰 Food Cost Calculator','🌡️ Temp Log','🗺️ Station Guide','📦 Inventory Tracker','🔔 Notifications'].map(f=>`
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,255,255,0.7);">
+          <div style="width:16px;height:16px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:0.55rem;flex-shrink:0;">✓</div>
+          ${f}
+        </div>`).join('')}
+      </div>
+      <button id="stripe-checkout-btn" onclick="startStripeCheckout('${userData.email}','${rid}','${userData.restaurantName||''}')"
+        style="width:100%;height:56px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 8px 28px rgba(29,158,117,0.4);">
+        💳 Subscribe for $49/month →
+      </button>
+      <div style="text-align:center;font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:12px;">Powered by Stripe · Secure payment · Cancel anytime</div>`;
+    body.appendChild(upgradeCard);
+  }
+
+  // What's included card
+  const featCard = document.createElement('div');
+  featCard.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:20px;';
+  featCard.innerHTML = `<div style="font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:14px;">What's included in Chef Nek Pro</div>`;
+  [
+    ['🤖','AI Food Scanner','Claude Vision AI identifies any dish and calculates calories instantly'],
+    ['⏱️','Time Clock + Kiosk','Staff clock in/out on a shared tablet. Hours calculated automatically'],
+    ['📅','Advanced Schedule','Weekly shift planner with off days, AM/PM times, and print button'],
+    ['🔔','Real-time Notifications','Know instantly when staff check in or complete tasks'],
+    ['💰','Food Cost Calculator','Know your exact margins on every dish'],
+    ['📊','Weekly Hours Export','One-click CSV export ready for payroll'],
+  ].forEach(([icon,title,desc])=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);';
+    row.innerHTML = `<div style="width:34px;height:34px;border-radius:10px;background:#F0FAF5;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">${icon}</div>
+      <div><div style="font-size:0.875rem;font-weight:600;color:var(--ink);margin-bottom:2px;">${title}</div>
+      <div style="font-size:0.75rem;color:var(--ink-muted);line-height:1.5;">${desc}</div></div>`;
+    featCard.appendChild(row);
+  });
+  body.appendChild(featCard);
+
+  // Contact card
+  const contactCard = document.createElement('div');
+  contactCard.style.cssText = 'background:var(--cream);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center;';
+  contactCard.innerHTML = `<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:6px;">Questions about billing?</div>
+    <div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:14px;">Contact Chef Nek directly — we'll sort it out.</div>
+    <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Chef Nek Pro Billing" style="display:inline-block;height:40px;line-height:40px;padding:0 20px;background:var(--ink);color:#fff;border-radius:10px;text-decoration:none;font-size:0.82rem;font-weight:700;">📧 Email Chef Nek</a>`;
+  body.appendChild(contactCard);
+
+  main.appendChild(body);
+
+  // Handle payment success/cancelled from URL params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('payment') === 'success') {
+    showToast('🎉 Payment successful! Welcome to Chef Nek Pro!');
+    history.replaceState({}, '', window.location.pathname);
+  } else if (params.get('payment') === 'cancelled') {
+    showToast('Payment cancelled — no charge made', 'error');
+    history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+window.startStripeCheckout = async function(email, uid, restaurantName) {
+  const btn = document.getElementById('stripe-checkout-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Loading checkout...'; }
+
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, uid, restaurantName })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Could not create checkout');
+    }
+  } catch(e) {
+    showToast('Checkout error: ' + e.message, 'error');
+    if (btn) { btn.disabled=false; btn.textContent='💳 Subscribe for $49/month →'; }
+  }
+}
+
+// ============================================
 // AI FOOD SCANNER — Claude Vision (Anthropic)
 // Key saved to localStorage — paste once, remembered forever on this device
 // ============================================
@@ -12367,6 +12517,24 @@ onAuthStateChanged(auth, async (user) => {
       window._userData = userData;
       isAdmin = userData.email === ADMIN_EMAIL || userData.isAdmin === true;
       window._adminPassword = sessionStorage.getItem('cnp-admin-pwd') || '';
+
+      // For employees: re-sync restaurantId from their canonical staff record
+      // every load, so old/stale localStorage from before a fix can never
+      // cause tasks, schedule, or notifications to silently disappear.
+      if (!isAdmin) {
+        const staffDocId = localStorage.getItem('cnp-staff-doc-id');
+        if (staffDocId) {
+          try {
+            const staffDoc = await getDoc(doc(db,'staffMembers',staffDocId));
+            if (staffDoc.exists()) {
+              const sd = staffDoc.data();
+              if (sd.restaurantId) localStorage.setItem('cnp-restaurant-id', sd.restaurantId);
+              if (sd.name) localStorage.setItem('cnp-staff-name', sd.name);
+            }
+          } catch(e) { console.log('Staff sync skipped:', e.message); }
+        }
+      }
+
       renderApp(userData);
     } catch(e) {
       console.error('Auth error:', e);
