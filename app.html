@@ -699,10 +699,14 @@ function obRenderStep(step) {
       </div>
       <div style="margin-bottom:12px;">
         <label style="display:block;font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Cuisine Type *</label>
-        <select id="ob-cuisine" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #E5E7EB;padding:0 12px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;background:#fff;color:#1A1A14;">
+        <select id="ob-cuisine" onchange="obCuisineChange(this.value)" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #E5E7EB;padding:0 12px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;background:#fff;color:#1A1A14;">
           <option value="">Select cuisine...</option>
           ${['American','Ethiopian','Caribbean','Mexican','Italian','Asian Fusion','Mediterranean','Soul Food','BBQ','Seafood','Fast Casual','Bakery','Other'].map(c=>`<option value="${c}"${window._obData.cuisine===c?' selected':''}>${c}</option>`).join('')}
         </select>
+        <div id="ob-cuisine-other" style="display:${window._obData.cuisine==='Other'?'block':'none'};margin-top:8px;">
+          <input id="ob-cuisine-custom" type="text" placeholder="e.g. Ethiopian Fusion, Halal, Vegan..." value="${window._obData.cuisineCustom||''}"
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid #1D9E75;padding:0 14px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;color:#1A1A14;background:#F0FAF5;">
+        </div>
       </div>
       <div style="margin-bottom:22px;">
         <label style="display:block;font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Team Size</label>
@@ -761,13 +765,32 @@ function obRenderStep(step) {
   }
 }
 
+window.obCuisineChange = function(val) {
+  const other = document.getElementById('ob-cuisine-other');
+  const custom = document.getElementById('ob-cuisine-custom');
+  if (other) other.style.display = val === 'Other' ? 'block' : 'none';
+  if (val === 'Other' && custom) setTimeout(() => custom.focus(), 50);
+}
+
 window.obStep1Next = function() {
   const name    = document.getElementById('ob-name')?.value.trim();
   const cuisine = document.getElementById('ob-cuisine')?.value;
+  const custom  = document.getElementById('ob-cuisine-custom')?.value.trim();
   const size    = document.getElementById('ob-size')?.value;
   const err     = document.getElementById('ob-err');
-  if (!name || !cuisine) { if(err){err.style.display='block';err.textContent='Please fill in restaurant name and cuisine.';} return; }
-  window._obData = {...window._obData, restaurantName:name, cuisine, size};
+
+  if (!name || !cuisine) {
+    if(err){err.style.display='block';err.textContent='Please fill in restaurant name and cuisine.';}
+    return;
+  }
+  if (cuisine === 'Other' && !custom) {
+    if(err){err.style.display='block';err.textContent='Please describe your cuisine type.';}
+    document.getElementById('ob-cuisine-custom')?.focus();
+    return;
+  }
+
+  const finalCuisine = cuisine === 'Other' ? custom : cuisine;
+  window._obData = {...window._obData, restaurantName:name, cuisine:finalCuisine, cuisineCustom:custom, size};
   obRenderStep(2);
 }
 
@@ -1005,6 +1028,10 @@ function renderApp(userData) {
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="14" height="13" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/><line x1="4" y1="10" x2="6" y2="10"/><line x1="7" y1="10" x2="12" y2="10"/><line x1="4" y1="13" x2="8" y2="13"/></svg>
             Schedule
           </button>
+          <button class="nav-item ${currentPage==='timeclock'?'active':''}" onclick="navigate('timeclock')">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg>
+            Time Clock
+          </button>
           <button class="nav-item ${currentPage==='teamhub'?'active':''}" onclick="navigate('teamhub')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 3H2a1 1 0 00-1 1v6a1 1 0 001 1h3l3 2 3-2h3a1 1 0 001-1V4a1 1 0 00-1-1z"/><line x1="4" y1="7" x2="12" y2="7"/><line x1="4" y1="9.5" x2="9" y2="9.5"/></svg>
             Team Hub
@@ -1174,6 +1201,7 @@ function renderPage(userData) {
     case 'teamhub':     renderTeamHub(main, userData); break;
     case 'staff':       renderStaff(main, userData); break;
     case 'schedule':    renderSchedule(main, userData); break;
+    case 'timeclock':   renderTimeClock(main, userData); break;
         default:          renderDashboard(main, userData);
   }
 }
@@ -1299,6 +1327,13 @@ function renderDashboard(main, userData) {
             </div>
             <div class="quick-card-title">📅 Schedule</div>
             <div class="quick-card-sub">Weekly shift planner</div>
+          </button>
+          <button class="quick-card" onclick="navigate('timeclock')">
+            <div class="quick-card-icon" style="background:#FFF8ED;">
+              <svg viewBox="0 0 18 18" fill="none" stroke="#F2A623" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,4 9,9 12,11"/></svg>
+            </div>
+            <div class="quick-card-title">⏱️ Time Clock</div>
+            <div class="quick-card-sub">Clock in / Clock out</div>
           </button>
                     <button class="quick-card" onclick="navigate('teamhub')" style="background:linear-gradient(135deg,#0A2A1A,#0F4A2A);border:1.5px solid rgba(29,158,117,0.5);position:relative;overflow:hidden;">
             <div style="position:absolute;top:0;right:0;background:var(--green);color:#fff;font-size:0.6rem;font-weight:700;padding:3px 8px;border-radius:0 0 0 8px;letter-spacing:0.05em;">NEW</div>
@@ -11268,6 +11303,295 @@ window.calcApply = function() {
 }
 
 
+
+
+
+// ============================================
+// TIME CLOCK
+// ============================================
+async function renderTimeClock(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  const myName = localStorage.getItem('cnp-staff-name') || '';
+  const today = new Date().toISOString().split('T')[0];
+
+  main.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">⏱️ Time Clock</h1>
+        <p class="page-sub">${isAdmin ? 'Live view of who is clocked in' : 'Clock in and out for your shift'}</p>
+      </div>
+      ${isAdmin ? `<button onclick="tcExportWeek('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">📊 Export Hours</button>` : ''}
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // ── Employee view: big clock in/out button ──
+  if (!isAdmin) {
+    // Name check
+    if (!myName) {
+      body.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:16px;">👤</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Who are you?</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Go to Staff page and tap your name first</div>
+        <button onclick="navigate('staff')" style="height:48px;padding:0 28px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">Go to Staff Page</button>
+      </div>`;
+      main.appendChild(body);
+      return;
+    }
+
+    // Check if already clocked in today
+    try {
+      const snap = await getDocs(query(
+        collection(db,'timeEntries'),
+        where('restaurantId','==',rid),
+        where('employeeName','==',myName),
+        where('date','==',today)
+      ));
+      const entries = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const openEntry = entries.find(e=>!e.clockOut);
+      const todayHrs = entries.filter(e=>e.clockOut).reduce((sum,e)=>sum+(e.hours||0),0);
+
+      // Live clock display
+      const clockDiv = document.createElement('div');
+      clockDiv.style.cssText = 'text-align:center;padding:32px 20px;';
+
+      // Current time live
+      const timeDisplay = document.createElement('div');
+      timeDisplay.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:4rem;color:var(--ink);letter-spacing:0.04em;line-height:1;margin-bottom:6px;';
+      const updateClock = () => {
+        timeDisplay.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+      clockDiv.appendChild(timeDisplay);
+
+      const dateDisplay = document.createElement('div');
+      dateDisplay.style.cssText = 'font-size:0.82rem;color:var(--ink-muted);margin-bottom:32px;';
+      dateDisplay.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+      clockDiv.appendChild(dateDisplay);
+
+      // Status card
+      const statusCard = document.createElement('div');
+      statusCard.style.cssText = 'background:' + (openEntry?'#EDFAF4':'var(--cream)') + ';border:2px solid ' + (openEntry?'var(--green)':'var(--border)') + ';border-radius:20px;padding:24px;margin-bottom:28px;';
+
+      if (openEntry) {
+        const sinceTime = openEntry.clockIn;
+        const sinceMs = new Date() - new Date(today + 'T' + sinceTime);
+        const sinceHrs = Math.floor(sinceMs/3600000);
+        const sinceMins = Math.floor((sinceMs%3600000)/60000);
+        statusCard.innerHTML = `
+          <div style="font-size:0.72rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">🟢 Currently Clocked In</div>
+          <div style="font-size:1.8rem;font-weight:800;color:var(--ink);margin-bottom:4px;">${myName}</div>
+          <div style="font-size:0.88rem;color:var(--ink-muted);">Since ${sinceTime} · ${sinceHrs}h ${sinceMins}m on shift</div>`;
+      } else {
+        statusCard.innerHTML = `
+          <div style="font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">⚪ Not Clocked In</div>
+          <div style="font-size:1.8rem;font-weight:800;color:var(--ink);margin-bottom:4px;">${myName}</div>
+          <div style="font-size:0.88rem;color:var(--ink-muted);">Today's hours: ${todayHrs.toFixed(1)}h</div>`;
+      }
+      clockDiv.appendChild(statusCard);
+
+      // Big clock in/out button
+      const actionBtn = document.createElement('button');
+      actionBtn.style.cssText = 'width:100%;max-width:320px;height:72px;border-radius:20px;border:none;'
+        + 'background:' + (openEntry ? 'linear-gradient(135deg,#E53935,#C62828)' : 'linear-gradient(135deg,#1D9E75,#16856A)') + ';'
+        + 'color:#fff;font-family:var(--font-body);font-size:1.2rem;font-weight:800;cursor:pointer;'
+        + 'box-shadow:0 8px 28px ' + (openEntry?'rgba(229,57,53,0.4)':'rgba(29,158,117,0.4)') + ';'
+        + 'letter-spacing:0.02em;';
+      actionBtn.textContent = openEntry ? '🔴 Clock Out' : '🟢 Clock In';
+      actionBtn.addEventListener('click', () => tcAction(rid, myName, openEntry, today, userData));
+      clockDiv.appendChild(actionBtn);
+
+      // Today's entries
+      if (entries.length > 0) {
+        const histTitle = document.createElement('div');
+        histTitle.style.cssText = 'font-size:0.78rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:28px 0 10px;text-align:left;';
+        histTitle.textContent = "Today's entries";
+        clockDiv.appendChild(histTitle);
+
+        entries.forEach(e => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;';
+          row.innerHTML = `<div style="font-size:0.82rem;color:var(--ink);">🟢 ${e.clockIn} ${e.clockOut?'→ 🔴 '+e.clockOut:' <span style="color:var(--green);font-weight:600;">Active</span>'}</div>`
+            + `<div style="font-size:0.82rem;font-weight:700;color:var(--ink);">${e.hours?e.hours.toFixed(1)+'h':'–'}</div>`;
+          clockDiv.appendChild(row);
+        });
+      }
+
+      body.appendChild(clockDiv);
+    } catch(e) { console.error(e); }
+
+  } else {
+    // ── Admin view: live dashboard ──
+    body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-muted);"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Loading...</div>';
+    main.appendChild(body);
+    await tcLoadAdminView(rid, today, body);
+    return;
+  }
+
+  main.appendChild(body);
+}
+
+async function tcAction(rid, myName, openEntry, today, userData) {
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+  try {
+    if (openEntry) {
+      // Clock OUT
+      const clockInTime = new Date(today + 'T' + openEntry.clockIn.replace(/\s?[AP]M/,''));
+      const hrs = +((now - new Date(today + 'T' + openEntry.clockIn)) / 3600000).toFixed(2);
+      await setDoc(doc(db,'timeEntries',openEntry.id), {
+        clockOut: time, hours: hrs, updatedAt: serverTimestamp()
+      }, {merge:true});
+
+      // Notification to admin
+      await addDoc(collection(db,'notifications'), {
+        type:'clockout', restaurantId:rid, employeeName:myName,
+        message: myName + ' clocked out at ' + time + ' (' + hrs.toFixed(1) + 'h)',
+        date:today, time, read:false, createdAt:serverTimestamp()
+      });
+      showToast('🔴 Clocked out — ' + hrs.toFixed(1) + 'h today');
+    } else {
+      // Clock IN
+      await addDoc(collection(db,'timeEntries'), {
+        restaurantId:rid, employeeName:myName,
+        date:today, clockIn:time, clockOut:null, hours:null,
+        createdAt:serverTimestamp()
+      });
+
+      // Notification to admin
+      await addDoc(collection(db,'notifications'), {
+        type:'clockin', restaurantId:rid, employeeName:myName,
+        message: myName + ' clocked in at ' + time,
+        date:today, time, read:false, createdAt:serverTimestamp()
+      });
+      showToast('🟢 Clocked in at ' + time + '!');
+    }
+    renderTimeClock(document.getElementById('main-content'), userData);
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function tcLoadAdminView(rid, today, body) {
+  try {
+    // Load today's entries + this week's
+    const weekStart = schedFmtDate(schedGetMonday(new Date()));
+    const [todaySnap, weekSnap, staffSnap] = await Promise.all([
+      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','==',today))),
+      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','>=',weekStart))),
+      getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)))
+    ]);
+
+    const todayEntries = todaySnap.docs.map(d=>({id:d.id,...d.data()}));
+    const weekEntries  = weekSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const staff = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false);
+
+    const clockedIn = todayEntries.filter(e=>!e.clockOut);
+    const totalWeekHrs = weekEntries.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
+
+    body.innerHTML = '';
+
+    // Stats
+    const stats = document.createElement('div');
+    stats.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
+    [
+      {icon:'🟢', label:'Clocked In Now', value:clockedIn.length + ' / ' + staff.length, color:'var(--green)'},
+      {icon:'⏱️', label:'Hours This Week', value:totalWeekHrs.toFixed(1)+'h', color:'var(--ink)'},
+      {icon:'📅', label:'Entries Today', value:todayEntries.length, color:'var(--ink)'},
+    ].forEach(s=>{
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;';
+      card.innerHTML = `<div style="font-size:1.5rem;margin-bottom:4px;">${s.icon}</div><div style="font-size:1.2rem;font-weight:800;color:${s.color};">${s.value}</div><div style="font-size:0.7rem;color:var(--ink-muted);">${s.label}</div>`;
+      stats.appendChild(card);
+    });
+    body.appendChild(stats);
+
+    // Live clocked in
+    if (clockedIn.length > 0) {
+      const liveTitle = document.createElement('div');
+      liveTitle.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:10px;';
+      liveTitle.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;"></div> Currently on shift';
+      body.appendChild(liveTitle);
+
+      clockedIn.forEach(e=>{
+        const nowMs = new Date() - new Date(today+'T'+e.clockIn);
+        const hrs = Math.floor(nowMs/3600000);
+        const mins = Math.floor((nowMs%3600000)/60000);
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#EDFAF4;border:1.5px solid rgba(29,158,117,0.3);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;';
+        const initials = (e.employeeName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        card.innerHTML = `<div style="width:38px;height:38px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#fff;flex-shrink:0;">${initials}</div>`
+          + `<div style="flex:1;"><div style="font-size:0.9rem;font-weight:700;color:var(--ink);">${e.employeeName}</div><div style="font-size:0.75rem;color:var(--ink-muted);">Clocked in ${e.clockIn} · ${hrs}h ${mins}m</div></div>`
+          + `<div style="font-size:1.2rem;font-weight:800;color:var(--green);">${hrs}h ${mins}m</div>`;
+        body.appendChild(card);
+      });
+    }
+
+    // Weekly hours per employee
+    const weekTitle = document.createElement('div');
+    weekTitle.style.cssText = 'font-size:0.82rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:20px 0 10px;';
+    weekTitle.textContent = 'Weekly Hours';
+    body.appendChild(weekTitle);
+
+    const empHours = {};
+    weekEntries.filter(e=>e.hours).forEach(e => {
+      empHours[e.employeeName] = (empHours[e.employeeName]||0) + (e.hours||0);
+    });
+
+    if (Object.keys(empHours).length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:24px;color:var(--ink-muted);font-size:0.82rem;background:var(--cream);border-radius:12px;';
+      empty.textContent = 'No time entries this week yet';
+      body.appendChild(empty);
+    } else {
+      Object.entries(empHours).sort((a,b)=>b[1]-a[1]).forEach(([name, hrs])=>{
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;';
+        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        const hue = [...name].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+        row.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:hsl(${hue},50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:hsl(${hue},50%,35%);">${initials}</div>
+          <div style="font-size:0.875rem;font-weight:600;color:var(--ink);">${name}</div>
+        </div>
+        <div style="font-size:0.95rem;font-weight:800;color:var(--ink);">${hrs.toFixed(1)}h</div>`;
+        body.appendChild(row);
+      });
+    }
+  } catch(e) { console.error(e); body.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading time clock data.</div>'; }
+}
+
+window.tcExportWeek = async function(rid) {
+  const weekStart = schedFmtDate(schedGetMonday(new Date()));
+  const weekEnd = schedFmtDate(new Date(schedGetMonday(new Date()).getTime()+6*24*60*60*1000));
+  try {
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','>=',weekStart)));
+    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours);
+    if (!entries.length) { showToast('No hours to export this week','error'); return; }
+
+    // Group by employee
+    const byEmp = {};
+    entries.forEach(e => { if(!byEmp[e.employeeName]) byEmp[e.employeeName]=[]; byEmp[e.employeeName].push(e); });
+
+    let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
+    Object.entries(byEmp).forEach(([name, rows])=>{
+      rows.sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+        csv += `"${name}","${r.date}","${r.clockIn}","${r.clockOut||''}","${(r.hours||0).toFixed(2)}"\n`;
+      });
+    });
+
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'timeclock-week-' + weekStart + '.csv'; a.click();
+    showToast('📊 Exported!');
+  } catch(e) { showToast('Export failed','error'); }
+}
 
 // ============================================
 // AI FOOD SCANNER — Claude Vision (Anthropic)
