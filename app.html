@@ -11324,7 +11324,11 @@ async function renderTimeClock(main, userData) {
         <h1 class="page-title">⏱️ Time Clock</h1>
         <p class="page-sub">${isAdmin ? 'Live view of who is clocked in' : 'Clock in and out for your shift'}</p>
       </div>
-      ${isAdmin ? `<button onclick="tcExportWeek('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">📊 Export Hours</button>` : ''}
+      <div style="display:flex;gap:8px;">
+        ${isAdmin ? `
+        <button onclick="openKioskMode('${rid}')" style="height:38px;padding:0 16px;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(29,158,117,0.3);">🖥️ Kiosk Mode</button>
+        <button onclick="tcExportWeek('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">📊 Export Hours</button>` : ''}
+      </div>
     </div>`;
   main.appendChild(header);
 
@@ -11566,6 +11570,224 @@ async function tcLoadAdminView(rid, today, body) {
       });
     }
   } catch(e) { console.error(e); body.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading time clock data.</div>'; }
+}
+
+window.openKioskMode = async function(rid) {
+  // Full screen overlay
+  const kiosk = document.createElement('div');
+  kiosk.id = 'kiosk-mode';
+  kiosk.style.cssText = 'position:fixed;inset:0;background:#0B2818;z-index:999999;display:flex;flex-direction:column;font-family:"Inter",sans-serif;overflow:hidden;';
+
+  // Header bar
+  const topBar = document.createElement('div');
+  topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 28px 16px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;';
+
+  // Logo + live clock
+  const logoSide = document.createElement('div');
+  logoSide.style.cssText = 'display:flex;align-items:center;gap:16px;';
+  logoSide.innerHTML = '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.4rem;letter-spacing:0.06em;color:#fff;">Chef Nek <span style="color:#1D9E75;">Pro</span></div>';
+
+  const liveClock = document.createElement('div');
+  liveClock.id = 'kiosk-clock';
+  liveClock.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:2.2rem;color:#fff;letter-spacing:0.04em;line-height:1;';
+  const kioskDate = document.createElement('div');
+  kioskDate.style.cssText = 'font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:2px;';
+  kioskDate.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+  const updateKioskClock = () => {
+    liveClock.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  };
+  updateKioskClock();
+  const kioskClockInterval = setInterval(updateKioskClock, 1000);
+
+  const clockSide = document.createElement('div');
+  clockSide.style.cssText = 'text-align:right;';
+  clockSide.appendChild(liveClock);
+  clockSide.appendChild(kioskDate);
+
+  topBar.appendChild(logoSide);
+  topBar.appendChild(clockSide);
+  kiosk.appendChild(topBar);
+
+  // Main content area
+  const kioskBody = document.createElement('div');
+  kioskBody.id = 'kiosk-body';
+  kioskBody.style.cssText = 'flex:1;overflow-y:auto;padding:28px;';
+  kiosk.appendChild(kioskBody);
+
+  // Exit button (small, bottom corner — admin only)
+  const exitBtn = document.createElement('button');
+  exitBtn.style.cssText = 'position:fixed;bottom:16px;right:16px;height:36px;padding:0 14px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-family:"Inter",sans-serif;font-size:0.72rem;cursor:pointer;z-index:9999999;';
+  exitBtn.textContent = '✕ Exit Kiosk';
+  exitBtn.addEventListener('click', () => {
+    clearInterval(kioskClockInterval);
+    kiosk.remove();
+  });
+  kiosk.appendChild(exitBtn);
+
+  document.body.appendChild(kiosk);
+
+  // Try fullscreen
+  try { document.documentElement.requestFullscreen?.(); } catch(e) {}
+
+  await kioskShowStaffList(rid, kioskBody);
+}
+
+async function kioskShowStaffList(rid, body) {
+  const today = new Date().toISOString().split('T')[0];
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.4);">Loading staff...</div>';
+
+  try {
+    const [staffSnap, entriesSnap] = await Promise.all([
+      getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)))
+    ]);
+
+    const staff = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    const todayEntries = entriesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.date===today);
+    const clockedInNames = new Set(todayEntries.filter(e=>!e.clockOut).map(e=>e.employeeName));
+
+    body.innerHTML = '';
+
+    // Title
+    const title = document.createElement('div');
+    title.style.cssText = 'text-align:center;margin-bottom:32px;';
+    title.innerHTML = '<div style="font-size:1.1rem;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:4px;">Tap your name to clock in or out</div>'
+      + '<div style="font-size:0.8rem;color:rgba(255,255,255,0.3);">' + clockedInNames.size + ' of ' + staff.length + ' staff currently clocked in</div>';
+    body.appendChild(title);
+
+    // Staff grid
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;max-width:900px;margin:0 auto;';
+
+    staff.forEach(emp => {
+      const isClockedIn = clockedInNames.has(emp.name);
+      const initials = (emp.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue = [...(emp.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+      const entry = todayEntries.find(e=>e.employeeName===emp.name && !e.clockOut);
+
+      const card = document.createElement('button');
+      card.style.cssText = 'background:' + (isClockedIn?'rgba(29,158,117,0.15)':'rgba(255,255,255,0.05)') + ';'
+        + 'border:2px solid ' + (isClockedIn?'rgba(29,158,117,0.5)':'rgba(255,255,255,0.1)') + ';'
+        + 'border-radius:20px;padding:28px 16px;cursor:pointer;text-align:center;transition:all 0.2s;'
+        + 'font-family:"Inter",sans-serif;';
+      card.onmouseenter = () => { card.style.transform='scale(1.03)'; card.style.borderColor=isClockedIn?'#1D9E75':'rgba(255,255,255,0.3)'; };
+      card.onmouseleave = () => { card.style.transform=''; card.style.borderColor=isClockedIn?'rgba(29,158,117,0.5)':'rgba(255,255,255,0.1)'; };
+
+      card.innerHTML = `
+        <div style="width:64px;height:64px;border-radius:50%;background:hsl(${hue},50%,35%);border:3px solid hsl(${hue},50%,55%);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:#fff;margin:0 auto 14px;">${initials}</div>
+        <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:6px;">${emp.name}</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:10px;">${emp.role||''}</div>
+        <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;background:${isClockedIn?'rgba(29,158,117,0.3)':'rgba(255,255,255,0.08)'};font-size:0.72rem;font-weight:700;color:${isClockedIn?'#5DCAA5':'rgba(255,255,255,0.4)'};">
+          ${isClockedIn?'🟢 Clocked In · '+entry?.clockIn:'⚪ Not clocked in'}
+        </div>`;
+
+      card.addEventListener('click', () => kioskShowClockAction(rid, emp, isClockedIn, entry, body));
+      grid.appendChild(card);
+    });
+
+    body.appendChild(grid);
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#E57373;">Error loading staff. Please try again.</div>';
+    console.error(e);
+  }
+}
+
+async function kioskShowClockAction(rid, emp, isClockedIn, openEntry, body) {
+  const today = new Date().toISOString().split('T')[0];
+  body.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'max-width:480px;margin:40px auto;text-align:center;';
+
+  const initials = (emp.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const hue = [...(emp.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+
+  wrap.innerHTML = `
+    <div style="width:100px;height:100px;border-radius:50%;background:hsl(${hue},50%,35%);border:4px solid hsl(${hue},50%,55%);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:#fff;margin:0 auto 20px;">${initials}</div>
+    <div style="font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;">${emp.name}</div>
+    <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:8px;">${emp.role||''}</div>
+    <div style="font-size:0.85rem;color:${isClockedIn?'#5DCAA5':'rgba(255,255,255,0.3)'};margin-bottom:40px;">
+      ${isClockedIn?'🟢 Clocked in at '+openEntry?.clockIn:'⚪ Not yet clocked in today'}
+    </div>`;
+
+  // Big action button
+  const actionBtn = document.createElement('button');
+  actionBtn.style.cssText = 'width:100%;max-width:360px;height:90px;border-radius:24px;border:none;cursor:pointer;font-family:"Inter",sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:0.02em;'
+    + 'background:' + (isClockedIn?'linear-gradient(135deg,#E53935,#C62828)':'linear-gradient(135deg,#1D9E75,#16856A)') + ';'
+    + 'color:#fff;box-shadow:0 12px 40px ' + (isClockedIn?'rgba(229,57,53,0.5)':'rgba(29,158,117,0.5)') + ';'
+    + 'margin-bottom:24px;display:block;margin-left:auto;margin-right:auto;';
+  actionBtn.textContent = isClockedIn ? '🔴 Clock Out' : '🟢 Clock In';
+
+  actionBtn.addEventListener('click', async () => {
+    actionBtn.disabled = true;
+    actionBtn.style.opacity = '0.7';
+    actionBtn.textContent = 'Saving...';
+
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+    try {
+      if (isClockedIn && openEntry) {
+        const hrs = +((now - new Date(today+'T'+openEntry.clockIn))/3600000).toFixed(2);
+        await setDoc(doc(db,'timeEntries',openEntry.id),{clockOut:time,hours:hrs,updatedAt:serverTimestamp()},{merge:true});
+        await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:emp.name,message:emp.name+' clocked out at '+time+' ('+hrs.toFixed(1)+'h)',date:today,time,read:false,createdAt:serverTimestamp()});
+        kioskShowSuccess(body, '🔴', emp.name, 'Clocked Out', time, hrs.toFixed(1)+'h today', rid);
+      } else {
+        await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:emp.name,date:today,clockIn:time,clockOut:null,hours:null,createdAt:serverTimestamp()});
+        await addDoc(collection(db,'notifications'),{type:'clockin',restaurantId:rid,employeeName:emp.name,message:emp.name+' clocked in at '+time,date:today,time,read:false,createdAt:serverTimestamp()});
+        kioskShowSuccess(body, '🟢', emp.name, 'Clocked In', time, 'Have a great shift!', rid);
+      }
+    } catch(e) {
+      actionBtn.disabled=false; actionBtn.style.opacity='1';
+      actionBtn.textContent = isClockedIn?'🔴 Clock Out':'🟢 Clock In';
+      console.error(e);
+    }
+  });
+
+  wrap.appendChild(actionBtn);
+
+  // Back button
+  const backBtn = document.createElement('button');
+  backBtn.style.cssText = 'background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);height:48px;padding:0 28px;border-radius:100px;font-family:"Inter",sans-serif;font-size:0.875rem;cursor:pointer;';
+  backBtn.textContent = '← Back';
+  backBtn.addEventListener('click', () => kioskShowStaffList(rid, body));
+  wrap.appendChild(backBtn);
+
+  body.appendChild(wrap);
+}
+
+function kioskShowSuccess(body, icon, name, action, time, sub, rid) {
+  body.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'max-width:480px;margin:60px auto;text-align:center;';
+  wrap.innerHTML = `
+    <div style="font-size:5rem;margin-bottom:20px;animation:pulse 0.5s ease;">${icon}</div>
+    <div style="font-size:2.5rem;font-weight:800;color:#fff;margin-bottom:8px;">${action}!</div>
+    <div style="font-size:1.5rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:8px;">${name}</div>
+    <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:8px;">${time}</div>
+    <div style="font-size:0.9rem;color:${icon==='🟢'?'#5DCAA5':'#FF8A80'};margin-bottom:48px;">${sub}</div>`;
+
+  // Auto return to staff list after 3 seconds
+  const countdown = document.createElement('div');
+  countdown.style.cssText = 'font-size:0.8rem;color:rgba(255,255,255,0.3);margin-bottom:16px;';
+  countdown.textContent = 'Returning in 3 seconds...';
+  wrap.appendChild(countdown);
+
+  let secs = 3;
+  const timer = setInterval(() => {
+    secs--;
+    countdown.textContent = 'Returning in ' + secs + ' second' + (secs!==1?'s':'') + '...';
+    if (secs <= 0) { clearInterval(timer); kioskShowStaffList(rid, body); }
+  }, 1000);
+
+  const nowBtn = document.createElement('button');
+  nowBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);height:44px;padding:0 24px;border-radius:100px;font-family:"Inter",sans-serif;font-size:0.875rem;cursor:pointer;';
+  nowBtn.textContent = '← Back to staff list';
+  nowBtn.addEventListener('click', () => { clearInterval(timer); kioskShowStaffList(rid, body); });
+  wrap.appendChild(nowBtn);
+
+  body.appendChild(wrap);
 }
 
 window.tcExportWeek = async function(rid) {
