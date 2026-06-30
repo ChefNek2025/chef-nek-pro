@@ -11347,13 +11347,14 @@ async function renderTimeClock(main, userData) {
 
     // Check if already clocked in today
     try {
+      // Fetch entries for this employee — filter client-side
       const snap = await getDocs(query(
         collection(db,'timeEntries'),
         where('restaurantId','==',rid),
-        where('employeeName','==',myName),
-        where('date','==',today)
+        where('employeeName','==',myName)
       ));
-      const entries = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const allEmpEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const entries = allEmpEntries.filter(e=>e.date===today);
       const openEntry = entries.find(e=>!e.clockOut);
       const todayHrs = entries.filter(e=>e.clockOut).reduce((sum,e)=>sum+(e.hours||0),0);
 
@@ -11480,17 +11481,18 @@ async function tcAction(rid, myName, openEntry, today, userData) {
 
 async function tcLoadAdminView(rid, today, body) {
   try {
-    // Load today's entries + this week's
     const weekStart = schedFmtDate(schedGetMonday(new Date()));
-    const [todaySnap, weekSnap, staffSnap] = await Promise.all([
-      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','==',today))),
-      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','>=',weekStart))),
+
+    // Fetch all entries for restaurant — filter client-side to avoid composite index
+    const [allSnap, staffSnap] = await Promise.all([
+      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid))),
       getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)))
     ]);
 
-    const todayEntries = todaySnap.docs.map(d=>({id:d.id,...d.data()}));
-    const weekEntries  = weekSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const staff = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false);
+    const allEntries   = allSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const todayEntries = allEntries.filter(e=>e.date===today);
+    const weekEntries  = allEntries.filter(e=>e.date>=weekStart);
+    const staff        = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false);
 
     const clockedIn = todayEntries.filter(e=>!e.clockOut);
     const totalWeekHrs = weekEntries.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
