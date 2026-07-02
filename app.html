@@ -1012,6 +1012,10 @@ function renderApp(userData) {
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1.5"/><path d="M5 4V3a3 3 0 016 0v1"/></svg>
             Inventory
           </button>
+          <button class="nav-item ${currentPage==='suppliers'?'active':''}" onclick="navigate('suppliers')">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 3h14l-1.5 7H2.5L1 3z"/><circle cx="5.5" cy="13" r="1"/><circle cx="11.5" cy="13" r="1"/><path d="M1 3L0 1"/><path d="M6 3V1M10 3V1"/></svg>
+            Suppliers
+          </button>
           <button class="nav-item ${currentPage==='menudesign'?'active':''}" onclick="navigate('menudesign')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="4" y1="6" x2="12" y2="6"/><line x1="4" y1="9" x2="9" y2="9"/><line x1="4" y1="12" x2="7" y2="12"/></svg>
             Menu design
@@ -1195,6 +1199,7 @@ function renderPage(userData) {
     case 'recipes':   renderRecipes(main, userData); break;
     case 'preplist':  renderPrepList(main, userData); break;
     case 'inventory': renderInventory(main, userData); break;
+    case 'suppliers': renderSuppliers(main, userData); break;
     case 'menudesign': renderMenuDesign(main, userData); break;
     case 'procedures': renderProcedures(main, userData); break;
     case 'checklists': renderChecklists(main, userData); break;
@@ -1304,6 +1309,13 @@ function renderDashboard(main, userData) {
             </div>
             <div class="quick-card-title">Inventory</div>
             <div class="quick-card-sub">Track stock levels</div>
+          </button>
+          <button class="quick-card" onclick="navigate('suppliers')">
+            <div class="quick-card-icon" style="background:#FFF0EB;">
+              <svg viewBox="0 0 18 18" fill="none" stroke="#E85D26" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h16l-2 8H3L1 4z"/><circle cx="6" cy="15.5" r="1.5"/><circle cx="13" cy="15.5" r="1.5"/></svg>
+            </div>
+            <div class="quick-card-title">📦 Suppliers</div>
+            <div class="quick-card-sub">Orders & deliveries</div>
           </button>
           <button class="quick-card" onclick="navigate('menudesign')">
             <div class="quick-card-icon" style="background:#E1F5EE;">
@@ -11825,6 +11837,489 @@ window.tcExportWeek = async function(rid) {
     a.href = url; a.download = 'timeclock-week-' + weekStart + '.csv'; a.click();
     showToast('📊 Exported!');
   } catch(e) { showToast('Export failed','error'); }
+}
+
+// ============================================
+// SUPPLIERS & PURCHASE ORDERS
+// ============================================
+const SUPPLIER_CATEGORIES = ['Meat & Poultry','Seafood','Produce','Dairy & Eggs','Dry Goods','Beverages','Bakery','Spices & Sauces','Cleaning Supplies','Packaging','Other'];
+
+async function renderSuppliers(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  main.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">📦 Suppliers</h1><p class="page-sub">Manage suppliers, place orders & track deliveries</p></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="suppShowOrderModal('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🛒 New Order</button>
+        <button onclick="suppShowAddModal('${rid}')" style="height:38px;padding:0 18px;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(232,93,38,0.3);">+ Add Supplier</button>
+      </div>
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Tabs
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;';
+  window._suppTab = window._suppTab || 'suppliers';
+  ['suppliers','orders'].forEach(t => {
+    const btn = document.createElement('button');
+    btn.id = 'supp-tab-' + t;
+    btn.style.cssText = 'height:38px;padding:0 18px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;background:'+(window._suppTab===t?'var(--ink)':'transparent')+';color:'+(window._suppTab===t?'#fff':'var(--ink-muted)')+';border-color:'+(window._suppTab===t?'var(--ink)':'var(--border)')+';';
+    btn.textContent = t === 'suppliers' ? '🏪 My Suppliers' : '📋 Purchase Orders';
+    btn.onclick = () => { window._suppTab = t; suppRenderTab(rid, body); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+
+  // Content area
+  const content = document.createElement('div');
+  content.id = 'supp-content';
+  body.appendChild(content);
+  main.appendChild(body);
+
+  suppRenderTab(rid, body);
+}
+
+async function suppRenderTab(rid, body) {
+  // Update tab styles
+  ['suppliers','orders'].forEach(t => {
+    const btn = document.getElementById('supp-tab-' + t);
+    if (!btn) return;
+    btn.style.background = window._suppTab === t ? 'var(--ink)' : 'transparent';
+    btn.style.color = window._suppTab === t ? '#fff' : 'var(--ink-muted)';
+    btn.style.borderColor = window._suppTab === t ? 'var(--ink)' : 'var(--border)';
+  });
+
+  const content = document.getElementById('supp-content');
+  if (!content) return;
+  content.innerHTML = '<div style="text-align:center;padding:32px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+
+  if (window._suppTab === 'suppliers') {
+    await suppLoadSuppliers(rid, content);
+  } else {
+    await suppLoadOrders(rid, content);
+  }
+}
+
+async function suppLoadSuppliers(rid, content) {
+  try {
+    const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
+    const suppliers = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+    content.innerHTML = '';
+
+    // Low stock alerts
+    try {
+      const invSnap = await getDocs(query(collection(db,'inventory'), where('restaurantId','==',rid)));
+      const lowItems = invSnap.docs.map(d=>d.data()).filter(i=>i.quantity !== undefined && i.minQuantity !== undefined && i.quantity <= i.minQuantity);
+      if (lowItems.length > 0) {
+        const alertBar = document.createElement('div');
+        alertBar.style.cssText = 'background:#FFF5F5;border:1.5px solid #FFCDD2;border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;';
+        alertBar.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:1.2rem;">⚠️</div>
+          <div><div style="font-size:0.875rem;font-weight:700;color:#C62828;">${lowItems.length} item${lowItems.length>1?'s':''} running low — time to reorder</div>
+          <div style="font-size:0.75rem;color:#E57373;margin-top:2px;">${lowItems.map(i=>i.name).join(', ')}</div></div>
+          <button onclick="suppShowOrderModal('${rid}','${lowItems.map(i=>i.name).join(',')}')" style="margin-left:auto;height:32px;padding:0 14px;border:none;background:#E53935;color:#fff;border-radius:8px;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">🛒 Order Now</button>
+        </div>`;
+        content.appendChild(alertBar);
+      }
+    } catch(e) {}
+
+    if (!suppliers.length) {
+      content.innerHTML += `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:16px;">🏪</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No suppliers yet</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Add your food suppliers to start placing orders directly from the app</div>
+        <button onclick="suppShowAddModal('${rid}')" style="height:44px;padding:0 24px;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">+ Add Your First Supplier</button>
+      </div>`;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    suppliers.forEach(s => {
+      const cat = s.category || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(s);
+    });
+
+    Object.entries(grouped).forEach(([cat, items]) => {
+      const catTitle = document.createElement('div');
+      catTitle.style.cssText = 'font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;';
+      catTitle.textContent = cat;
+      content.appendChild(catTitle);
+
+      items.forEach(sup => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;';
+
+        const hue = [...(sup.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+        const initial = (sup.name||'?')[0].toUpperCase();
+
+        card.innerHTML = `
+          <div style="width:44px;height:44px;border-radius:12px;background:hsl(${hue},60%,88%);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:hsl(${hue},60%,35%);flex-shrink:0;">${initial}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${sup.name}</div>
+            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">${sup.contactName?sup.contactName+' · ':''}${sup.phone||''}</div>
+            ${sup.items?`<div style="font-size:0.7rem;color:var(--green);margin-top:3px;font-weight:600;">📦 ${sup.items}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            ${sup.phone?`<a href="tel:${sup.phone}" style="width:34px;height:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Call">📞</a>`:''}
+            ${sup.whatsapp?`<a href="https://wa.me/${sup.whatsapp.replace(/\D/g,'')}" target="_blank" style="width:34px;height:34px;border-radius:9px;background:#E8F8EF;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="WhatsApp">💬</a>`:''}
+            ${sup.email?`<a href="mailto:${sup.email}" style="width:34px;height:34px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Email">📧</a>`:''}
+            <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Order</button>
+            <button onclick="suppDeleteSupplier('${sup.id}','${rid}')" style="width:34px;height:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;" title="Delete">🗑️</button>
+          </div>`;
+        content.appendChild(card);
+      });
+    });
+  } catch(e) {
+    content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading suppliers.</div>';
+    console.error(e);
+  }
+}
+
+async function suppLoadOrders(rid, content) {
+  try {
+    const snap = await getDocs(query(collection(db,'purchaseOrders'), where('restaurantId','==',rid)));
+    const orders = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+    content.innerHTML = '';
+
+    if (!orders.length) {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:16px;">📋</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No orders yet</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Create your first purchase order to track deliveries</div>
+        <button onclick="suppShowOrderModal('${rid}')" style="height:44px;padding:0 24px;background:var(--ink);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">🛒 Create First Order</button>
+      </div>`;
+      return;
+    }
+
+    const statusColors = {
+      pending:   ['#FFF8ED','#F2A623','🟡 Pending'],
+      sent:      ['#EEF4FF','#2563EB','📤 Sent'],
+      received:  ['#EDFAF4','#1D9E75','✅ Received'],
+      cancelled: ['#FFF5F5','#E53935','❌ Cancelled'],
+    };
+
+    orders.forEach(order => {
+      const [bg, color, statusLabel] = statusColors[order.status||'pending'];
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;';
+      card.innerHTML = `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${order.supplierName||'Order'}</div>
+            <div style="font-size:0.72rem;color:var(--ink-muted);">${order.orderDate||''} ${order.createdBy?'· by '+order.createdBy:''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="background:${bg};color:${color};font-size:0.68rem;font-weight:700;padding:3px 10px;border-radius:100px;">${statusLabel}</div>
+            ${order.total?`<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">$${parseFloat(order.total).toFixed(2)}</div>`:''}
+          </div>
+        </div>
+        <div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:0.78rem;color:var(--ink-muted);line-height:1.6;">${(order.items||[]).map(i=>`<span style="display:inline-block;margin-right:12px;">• ${i.name} × ${i.qty} ${i.unit||''}</span>`).join('')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${order.status==='pending'?`
+            <button onclick="suppSendOrder('${order.id}','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#2563EB;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">📤 Send to Supplier</button>
+            <button onclick="suppUpdateStatus('${order.id}','received','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">✅ Mark Received</button>
+            <button onclick="suppUpdateStatus('${order.id}','cancelled','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;">Cancel</button>
+          `:''}
+          ${order.status==='sent'?`
+            <button onclick="suppUpdateStatus('${order.id}','received','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">✅ Mark Received</button>
+          `:''}
+        </div>`;
+      content.appendChild(card);
+    });
+  } catch(e) {
+    content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading orders.</div>';
+    console.error(e);
+  }
+}
+
+function suppShowAddModal(rid) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  const fields = [
+    ['text','supp-name','Supplier Name *','e.g. Sysco Foods, US Foods'],
+    ['text','supp-contact','Contact Person','e.g. John Smith'],
+    ['tel','supp-phone','Phone Number','e.g. +1 (202) 555-0100'],
+    ['text','supp-whatsapp','WhatsApp Number','e.g. +12025550100 (for orders)'],
+    ['email','supp-email','Email Address','orders@supplier.com'],
+    ['text','supp-items','What They Supply','e.g. Chicken, beef, pork'],
+    ['text','supp-notes','Notes','Payment terms, delivery days, etc.'],
+  ];
+
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>
+    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">🏪 Add New Supplier</div>`;
+
+  fields.forEach(([type, id, label, ph]) => {
+    box.innerHTML += `<div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">${label}</label>
+      <input type="${type}" id="${id}" placeholder="${ph}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);">
+    </div>`;
+  });
+
+  // Category dropdown
+  box.innerHTML += `<div style="margin-bottom:20px;">
+    <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Category</label>
+    <select id="supp-cat" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+      ${SUPPLIER_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}
+    </select>
+  </div>`;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '✅ Save Supplier';
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  saveBtn.onclick = async () => {
+    const name = document.getElementById('supp-name')?.value.trim();
+    if (!name) { showToast('Supplier name required','error'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+    try {
+      await addDoc(collection(db,'suppliers'), {
+        restaurantId: rid, name,
+        contactName: document.getElementById('supp-contact')?.value.trim()||'',
+        phone: document.getElementById('supp-phone')?.value.trim()||'',
+        whatsapp: document.getElementById('supp-whatsapp')?.value.trim()||'',
+        email: document.getElementById('supp-email')?.value.trim()||'',
+        items: document.getElementById('supp-items')?.value.trim()||'',
+        notes: document.getElementById('supp-notes')?.value.trim()||'',
+        category: document.getElementById('supp-cat')?.value||'Other',
+        createdAt: serverTimestamp()
+      });
+      showToast('✅ Supplier added!');
+      overlay.remove();
+      window._suppTab = 'suppliers';
+      suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); saveBtn.disabled=false; saveBtn.textContent='✅ Save Supplier'; }
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'height:50px;padding:0 20px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.onclick = () => overlay.remove();
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  setTimeout(()=>document.getElementById('supp-name')?.focus(),100);
+}
+
+async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
+  // Load suppliers for dropdown
+  const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
+  const suppliers = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+  if (!suppliers.length) {
+    showToast('Add a supplier first before creating an order','error');
+    suppShowAddModal(rid);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:540px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>
+    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">🛒 New Purchase Order</div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Supplier *</label>
+      <select id="po-supplier" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+        ${suppliers.map(s=>`<option value="${s.id}" data-name="${s.name}" data-phone="${s.phone||''}" data-whatsapp="${s.whatsapp||''}" data-email="${s.email||''}" ${s.id===supplierId?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Delivery Date Needed</label>
+      <input type="date" id="po-date" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;" value="${new Date(Date.now()+2*24*60*60*1000).toISOString().split('T')[0]}">
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Order Items</label>
+      <div id="po-items"></div>
+      <button onclick="suppAddOrderItem()" style="width:100%;height:38px;border-radius:9px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:6px;">+ Add Item</button>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Notes to Supplier</label>
+      <textarea id="po-notes" style="width:100%;height:70px;border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;resize:none;" placeholder="Special instructions, delivery notes..."></textarea>
+    </div>`;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '💾 Save Order';
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:var(--ink);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+
+  const sendWA = document.createElement('button');
+  sendWA.textContent = '💬 Send via WhatsApp';
+  sendWA.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:#25D366;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;';
+
+  const sendEmail = document.createElement('button');
+  sendEmail.textContent = '📧 Send via Email';
+  sendEmail.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:#2563EB;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'height:50px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.onclick = () => overlay.remove();
+
+  const getOrderData = () => {
+    const selEl = document.getElementById('po-supplier');
+    const opt = selEl?.options[selEl.selectedIndex];
+    const items = [...document.querySelectorAll('.po-item-row')].map(r => ({
+      name: r.querySelector('.po-item-name')?.value.trim()||'',
+      qty:  r.querySelector('.po-item-qty')?.value.trim()||'',
+      unit: r.querySelector('.po-item-unit')?.value.trim()||'',
+      price: r.querySelector('.po-item-price')?.value.trim()||'',
+    })).filter(i=>i.name);
+    const total = items.reduce((s,i)=>s+(parseFloat(i.price||0)*parseFloat(i.qty||0)),0);
+    return {
+      supplierId: selEl?.value, supplierName: opt?.dataset.name||'',
+      supplierPhone: opt?.dataset.phone||'', supplierWhatsapp: opt?.dataset.whatsapp||'',
+      supplierEmail: opt?.dataset.email||'', items,
+      deliveryDate: document.getElementById('po-date')?.value||'',
+      notes: document.getElementById('po-notes')?.value.trim()||'',
+      total: total.toFixed(2)
+    };
+  };
+
+  const saveOrder = async (status='pending') => {
+    const data = getOrderData();
+    if (!data.items.length) { showToast('Add at least one item','error'); return null; }
+    const docRef = await addDoc(collection(db,'purchaseOrders'), {
+      ...data, restaurantId: rid, status,
+      orderDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      createdBy: localStorage.getItem('cnp-staff-name')||'Admin',
+      createdAt: serverTimestamp()
+    });
+    return { id:docRef.id, ...data };
+  };
+
+  saveBtn.onclick = async () => {
+    try { saveBtn.disabled=true; saveBtn.textContent='Saving...';
+      await saveOrder('pending');
+      showToast('✅ Order saved!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); saveBtn.disabled=false; saveBtn.textContent='💾 Save Order'; }
+  };
+
+  sendWA.onclick = async () => {
+    try { sendWA.disabled=true; sendWA.textContent='Sending...';
+      const order = await saveOrder('sent');
+      if (!order) { sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; return; }
+      const msg = suppBuildOrderMessage(order);
+      const num = (order.supplierWhatsapp||order.supplierPhone).replace(/\D/g,'');
+      if (!num) { showToast('No WhatsApp number for this supplier','error'); sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; return; }
+      window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+      showToast('✅ Order sent via WhatsApp!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; }
+  };
+
+  sendEmail.onclick = async () => {
+    try { sendEmail.disabled=true; sendEmail.textContent='Opening...';
+      const order = await saveOrder('sent');
+      if (!order) { sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; return; }
+      const msg = suppBuildOrderMessage(order);
+      const subject = 'Purchase Order — ' + (window._userData?.restaurantName||'Restaurant');
+      if (!order.supplierEmail) { showToast('No email for this supplier','error'); sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; return; }
+      window.open('mailto:'+order.supplierEmail+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(msg));
+      showToast('✅ Email ready to send!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; }
+  };
+
+  btnRow.appendChild(saveBtn); btnRow.appendChild(sendWA); btnRow.appendChild(sendEmail); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+
+  // Add initial items from low stock if any
+  const initItems = lowStockItems ? lowStockItems.split(',') : [''];
+  initItems.forEach(name => suppAddOrderItem(name.trim()));
+}
+
+window.suppAddOrderItem = function(name='') {
+  const container = document.getElementById('po-items');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'po-item-row';
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML = `
+    <input class="po-item-name" type="text" placeholder="Item name" value="${name}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-qty" type="number" placeholder="Qty" min="0" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-unit" type="text" placeholder="Unit" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-price" type="number" placeholder="$/unit" min="0" step="0.01" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <button onclick="this.parentElement.remove()" style="width:30px;height:38px;border:none;background:#FFF0F0;color:#E53935;border-radius:8px;cursor:pointer;font-size:0.9rem;">✕</button>`;
+  container.appendChild(row);
+}
+
+function suppBuildOrderMessage(order) {
+  const date = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let msg = `PURCHASE ORDER\n${window._userData?.restaurantName||'Restaurant'}\n${date}\n\n`;
+  msg += `Supplier: ${order.supplierName}\n`;
+  if (order.deliveryDate) msg += `Delivery Needed By: ${order.deliveryDate}\n`;
+  msg += `\nITEMS ORDERED:\n`;
+  msg += '─'.repeat(30) + '\n';
+  order.items.forEach((item,i) => {
+    msg += `${i+1}. ${item.name} — ${item.qty} ${item.unit||''}${item.price?' @ $'+item.price+'/'+item.unit:''}${item.price&&item.qty?' = $'+(parseFloat(item.price)*parseFloat(item.qty)).toFixed(2):''}\n`;
+  });
+  msg += '─'.repeat(30) + '\n';
+  if (parseFloat(order.total) > 0) msg += `TOTAL: $${order.total}\n`;
+  if (order.notes) msg += `\nNotes: ${order.notes}\n`;
+  msg += `\nThank you!`;
+  return msg;
+}
+
+window.suppUpdateStatus = async function(orderId, status, rid) {
+  try {
+    await setDoc(doc(db,'purchaseOrders',orderId), {status, updatedAt:serverTimestamp()}, {merge:true});
+    showToast(status==='received'?'✅ Order marked as received!':'Order updated');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error','error'); }
+}
+
+window.suppSendOrder = async function(orderId, rid) {
+  try {
+    const docSnap = await getDoc(doc(db,'purchaseOrders',orderId));
+    const order = {id:orderId,...docSnap.data()};
+    const msg = suppBuildOrderMessage(order);
+    const num = (order.supplierWhatsapp||order.supplierPhone||'').replace(/\D/g,'');
+    if (num) {
+      window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+    } else if (order.supplierEmail) {
+      window.open('mailto:'+order.supplierEmail+'?subject=Purchase Order&body='+encodeURIComponent(msg));
+    } else {
+      // Copy to clipboard
+      navigator.clipboard?.writeText(msg);
+      showToast('Order text copied to clipboard!');
+      return;
+    }
+    await setDoc(doc(db,'purchaseOrders',orderId), {status:'sent'}, {merge:true});
+    showToast('📤 Order sent!');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+window.suppDeleteSupplier = async function(suppId, rid) {
+  if (!confirm('Delete this supplier?')) return;
+  try {
+    await deleteDoc(doc(db,'suppliers',suppId));
+    showToast('Supplier deleted');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error','error'); }
 }
 
 // ============================================
