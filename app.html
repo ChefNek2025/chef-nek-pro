@@ -11969,11 +11969,12 @@ async function suppLoadSuppliers(rid, content) {
             <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">${sup.contactName?sup.contactName+' · ':''}${sup.phone||''}</div>
             ${sup.items?`<div style="font-size:0.7rem;color:var(--green);margin-top:3px;font-weight:600;">📦 ${sup.items}</div>`:''}
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;">
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
             ${sup.website?`<a href="${sup.website}" target="_blank" style="height:34px;padding:0 12px;border-radius:9px;background:linear-gradient(135deg,#1D9E75,#16856A);display:flex;align-items:center;gap:5px;text-decoration:none;font-size:0.72rem;font-weight:700;color:#fff;white-space:nowrap;" title="Order online">🌐 Order Online</a>`:''}
             ${sup.phone?`<a href="tel:${sup.phone}" style="width:34px;height:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Call">📞</a>`:''}
             ${sup.whatsapp?`<a href="https://wa.me/${sup.whatsapp.replace(/\D/g,'')}" target="_blank" style="width:34px;height:34px;border-radius:9px;background:#E8F8EF;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="WhatsApp">💬</a>`:''}
             ${sup.email?`<a href="mailto:${sup.email}" style="width:34px;height:34px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Email">📧</a>`:''}
+            <button onclick="suppManageCatalog('${sup.id}','${sup.name}','${rid}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:#F0FAF5;border:1px solid #C8EEE0;color:var(--green);font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">📋 Catalog</button>
             <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">🛒 Order</button>
             <button onclick="suppDeleteSupplier('${sup.id}','${rid}')" style="width:34px;height:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;" title="Delete">🗑️</button>
           </div>`;
@@ -12119,6 +12120,174 @@ window.suppShowAddModal = function suppShowAddModal(rid) {
   setTimeout(()=>document.getElementById('supp-name')?.focus(),100);
 }
 
+window.suppManageCatalog = async function(suppId, suppName, rid) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:580px;padding:24px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;color:var(--ink);">📋 ${suppName} — Item Catalog</div>
+        <div style="font-size:0.72rem;color:var(--ink-muted);margin-top:2px;">Saved items with price history</div>
+      </div>
+      <button onclick="suppAddCatalogItem('${suppId}','${rid}',this)" style="height:34px;padding:0 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">+ Add Item</button>
+    </div>
+    <div id="catalog-list-${suppId}"></div>`;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  await suppLoadCatalogItems(suppId, rid);
+}
+
+async function suppLoadCatalogItems(suppId, rid) {
+  const el = document.getElementById('catalog-list-' + suppId);
+  if (!el) return;
+  el.innerHTML = '<div style="padding:16px;text-align:center;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+
+  try {
+    const snap = await getDocs(query(collection(db,'supplierItems'), where('supplierId','==',suppId), where('restaurantId','==',rid)));
+    const items = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.category||'').localeCompare(b.category||''));
+
+    if (!items.length) {
+      el.innerHTML = `<div style="text-align:center;padding:32px 20px;">
+        <div style="font-size:2.5rem;margin-bottom:10px;">📦</div>
+        <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">No items in catalog yet</div>
+        <div style="font-size:0.78rem;color:var(--ink-muted);">Add items you regularly order from this supplier. Prices are tracked automatically.</div>
+      </div>`;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    items.forEach(i => { const c = i.category||'Other'; if(!grouped[c]) grouped[c]=[]; grouped[c].push(i); });
+
+    el.innerHTML = '';
+    Object.entries(grouped).forEach(([cat, catItems]) => {
+      const catTitle = document.createElement('div');
+      catTitle.style.cssText = 'font-size:0.68rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 6px;';
+      catTitle.textContent = cat;
+      el.appendChild(catTitle);
+
+      catItems.forEach(item => {
+        const history = item.priceHistory || [];
+        const lastPrice = history.length > 1 ? history[history.length-2]?.price : null;
+        const currentPrice = item.currentPrice || 0;
+        const priceDiff = lastPrice ? currentPrice - lastPrice : 0;
+        const pricePct = lastPrice ? ((priceDiff/lastPrice)*100).toFixed(1) : 0;
+        const priceUp = priceDiff > 0;
+        const priceDown = priceDiff < 0;
+
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;';
+        card.innerHTML = `
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:0.875rem;font-weight:700;color:var(--ink);">${item.name}</span>
+              <span style="font-size:0.68rem;color:var(--ink-muted);">${item.unit||''}</span>
+              ${item.category?`<span style="font-size:0.62rem;background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:1px 7px;color:var(--ink-muted);">${item.category}</span>`:''}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+              <span style="font-size:1rem;font-weight:800;color:var(--ink);">$${parseFloat(currentPrice).toFixed(2)}<span style="font-size:0.68rem;font-weight:500;color:var(--ink-muted);">/${item.unit||'unit'}</span></span>
+              ${priceDiff !== 0 ? `<span style="font-size:0.72rem;font-weight:700;color:${priceUp?'#E53935':'#1D9E75'};background:${priceUp?'#FFF5F5':'#EDFAF4'};padding:2px 8px;border-radius:100px;">
+                ${priceUp?'⬆️':'⬇️'} ${priceUp?'+':''}${pricePct}% vs last order
+              </span>` : (lastPrice?'<span style="font-size:0.7rem;color:var(--ink-muted);">— same as last order</span>':'')}
+              ${history.length > 0 ? `<span style="font-size:0.68rem;color:var(--ink-muted);">Last ordered: ${history[history.length-1]?.date||''}</span>` : ''}
+            </div>
+            ${history.length > 1 ? `<div style="margin-top:6px;display:flex;gap:4px;align-items:flex-end;height:24px;">
+              ${history.slice(-8).map((h,i,arr) => {
+                const max = Math.max(...arr.map(x=>x.price));
+                const min = Math.min(...arr.map(x=>x.price));
+                const range = max - min || 1;
+                const pct = ((h.price-min)/range*70+20);
+                return `<div style="flex:1;background:${h.price===max?'#E53935':h.price===min?'#1D9E75':'#94A3B8'};border-radius:2px;height:${pct}%;opacity:0.7;" title="$${h.price} on ${h.date}"></div>`;
+              }).join('')}
+            </div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onclick="suppEditCatalogPrice('${item.id}','${suppId}','${rid}',${currentPrice},'${item.name}')" style="height:30px;padding:0 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.7rem;cursor:pointer;">Update Price</button>
+            <button onclick="suppDeleteCatalogItem('${item.id}','${suppId}','${rid}')" style="width:30px;height:30px;border-radius:8px;border:none;background:#FFF0F0;color:#E53935;font-size:0.75rem;cursor:pointer;">🗑️</button>
+          </div>`;
+        el.appendChild(card);
+      });
+    });
+  } catch(e) { el.innerHTML = '<div style="padding:16px;color:var(--red);">Error loading catalog.</div>'; }
+}
+
+window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
+  const overlay2 = document.createElement('div');
+  overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box2 = document.createElement('div');
+  box2.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:400px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+  box2.innerHTML = `<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:16px;">Add Catalog Item</div>
+    <div style="margin-bottom:10px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Item Name *</label>
+    <input id="cat-name" type="text" placeholder="e.g. Chicken Thighs" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Unit</label>
+      <input id="cat-unit" type="text" placeholder="lbs, case, qt..." style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Current Price $</label>
+      <input id="cat-price" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+    </div>
+    <div style="margin-bottom:16px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Category</label>
+    <select id="cat-cat" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+      ${['Meat & Poultry','Seafood','Produce','Dairy & Eggs','Dry Goods','Beverages','Bakery','Spices & Sauces','Cleaning Supplies','Packaging','Other'].map(c=>`<option>${c}</option>`).join('')}
+    </select></div>
+    <div style="display:flex;gap:8px;">
+      <button id="cat-save-btn" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Save Item</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="height:44px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button>
+    </div>`;
+
+  overlay2.appendChild(box2);
+  document.body.appendChild(overlay2);
+  setTimeout(()=>box2.querySelector('#cat-name')?.focus(),50);
+
+  box2.querySelector('#cat-save-btn').onclick = async () => {
+    const name = box2.querySelector('#cat-name')?.value.trim();
+    const unit = box2.querySelector('#cat-unit')?.value.trim();
+    const price = parseFloat(box2.querySelector('#cat-price')?.value||0);
+    const category = box2.querySelector('#cat-cat')?.value;
+    if (!name) { showToast('Item name required','error'); return; }
+    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    try {
+      await addDoc(collection(db,'supplierItems'), {
+        supplierId, restaurantId: rid, name, unit, category,
+        currentPrice: price,
+        priceHistory: price ? [{price, date:today}] : [],
+        createdAt: serverTimestamp()
+      });
+      showToast('✅ Item added to catalog!');
+      overlay2.remove();
+      await suppLoadCatalogItems(suppId, rid);
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  };
+}
+
+window.suppEditCatalogPrice = async function(itemId, suppId, rid, currentPrice, itemName) {
+  const newPrice = prompt(`Update price for "${itemName}"\nCurrent: $${parseFloat(currentPrice).toFixed(2)}\n\nEnter new price:`);
+  if (!newPrice || isNaN(parseFloat(newPrice))) return;
+  const price = parseFloat(newPrice);
+  const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  try {
+    const docSnap = await getDoc(doc(db,'supplierItems',itemId));
+    const existing = docSnap.data() || {};
+    const history = existing.priceHistory || [];
+    history.push({price, date:today});
+    await setDoc(doc(db,'supplierItems',itemId), {currentPrice:price, priceHistory:history, updatedAt:serverTimestamp()}, {merge:true});
+    const diff = price - currentPrice;
+    const pct = ((diff/currentPrice)*100).toFixed(1);
+    if (diff > 0) showToast(`⬆️ Price up $${diff.toFixed(2)} (+${pct}%) — saved!`);
+    else if (diff < 0) showToast(`⬇️ Price down $${Math.abs(diff).toFixed(2)} (${pct}%) — saved!`);
+    else showToast('Price unchanged — saved!');
+    await suppLoadCatalogItems(suppId, rid);
+  } catch(e) { showToast('Error','error'); }
+}
+
+window.suppDeleteCatalogItem = async function(itemId, suppId, rid) {
+  if (!confirm('Remove this item from catalog?')) return;
+  try { await deleteDoc(doc(db,'supplierItems',itemId)); showToast('Item removed'); await suppLoadCatalogItems(suppId, rid); }
+  catch(e) { showToast('Error','error'); }
+}
+
 window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
   // Load suppliers for dropdown
   const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
@@ -12143,6 +12312,13 @@ window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems
         ${suppliers.map(s=>`<option value="${s.id}" data-name="${s.name}" data-phone="${s.phone||''}" data-whatsapp="${s.whatsapp||''}" data-email="${s.email||''}" ${s.id===supplierId?'selected':''}>${s.name}</option>`).join('')}
       </select>
     </div>
+
+    <!-- Catalog quick-add chips — loaded dynamically -->
+    <div id="po-catalog-section" style="margin-bottom:14px;display:none;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">⚡ Quick Add from Catalog</label>
+      <div id="po-catalog-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+
     <div style="margin-bottom:14px;">
       <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Delivery Date Needed</label>
       <input type="date" id="po-date" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;" value="${new Date(Date.now()+2*24*60*60*1000).toISOString().split('T')[0]}">
@@ -12150,7 +12326,7 @@ window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems
     <div style="margin-bottom:8px;">
       <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Order Items</label>
       <div id="po-items"></div>
-      <button onclick="suppAddOrderItem()" style="width:100%;height:38px;border-radius:9px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:6px;">+ Add Item</button>
+      <button onclick="suppAddOrderItem()" style="width:100%;height:38px;border-radius:9px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:6px;">+ Add Item Manually</button>
     </div>
     <div style="margin-bottom:20px;">
       <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Notes to Supplier</label>
@@ -12249,12 +12425,45 @@ window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
 
+  // Load catalog chips for initial supplier
+  const loadCatalogChips = async (suppId) => {
+    const section = document.getElementById('po-catalog-section');
+    const chips = document.getElementById('po-catalog-chips');
+    if (!section || !chips) return;
+    try {
+      const cSnap = await getDocs(query(collection(db,'supplierItems'), where('supplierId','==',suppId), where('restaurantId','==',rid)));
+      const catItems = cSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      if (!catItems.length) { section.style.display='none'; return; }
+      section.style.display='block';
+      chips.innerHTML = '';
+      catItems.forEach(item => {
+        const history = item.priceHistory || [];
+        const lastPrice = history.length > 1 ? history[history.length-2]?.price : null;
+        const cur = parseFloat(item.currentPrice||0);
+        const diff = lastPrice ? cur - lastPrice : 0;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.style.cssText = 'height:32px;padding:0 12px;border-radius:100px;border:1.5px solid var(--border);background:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--ink);transition:all 0.15s;';
+        chip.innerHTML = `${item.name} <span style="color:var(--ink-muted);">$${cur.toFixed(2)}/${item.unit||'unit'}</span>${diff>0?`<span style="color:#E53935;font-size:0.65rem;">⬆️+${((diff/lastPrice)*100).toFixed(0)}%</span>`:diff<0?`<span style="color:#1D9E75;font-size:0.65rem;">⬇️${((diff/lastPrice)*100).toFixed(0)}%</span>`:''}`;
+        chip.onmouseenter = () => { chip.style.background='#F0FAF5'; chip.style.borderColor='var(--green)'; };
+        chip.onmouseleave = () => { chip.style.background='#fff'; chip.style.borderColor='var(--border)'; };
+        chip.onclick = () => suppAddOrderItem(item.name, '', item.unit||'', cur.toString());
+        chips.appendChild(chip);
+      });
+    } catch(e) { section.style.display='none'; }
+  };
+
+  // Load chips for pre-selected supplier
+  const selEl = document.getElementById('po-supplier');
+  if (selEl?.value) loadCatalogChips(selEl.value);
+  selEl?.addEventListener('change', () => loadCatalogChips(selEl.value));
+
   // Add initial items from low stock if any
   const initItems = lowStockItems ? lowStockItems.split(',') : [''];
   initItems.forEach(name => suppAddOrderItem(name.trim()));
 }
 
-window.suppAddOrderItem = function(name='') {
+window.suppAddOrderItem = function(name='', qty='', unit='', price='') {
   const container = document.getElementById('po-items');
   if (!container) return;
   const row = document.createElement('div');
@@ -12262,9 +12471,9 @@ window.suppAddOrderItem = function(name='') {
   row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center;';
   row.innerHTML = `
     <input class="po-item-name" type="text" placeholder="Item name" value="${name}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
-    <input class="po-item-qty" type="number" placeholder="Qty" min="0" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
-    <input class="po-item-unit" type="text" placeholder="Unit" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
-    <input class="po-item-price" type="number" placeholder="$/unit" min="0" step="0.01" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-qty" type="number" placeholder="Qty" min="0" value="${qty}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-unit" type="text" placeholder="Unit" value="${unit}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-price" type="number" placeholder="$/unit" min="0" step="0.01" value="${price}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
     <button onclick="this.parentElement.remove()" style="width:30px;height:38px;border:none;background:#FFF0F0;color:#E53935;border-radius:8px;cursor:pointer;font-size:0.9rem;">✕</button>`;
   container.appendChild(row);
 }
