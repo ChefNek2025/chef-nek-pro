@@ -12043,7 +12043,7 @@ async function suppLoadOrders(rid, content) {
   }
 }
 
-function suppShowAddModal(rid) {
+window.suppShowAddModal = function suppShowAddModal(rid) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
   const box = document.createElement('div');
@@ -12116,7 +12116,7 @@ function suppShowAddModal(rid) {
   setTimeout(()=>document.getElementById('supp-name')?.focus(),100);
 }
 
-async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
+window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
   // Load suppliers for dropdown
   const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
   const suppliers = snap.docs.map(d=>({id:d.id,...d.data()}));
