@@ -11970,10 +11970,11 @@ async function suppLoadSuppliers(rid, content) {
             ${sup.items?`<div style="font-size:0.7rem;color:var(--green);margin-top:3px;font-weight:600;">📦 ${sup.items}</div>`:''}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0;">
+            ${sup.website?`<a href="${sup.website}" target="_blank" style="height:34px;padding:0 12px;border-radius:9px;background:linear-gradient(135deg,#1D9E75,#16856A);display:flex;align-items:center;gap:5px;text-decoration:none;font-size:0.72rem;font-weight:700;color:#fff;white-space:nowrap;" title="Order online">🌐 Order Online</a>`:''}
             ${sup.phone?`<a href="tel:${sup.phone}" style="width:34px;height:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Call">📞</a>`:''}
             ${sup.whatsapp?`<a href="https://wa.me/${sup.whatsapp.replace(/\D/g,'')}" target="_blank" style="width:34px;height:34px;border-radius:9px;background:#E8F8EF;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="WhatsApp">💬</a>`:''}
             ${sup.email?`<a href="mailto:${sup.email}" style="width:34px;height:34px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Email">📧</a>`:''}
-            <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Order</button>
+            <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">🛒 Order</button>
             <button onclick="suppDeleteSupplier('${sup.id}','${rid}')" style="width:34px;height:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;" title="Delete">🗑️</button>
           </div>`;
         content.appendChild(card);
@@ -12055,6 +12056,7 @@ window.suppShowAddModal = function suppShowAddModal(rid) {
     ['tel','supp-phone','Phone Number','e.g. +1 (202) 555-0100'],
     ['text','supp-whatsapp','WhatsApp Number','e.g. +12025550100 (for orders)'],
     ['email','supp-email','Email Address','orders@supplier.com'],
+    ['url','supp-website','Website / Order Portal','e.g. https://www.sysco.com/order'],
     ['text','supp-items','What They Supply','e.g. Chicken, beef, pork'],
     ['text','supp-notes','Notes','Payment terms, delivery days, etc.'],
   ];
@@ -12093,6 +12095,7 @@ window.suppShowAddModal = function suppShowAddModal(rid) {
         phone: document.getElementById('supp-phone')?.value.trim()||'',
         whatsapp: document.getElementById('supp-whatsapp')?.value.trim()||'',
         email: document.getElementById('supp-email')?.value.trim()||'',
+        website: document.getElementById('supp-website')?.value.trim()||'',
         items: document.getElementById('supp-items')?.value.trim()||'',
         notes: document.getElementById('supp-notes')?.value.trim()||'',
         category: document.getElementById('supp-cat')?.value||'Other',
