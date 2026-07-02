@@ -12250,7 +12250,7 @@ window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
     const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     try {
       await addDoc(collection(db,'supplierItems'), {
-        supplierId, restaurantId: rid, name, unit, category,
+        supplierId: suppId, restaurantId: rid, name, unit, category,
         currentPrice: price,
         priceHistory: price ? [{price, date:today}] : [],
         createdAt: serverTimestamp()
