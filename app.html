@@ -11867,11 +11867,12 @@ async function renderSuppliers(main, userData) {
   const tabBar = document.createElement('div');
   tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;';
   window._suppTab = window._suppTab || 'suppliers';
-  ['suppliers','orders'].forEach(t => {
+  ['suppliers','orders','compare','ai'].forEach(t => {
     const btn = document.createElement('button');
     btn.id = 'supp-tab-' + t;
-    btn.style.cssText = 'height:38px;padding:0 18px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;background:'+(window._suppTab===t?'var(--ink)':'transparent')+';color:'+(window._suppTab===t?'#fff':'var(--ink-muted)')+';border-color:'+(window._suppTab===t?'var(--ink)':'var(--border)')+';';
-    btn.textContent = t === 'suppliers' ? '🏪 My Suppliers' : '📋 Purchase Orders';
+    const labels = {suppliers:'🏪 My Suppliers', orders:'📋 Orders', compare:'⚖️ Compare Prices', ai:'🤖 AI Reorder'};
+    btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;background:'+(window._suppTab===t?'var(--ink)':'transparent')+';color:'+(window._suppTab===t?'#fff':'var(--ink-muted)')+';border-color:'+(window._suppTab===t?'var(--ink)':'var(--border)')+';';
+    btn.textContent = labels[t];
     btn.onclick = () => { window._suppTab = t; suppRenderTab(rid, body); };
     tabBar.appendChild(btn);
   });
@@ -11888,7 +11889,7 @@ async function renderSuppliers(main, userData) {
 
 async function suppRenderTab(rid, body) {
   // Update tab styles
-  ['suppliers','orders'].forEach(t => {
+  ['suppliers','orders','compare','ai'].forEach(t => {
     const btn = document.getElementById('supp-tab-' + t);
     if (!btn) return;
     btn.style.background = window._suppTab === t ? 'var(--ink)' : 'transparent';
@@ -11900,11 +11901,10 @@ async function suppRenderTab(rid, body) {
   if (!content) return;
   content.innerHTML = '<div style="text-align:center;padding:32px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
 
-  if (window._suppTab === 'suppliers') {
-    await suppLoadSuppliers(rid, content);
-  } else {
-    await suppLoadOrders(rid, content);
-  }
+  if (window._suppTab === 'suppliers') await suppLoadSuppliers(rid, content);
+  else if (window._suppTab === 'orders') await suppLoadOrders(rid, content);
+  else if (window._suppTab === 'compare') await suppLoadCompare(rid, content);
+  else if (window._suppTab === 'ai') await suppLoadAI(rid, content);
 }
 
 async function suppLoadSuppliers(rid, content) {
@@ -12120,6 +12120,273 @@ window.suppShowAddModal = function suppShowAddModal(rid) {
   setTimeout(()=>document.getElementById('supp-name')?.focus(),100);
 }
 
+// ── #5 PRICE COMPARISON ──────────────────────────────────
+async function suppLoadCompare(rid, content) {
+  try {
+    const [suppSnap, itemSnap] = await Promise.all([
+      getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'supplierItems'), where('restaurantId','==',rid)))
+    ]);
+    const suppliers = suppSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const items = itemSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    content.innerHTML = '';
+
+    if (items.length < 2) {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:12px;">⚖️</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Add items to 2+ supplier catalogs to compare prices</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);">Go to each supplier → Catalog → add the same item (e.g. "Chicken Thighs") with their price. The comparison will appear here automatically.</div>
+      </div>`;
+      return;
+    }
+
+    // Group items by normalized name
+    const nameMap = {};
+    items.forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      if (!nameMap[key]) nameMap[key] = { name:item.name, entries:[] };
+      const sup = suppliers.find(s=>s.id===item.supplierId);
+      nameMap[key].entries.push({...item, supplierName: sup?.name||'Unknown'});
+    });
+
+    // Only show items that appear in multiple suppliers
+    const compared = Object.values(nameMap).filter(g=>g.entries.length>1).sort((a,b)=>a.name.localeCompare(b.name));
+    const single   = Object.values(nameMap).filter(g=>g.entries.length===1);
+
+    if (!compared.length && single.length) {
+      content.innerHTML = `<div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+        <div style="font-size:0.875rem;font-weight:700;color:#854F0B;margin-bottom:4px;">💡 No price comparisons yet</div>
+        <div style="font-size:0.78rem;color:#A05020;line-height:1.6;">Add the same item name to multiple supplier catalogs to see side-by-side price comparisons. For example, add "Chicken Thighs" to both Sysco and US Foods.</div>
+      </div>`;
+    }
+
+    if (compared.length) {
+      const intro = document.createElement('div');
+      intro.style.cssText = 'font-size:0.78rem;color:var(--ink-muted);margin-bottom:16px;';
+      intro.textContent = `${compared.length} item${compared.length>1?'s':''} found across multiple suppliers — cheapest highlighted in green`;
+      content.appendChild(intro);
+
+      compared.forEach(group => {
+        const sorted = [...group.entries].sort((a,b)=>(a.currentPrice||0)-(b.currentPrice||0));
+        const cheapest = sorted[0];
+        const mostExp  = sorted[sorted.length-1];
+        const savings = ((mostExp.currentPrice||0) - (cheapest.currentPrice||0));
+
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;';
+
+        // Header
+        const cardHead = document.createElement('div');
+        cardHead.style.cssText = 'padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;';
+        cardHead.innerHTML = `<div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${group.name}</div>
+          ${savings>0?`<div style="font-size:0.75rem;font-weight:700;color:#1D9E75;background:#EDFAF4;padding:3px 10px;border-radius:100px;">💰 Save $${savings.toFixed(2)} by choosing right</div>`:''}`;
+        card.appendChild(cardHead);
+
+        // Supplier rows
+        sorted.forEach((entry, idx) => {
+          const isCheapest = idx === 0;
+          const diff = (entry.currentPrice||0) - (cheapest.currentPrice||0);
+          const row = document.createElement('div');
+          row.style.cssText = 'padding:12px 16px;display:flex;align-items:center;gap:12px;background:'+( isCheapest?'#EDFAF4':'#fff')+';border-bottom:1px solid var(--border);';
+          row.innerHTML = `
+            <div style="flex:1;">
+              <div style="font-size:0.875rem;font-weight:${isCheapest?'700':'500'};color:var(--ink);">${entry.supplierName}</div>
+              ${entry.maxPrice&&entry.currentPrice>entry.maxPrice?'<div style="font-size:0.65rem;color:#E53935;font-weight:700;">⚠️ Over your price limit</div>':''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:1.1rem;font-weight:800;color:${isCheapest?'#1D9E75':'var(--ink)'};">$${parseFloat(entry.currentPrice||0).toFixed(2)}<span style="font-size:0.7rem;font-weight:500;color:var(--ink-muted);">/${entry.unit||'unit'}</span></div>
+              ${diff>0?`<div style="font-size:0.68rem;color:#E53935;">+$${diff.toFixed(2)} more expensive</div>`:''}
+              ${isCheapest?'<div style="font-size:0.68rem;font-weight:700;color:#1D9E75;">✅ BEST PRICE</div>':''}
+            </div>
+            <button onclick="suppShowOrderModal('${rid}','','${entry.supplierId}')" style="height:32px;padding:0 12px;border-radius:8px;border:none;background:${isCheapest?'var(--green)':'var(--cream)'};color:${isCheapest?'#fff':'var(--ink-muted)'};font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Order</button>`;
+          card.appendChild(row);
+        });
+        content.appendChild(card);
+      });
+    }
+
+    // Items only in one supplier
+    if (single.length) {
+      const singleTitle = document.createElement('div');
+      singleTitle.style.cssText = 'font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:20px 0 8px;';
+      singleTitle.textContent = 'Only found at one supplier — add to others to compare';
+      content.appendChild(singleTitle);
+      single.forEach(g => {
+        const chip = document.createElement('div');
+        chip.style.cssText = 'display:inline-block;background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:4px 12px;font-size:0.78rem;color:var(--ink-muted);margin:0 6px 6px 0;';
+        chip.textContent = g.name + ' — ' + g.entries[0].supplierName + ' $' + parseFloat(g.entries[0].currentPrice||0).toFixed(2);
+        content.appendChild(chip);
+      });
+    }
+
+  } catch(e) { content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading comparison.</div>'; console.error(e); }
+}
+
+// ── #6 AI REORDER SUGGESTIONS ────────────────────────────
+async function suppLoadAI(rid, content) {
+  content.innerHTML = `<div style="text-align:center;padding:40px 20px;">
+    <div style="font-size:3rem;margin-bottom:12px;">🤖</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">AI Reorder Suggestions</div>
+    <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Claude AI analyzes your inventory, prep lists, and order history to suggest what to order this week and from which supplier.</div>
+    <button id="ai-reorder-btn" onclick="suppRunAIReorder('${rid}')" style="height:52px;padding:0 32px;background:linear-gradient(135deg,#0A0A14,#1A1A2E);color:#fff;border:none;border-radius:14px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(10,10,20,0.3);">
+      🤖 Generate Reorder List
+    </button>
+  </div>
+  <div id="ai-reorder-results"></div>`;
+}
+
+window.suppRunAIReorder = async function(rid) {
+  const btn = document.getElementById('ai-reorder-btn');
+  const results = document.getElementById('ai-reorder-results');
+  if (btn) { btn.disabled=true; btn.textContent='🤖 Analyzing your kitchen...'; }
+
+  try {
+    // Gather data
+    const [invSnap, itemSnap, orderSnap, prepSnap, suppSnap] = await Promise.all([
+      getDocs(query(collection(db,'inventory'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'supplierItems'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'purchaseOrders'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'prepTasks'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid))),
+    ]);
+
+    const inventory = invSnap.docs.map(d=>d.data());
+    const catalogItems = itemSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const orders = orderSnap.docs.map(d=>d.data()).slice(0,10);
+    const prepTasks = prepSnap.docs.map(d=>d.data());
+    const suppliers = suppSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const lowStock = inventory.filter(i=>i.quantity!==undefined && i.minQuantity!==undefined && i.quantity<=i.minQuantity);
+    const overPriceLimit = catalogItems.filter(i=>i.maxPrice && i.currentPrice > i.maxPrice);
+
+    // Group catalog by item name with supplier prices
+    const priceMap = {};
+    catalogItems.forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      if (!priceMap[key]) priceMap[key] = [];
+      const sup = suppliers.find(s=>s.id===item.supplierId);
+      priceMap[key].push({supplierName:sup?.name||'?', price:item.currentPrice||0, unit:item.unit||''});
+    });
+
+    const prompt = `You are a restaurant purchasing expert helping Chef Nek Pro restaurant owners optimize their orders.
+
+RESTAURANT DATA:
+Low stock items: ${lowStock.map(i=>`${i.name} (have ${i.quantity}, need ${i.minQuantity})`).join(', ')||'None'}
+Prep tasks this week: ${prepTasks.slice(0,10).map(t=>t.name).join(', ')||'None'}
+Recent orders: ${orders.slice(0,5).map(o=>`${o.supplierName}: ${(o.items||[]).map(i=>i.name).join(', ')}`).join(' | ')||'None'}
+Price alerts (over limit): ${overPriceLimit.map(i=>`${i.name} at $${i.currentPrice} (limit $${i.maxPrice})`).join(', ')||'None'}
+Available suppliers: ${suppliers.map(s=>s.name).join(', ')||'None'}
+Supplier catalog with prices: ${Object.entries(priceMap).map(([name,entries])=>`${name}: ${entries.map(e=>`${e.supplierName}=$${e.price}/${e.unit}`).join(' vs ')}`).join('; ')||'None'}
+
+Based on this data, provide smart reorder suggestions. Respond ONLY in this exact JSON format:
+{
+  "summary": "One sentence summary of the purchasing situation",
+  "urgent": [
+    {"item": "item name", "reason": "why urgent", "qty": "suggested qty", "supplier": "best supplier name", "estimatedCost": "$X.XX", "tip": "money saving tip"}
+  ],
+  "recommended": [
+    {"item": "item name", "reason": "why recommended", "qty": "suggested qty", "supplier": "best supplier name", "estimatedCost": "$X.XX", "tip": "optional tip"}
+  ],
+  "costSavings": [
+    {"tip": "specific money saving advice based on the data"}
+  ]
+}`;
+
+    const apiKey = getStoredAIKey();
+    if (!apiKey) {
+      results.innerHTML = `<div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:20px;text-align:center;">
+        <div style="font-size:1rem;font-weight:700;color:#854F0B;margin-bottom:8px;">🔑 API Key Required</div>
+        <div style="font-size:0.82rem;color:#A05020;margin-bottom:16px;">Open the AI Food Scanner and paste your Anthropic API key first. It will be remembered for this session.</div>
+        <button onclick="navigate('calorie')" style="height:40px;padding:0 20px;background:#F2A623;color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">Go to AI Scanner to add key</button>
+      </div>`;
+      if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+      return;
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message||'API error');
+
+    let parsed;
+    try { parsed = JSON.parse(data.content[0].text.replace(/```json|```/g,'')); }
+    catch(e) { throw new Error('Could not parse AI response'); }
+
+    results.innerHTML = '';
+
+    // Summary
+    const sumCard = document.createElement('div');
+    sumCard.style.cssText = 'background:linear-gradient(135deg,#0A0A14,#1A1A2E);border-radius:16px;padding:18px 20px;margin-bottom:16px;';
+    sumCard.innerHTML = `<div style="font-size:0.68rem;font-weight:700;color:#5DCAA5;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">🤖 AI Analysis</div>
+      <div style="font-size:0.95rem;color:#fff;line-height:1.6;">${parsed.summary||''}</div>`;
+    results.appendChild(sumCard);
+
+    // Urgent orders
+    if (parsed.urgent?.length) {
+      const urgentTitle = document.createElement('div');
+      urgentTitle.style.cssText = 'font-size:0.75rem;font-weight:800;color:#E53935;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;display:flex;align-items:center;gap:6px;';
+      urgentTitle.innerHTML = '⚠️ Order Now — Running Low';
+      results.appendChild(urgentTitle);
+      parsed.urgent.forEach(item => suppAIItemCard(results, item, '#FFF5F5', '#E53935', rid));
+    }
+
+    // Recommended
+    if (parsed.recommended?.length) {
+      const recTitle = document.createElement('div');
+      recTitle.style.cssText = 'font-size:0.75rem;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;';
+      recTitle.textContent = '📋 Recommended This Week';
+      results.appendChild(recTitle);
+      parsed.recommended.forEach(item => suppAIItemCard(results, item, '#EDFAF4', '#1D9E75', rid));
+    }
+
+    // Cost savings tips
+    if (parsed.costSavings?.length) {
+      const tipsCard = document.createElement('div');
+      tipsCard.style.cssText = 'background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-top:16px;';
+      tipsCard.innerHTML = `<div style="font-size:0.72rem;font-weight:800;color:#C17F3A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">💰 Cost Saving Tips</div>`;
+      parsed.costSavings.forEach(tip => {
+        tipsCard.innerHTML += `<div style="display:flex;gap:8px;margin-bottom:6px;font-size:0.82rem;color:#854F0B;"><span>→</span><span>${tip.tip}</span></div>`;
+      });
+      results.appendChild(tipsCard);
+    }
+
+    // Regenerate button
+    const regenBtn = document.createElement('button');
+    regenBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:16px;';
+    regenBtn.textContent = '🔄 Regenerate Suggestions';
+    regenBtn.onclick = () => suppRunAIReorder(rid);
+    results.appendChild(regenBtn);
+
+    if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+  } catch(e) {
+    if (results) results.innerHTML = `<div style="background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:14px;padding:16px;color:#C62828;font-size:0.82rem;">${e.message}</div>`;
+    if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+  }
+}
+
+function suppAIItemCard(container, item, bg, color, rid) {
+  const card = document.createElement('div');
+  card.style.cssText = `background:${bg};border:1.5px solid ${color}30;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;`;
+  card.innerHTML = `
+    <div style="flex:1;">
+      <div style="font-size:0.9rem;font-weight:700;color:var(--ink);margin-bottom:3px;">${item.item}</div>
+      <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">${item.reason}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:0.72rem;">
+        ${item.qty?`<span style="color:var(--ink);font-weight:600;">📦 ${item.qty}</span>`:''}
+        ${item.supplier?`<span style="color:${color};font-weight:600;">🏪 ${item.supplier}</span>`:''}
+        ${item.estimatedCost?`<span style="color:var(--ink);font-weight:600;">💰 ${item.estimatedCost}</span>`:''}
+      </div>
+      ${item.tip?`<div style="font-size:0.7rem;color:#1D9E75;margin-top:4px;font-weight:600;">💡 ${item.tip}</div>`:''}
+    </div>
+    <button onclick="suppShowOrderModal('${rid}','${item.item}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:${color};color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">🛒 Order</button>`;
+  container.appendChild(card);
+}
+
 window.suppManageCatalog = async function(suppId, suppName, rid) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
@@ -12177,6 +12444,7 @@ async function suppLoadCatalogItems(suppId, rid) {
         const pricePct = lastPrice ? ((priceDiff/lastPrice)*100).toFixed(1) : 0;
         const priceUp = priceDiff > 0;
         const priceDown = priceDiff < 0;
+        const overMax = item.maxPrice && currentPrice > item.maxPrice;
 
         const card = document.createElement('div');
         card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;';
@@ -12186,21 +12454,22 @@ async function suppLoadCatalogItems(suppId, rid) {
               <span style="font-size:0.875rem;font-weight:700;color:var(--ink);">${item.name}</span>
               <span style="font-size:0.68rem;color:var(--ink-muted);">${item.unit||''}</span>
               ${item.category?`<span style="font-size:0.62rem;background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:1px 7px;color:var(--ink-muted);">${item.category}</span>`:''}
+              ${overMax?`<span style="font-size:0.65rem;font-weight:800;background:#FFF0F0;color:#E53935;border:1px solid #FFCDD2;border-radius:100px;padding:2px 8px;">🔔 OVER LIMIT</span>`:''}
             </div>
             <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
-              <span style="font-size:1rem;font-weight:800;color:var(--ink);">$${parseFloat(currentPrice).toFixed(2)}<span style="font-size:0.68rem;font-weight:500;color:var(--ink-muted);">/${item.unit||'unit'}</span></span>
-              ${priceDiff !== 0 ? `<span style="font-size:0.72rem;font-weight:700;color:${priceUp?'#E53935':'#1D9E75'};background:${priceUp?'#FFF5F5':'#EDFAF4'};padding:2px 8px;border-radius:100px;">
-                ${priceUp?'⬆️':'⬇️'} ${priceUp?'+':''}${pricePct}% vs last order
-              </span>` : (lastPrice?'<span style="font-size:0.7rem;color:var(--ink-muted);">— same as last order</span>':'')}
-              ${history.length > 0 ? `<span style="font-size:0.68rem;color:var(--ink-muted);">Last ordered: ${history[history.length-1]?.date||''}</span>` : ''}
+              <span style="font-size:1rem;font-weight:800;color:${overMax?'#E53935':'var(--ink)'};">$${parseFloat(currentPrice).toFixed(2)}<span style="font-size:0.68rem;font-weight:500;color:var(--ink-muted);">/${item.unit||'unit'}</span></span>
+              ${item.maxPrice?`<span style="font-size:0.68rem;color:var(--ink-muted);">Max: $${parseFloat(item.maxPrice).toFixed(2)}</span>`:''}
+              ${priceDiff !== 0 ? `<span style="font-size:0.72rem;font-weight:700;color:${priceUp?'#E53935':'#1D9E75'};background:${priceUp?'#FFF5F5':'#EDFAF4'};padding:2px 8px;border-radius:100px;">${priceUp?'⬆️':'⬇️'} ${priceUp?'+':''}${pricePct}% vs last</span>` : (lastPrice?'<span style="font-size:0.7rem;color:var(--ink-muted);">— same as last order</span>':'')}
+              ${history.length > 0 ? `<span style="font-size:0.68rem;color:var(--ink-muted);">Last: ${history[history.length-1]?.date||''}</span>` : ''}
             </div>
-            ${history.length > 1 ? `<div style="margin-top:6px;display:flex;gap:4px;align-items:flex-end;height:24px;">
+            ${history.length > 1 ? `<div style="margin-top:6px;display:flex;gap:3px;align-items:flex-end;height:20px;">
               ${history.slice(-8).map((h,i,arr) => {
                 const max = Math.max(...arr.map(x=>x.price));
                 const min = Math.min(...arr.map(x=>x.price));
                 const range = max - min || 1;
                 const pct = ((h.price-min)/range*70+20);
-                return `<div style="flex:1;background:${h.price===max?'#E53935':h.price===min?'#1D9E75':'#94A3B8'};border-radius:2px;height:${pct}%;opacity:0.7;" title="$${h.price} on ${h.date}"></div>`;
+                const isOver = item.maxPrice && h.price > item.maxPrice;
+                return `<div style="flex:1;background:${isOver?'#E53935':h.price===max?'#F2A623':'#94A3B8'};border-radius:2px;height:${pct}%;opacity:0.8;" title="$${h.price} on ${h.date}"></div>`;
               }).join('')}
             </div>` : ''}
           </div>
@@ -12222,11 +12491,13 @@ window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
   box2.innerHTML = `<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:16px;">Add Catalog Item</div>
     <div style="margin-bottom:10px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Item Name *</label>
     <input id="cat-name" type="text" placeholder="e.g. Chicken Thighs" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
       <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Unit</label>
-      <input id="cat-unit" type="text" placeholder="lbs, case, qt..." style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+      <input id="cat-unit" type="text" placeholder="lbs, case..." style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
       <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Current Price $</label>
       <input id="cat-price" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">🔔 Alert if above $</label>
+      <input id="cat-maxprice" type="number" min="0" step="0.01" placeholder="Max $" style="width:100%;height:42px;border-radius:9px;border:1.5px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div>
     </div>
     <div style="margin-bottom:16px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Category</label>
     <select id="cat-cat" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
@@ -12245,6 +12516,7 @@ window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
     const name = box2.querySelector('#cat-name')?.value.trim();
     const unit = box2.querySelector('#cat-unit')?.value.trim();
     const price = parseFloat(box2.querySelector('#cat-price')?.value||0);
+    const maxPrice = parseFloat(box2.querySelector('#cat-maxprice')?.value||0);
     const category = box2.querySelector('#cat-cat')?.value;
     if (!name) { showToast('Item name required','error'); return; }
     const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -12252,9 +12524,19 @@ window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
       await addDoc(collection(db,'supplierItems'), {
         supplierId: suppId, restaurantId: rid, name, unit, category,
         currentPrice: price,
+        maxPrice: maxPrice || null,
         priceHistory: price ? [{price, date:today}] : [],
         createdAt: serverTimestamp()
       });
+      // Check alert immediately
+      if (maxPrice && price > maxPrice) {
+        await addDoc(collection(db,'notifications'), {
+          type:'price_alert', restaurantId:rid,
+          message:`🔔 Price Alert: ${name} is $${price.toFixed(2)} — above your max of $${maxPrice.toFixed(2)}`,
+          date:today, time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+          read:false, createdAt:serverTimestamp()
+        });
+      }
       showToast('✅ Item added to catalog!');
       overlay2.remove();
       await suppLoadCatalogItems(suppId, rid);
@@ -12273,6 +12555,18 @@ window.suppEditCatalogPrice = async function(itemId, suppId, rid, currentPrice, 
     const history = existing.priceHistory || [];
     history.push({price, date:today});
     await setDoc(doc(db,'supplierItems',itemId), {currentPrice:price, priceHistory:history, updatedAt:serverTimestamp()}, {merge:true});
+
+    // Fire price alert if above max
+    if (existing.maxPrice && price > existing.maxPrice) {
+      await addDoc(collection(db,'notifications'), {
+        type:'price_alert', restaurantId:rid,
+        message:`🔔 Price Alert: ${itemName} is now $${price.toFixed(2)} — above your max of $${existing.maxPrice.toFixed(2)}`,
+        date:today, time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+        read:false, createdAt:serverTimestamp()
+      });
+      showToast(`⚠️ ALERT: ${itemName} exceeds your max price!`, 'error');
+    }
+
     const diff = price - currentPrice;
     const pct = ((diff/currentPrice)*100).toFixed(1);
     if (diff > 0) showToast(`⬆️ Price up $${diff.toFixed(2)} (+${pct}%) — saved!`);
