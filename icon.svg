@@ -1,0 +1,9 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#FCDD09"/>
+  <path d="M256 65 L321 168 L438 168 L346 243 L384 346 L256 279 L128 346 L166 243 L74 168 L191 168 Z" fill="#0D1117"/>
+  <text x="256" y="272" text-anchor="middle" font-family="Arial Black, Arial" font-size="140" fill="#FCDD09" font-weight="900">S</text>
+  <text x="256" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" fill="#FCDD09" font-weight="700">ሥሩ</text>
+  <rect x="56" y="420" width="400" height="14" rx="7" fill="#078930"/>
+  <rect x="56" y="442" width="400" height="14" rx="7" fill="#EF3340"/>
+  <text x="256" y="498" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#0D1117" font-weight="700">SERU CHORES</text>
+</svg>
