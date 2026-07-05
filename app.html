@@ -11331,914 +11331,580 @@ window.calcApply = function() {
 // ============================================
 // TIME CLOCK
 // ============================================
+// ============================================
+// TIME CLOCK — Advanced Rebuild
+// ============================================
 async function renderTimeClock(main, userData) {
   const rid = currentRestaurantId() || userData.uid;
-  const myName = localStorage.getItem('cnp-staff-name') || '';
   const today = new Date().toISOString().split('T')[0];
-
   main.innerHTML = '';
 
   const header = document.createElement('div');
   header.className = 'page-header';
-  header.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-      <div>
-        <h1 class="page-title">⏱️ Time Clock</h1>
-        <p class="page-sub">${isAdmin ? 'Live view of who is clocked in' : 'Clock in and out for your shift'}</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        ${isAdmin ? `
-        <button onclick="openKioskMode('${rid}')" style="height:38px;padding:0 16px;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(29,158,117,0.3);">🖥️ Kiosk Mode</button>
-        <button onclick="tcExportWeek('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">📊 Export Hours</button>` : ''}
-      </div>
-    </div>`;
+  const headerInner = document.createElement('div');
+  headerInner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;';
+  header.appendChild(headerInner);
+
+  const headerLeft = document.createElement('div');
+  headerLeft.innerHTML = '<h1 class="page-title">⏱️ Time Clock</h1>'
+    + '<p class="page-sub">'+(isAdmin?'Manage employee hours':'Clock in and out for your shift')+'</p>';
+  headerInner.appendChild(headerLeft);
+
+  if (isAdmin) {
+    const headerBtns = document.createElement('div');
+    headerBtns.style.cssText = 'display:flex;gap:8px;';
+    const kioskBtn = document.createElement('button');
+    kioskBtn.style.cssText = 'height:38px;padding:0 16px;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;';
+    kioskBtn.textContent = '🖥️ Kiosk Mode';
+    kioskBtn.onclick = () => openKioskMode(rid);
+    const exportBtn = document.createElement('button');
+    exportBtn.style.cssText = 'height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;';
+    exportBtn.textContent = '📊 Export CSV';
+    exportBtn.onclick = () => tcExportWeek(rid);
+    headerBtns.appendChild(kioskBtn);
+    headerBtns.appendChild(exportBtn);
+    headerInner.appendChild(headerBtns);
+  }
+
   main.appendChild(header);
 
   const body = document.createElement('div');
   body.className = 'page-body';
-
-  // ── Employee view: big clock in/out button ──
-  if (!isAdmin) {
-    // Name check
-    if (!myName) {
-      body.innerHTML = `<div style="text-align:center;padding:60px 20px;">
-        <div style="font-size:3rem;margin-bottom:16px;">👤</div>
-        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Who are you?</div>
-        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Go to Staff page and tap your name first</div>
-        <button onclick="navigate('staff')" style="height:48px;padding:0 28px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">Go to Staff Page</button>
-      </div>`;
-      main.appendChild(body);
-      return;
-    }
-
-    // Check if already clocked in today
-    try {
-      // Fetch entries for this employee — filter client-side
-      const snap = await getDocs(query(
-        collection(db,'timeEntries'),
-        where('restaurantId','==',rid),
-        where('employeeName','==',myName)
-      ));
-      const allEmpEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
-      const entries = allEmpEntries.filter(e=>e.date===today);
-      const openEntry = entries.find(e=>!e.clockOut);
-      const todayHrs = entries.filter(e=>e.clockOut).reduce((sum,e)=>sum+(e.hours||0),0);
-
-      // Live clock display
-      const clockDiv = document.createElement('div');
-      clockDiv.style.cssText = 'text-align:center;padding:32px 20px;';
-
-      // Current time live
-      const timeDisplay = document.createElement('div');
-      timeDisplay.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:4rem;color:var(--ink);letter-spacing:0.04em;line-height:1;margin-bottom:6px;';
-      const updateClock = () => {
-        timeDisplay.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      };
-      updateClock();
-      setInterval(updateClock, 1000);
-      clockDiv.appendChild(timeDisplay);
-
-      const dateDisplay = document.createElement('div');
-      dateDisplay.style.cssText = 'font-size:0.82rem;color:var(--ink-muted);margin-bottom:32px;';
-      dateDisplay.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-      clockDiv.appendChild(dateDisplay);
-
-      // Status card
-      const statusCard = document.createElement('div');
-      statusCard.style.cssText = 'background:' + (openEntry?'#EDFAF4':'var(--cream)') + ';border:2px solid ' + (openEntry?'var(--green)':'var(--border)') + ';border-radius:20px;padding:24px;margin-bottom:28px;';
-
-      if (openEntry) {
-        const sinceTime = openEntry.clockIn;
-        const sinceMs = new Date() - new Date(today + 'T' + sinceTime);
-        const sinceHrs = Math.floor(sinceMs/3600000);
-        const sinceMins = Math.floor((sinceMs%3600000)/60000);
-        statusCard.innerHTML = `
-          <div style="font-size:0.72rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">🟢 Currently Clocked In</div>
-          <div style="font-size:1.8rem;font-weight:800;color:var(--ink);margin-bottom:4px;">${myName}</div>
-          <div style="font-size:0.88rem;color:var(--ink-muted);">Since ${sinceTime} · ${sinceHrs}h ${sinceMins}m on shift</div>`;
-      } else {
-        statusCard.innerHTML = `
-          <div style="font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">⚪ Not Clocked In</div>
-          <div style="font-size:1.8rem;font-weight:800;color:var(--ink);margin-bottom:4px;">${myName}</div>
-          <div style="font-size:0.88rem;color:var(--ink-muted);">Today's hours: ${todayHrs.toFixed(1)}h</div>`;
-      }
-      clockDiv.appendChild(statusCard);
-
-      // Big clock in/out button
-      const actionBtn = document.createElement('button');
-      actionBtn.style.cssText = 'width:100%;max-width:320px;height:72px;border-radius:20px;border:none;'
-        + 'background:' + (openEntry ? 'linear-gradient(135deg,#E53935,#C62828)' : 'linear-gradient(135deg,#1D9E75,#16856A)') + ';'
-        + 'color:#fff;font-family:var(--font-body);font-size:1.2rem;font-weight:800;cursor:pointer;'
-        + 'box-shadow:0 8px 28px ' + (openEntry?'rgba(229,57,53,0.4)':'rgba(29,158,117,0.4)') + ';'
-        + 'letter-spacing:0.02em;';
-      actionBtn.textContent = openEntry ? '🔴 Clock Out' : '🟢 Clock In';
-      actionBtn.addEventListener('click', () => tcAction(rid, myName, openEntry, today, userData));
-      clockDiv.appendChild(actionBtn);
-
-      // Today's entries
-      if (entries.length > 0) {
-        const histTitle = document.createElement('div');
-        histTitle.style.cssText = 'font-size:0.78rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:28px 0 10px;text-align:left;';
-        histTitle.textContent = "Today's entries";
-        clockDiv.appendChild(histTitle);
-
-        entries.forEach(e => {
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;';
-          row.innerHTML = `<div style="font-size:0.82rem;color:var(--ink);">🟢 ${e.clockIn} ${e.clockOut?'→ 🔴 '+e.clockOut:'<span style="color:var(--green);font-weight:600;"> Active</span>'}</div>`
-            + `<div style="font-size:0.82rem;font-weight:700;color:var(--ink);">${e.hours?e.hours.toFixed(1)+'h':'–'}</div>`;
-          clockDiv.appendChild(row);
-        });
-      }
-
-      // ── Full History ──────────────────────────────────────
-      const historyTitle = document.createElement('div');
-      historyTitle.style.cssText = 'font-size:0.78rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:28px 0 10px;text-align:left;display:flex;align-items:center;justify-content:space-between;';
-      historyTitle.innerHTML = '<span>📅 My Time History</span><span id="tc-hist-filter" style="font-size:0.7rem;color:var(--green);cursor:pointer;text-transform:none;font-weight:600;">Last 30 days</span>';
-      clockDiv.appendChild(historyTitle);
-
-      const histContainer = document.createElement('div');
-      histContainer.id = 'tc-history-list';
-      clockDiv.appendChild(histContainer);
-
-      // Load history
-      const loadHistory = async (days=30) => {
-        histContainer.innerHTML = '<div style="text-align:center;padding:16px;"><div class="loading-spinner" style="margin:0 auto;width:20px;height:20px;"></div></div>';
-        try {
-          const allSnap = await getDocs(query(
-            collection(db,'timeEntries'),
-            where('restaurantId','==',rid),
-            where('employeeName','==',myName)
-          ));
-          const allEntries = allSnap.docs.map(d=>({id:d.id,...d.data()}));
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - days);
-          const cutoffStr = cutoff.toISOString().split('T')[0];
-          const filtered = allEntries.filter(e=>e.date && e.date >= cutoffStr && e.hours).sort((a,b)=>b.date.localeCompare(a.date));
-
-          // Weekly totals
-          const weekMap = {};
-          filtered.forEach(e => {
-            const d = new Date(e.date+'T12:00:00');
-            const mon = schedFmtDate(schedGetMonday(d));
-            if (!weekMap[mon]) weekMap[mon] = {hrs:0, entries:[]};
-            weekMap[mon].hrs += e.hours||0;
-            weekMap[mon].entries.push(e);
-          });
-
-          histContainer.innerHTML = '';
-
-          if (!Object.keys(weekMap).length) {
-            histContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--ink-muted);font-size:0.82rem;">No completed shifts in this period</div>';
-            return;
-          }
-
-          // Total summary card
-          const totalHrs = filtered.reduce((s,e)=>s+(e.hours||0),0);
-          const totalDays = new Set(filtered.map(e=>e.date)).size;
-          const summaryCard = document.createElement('div');
-          summaryCard.style.cssText = 'background:linear-gradient(135deg,#0B2818,#0A0A14);border-radius:14px;padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-around;';
-          summaryCard.innerHTML = `
-            <div style="text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--green);line-height:1;">${totalHrs.toFixed(1)}</div><div style="font-size:0.68rem;color:rgba(255,255,255,0.4);">Total Hours</div></div>
-            <div style="text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;line-height:1;">${totalDays}</div><div style="font-size:0.68rem;color:rgba(255,255,255,0.4);">Days Worked</div></div>
-            <div style="text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#F2A623;line-height:1;">${totalDays?(totalHrs/totalDays).toFixed(1):'0'}</div><div style="font-size:0.68rem;color:rgba(255,255,255,0.4);">Avg Hrs/Day</div></div>`;
-          histContainer.appendChild(summaryCard);
-
-          // Week by week
-          Object.entries(weekMap).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([weekStart, week]) => {
-            const ws = new Date(weekStart+'T12:00:00');
-            const we = new Date(ws.getTime()+6*24*60*60*1000);
-            const weekLabel = ws.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' + we.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-
-            const weekSection = document.createElement('div');
-            weekSection.style.cssText = 'margin-bottom:14px;';
-            weekSection.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);">${weekLabel}</div>
-              <div style="font-size:0.82rem;font-weight:800;color:var(--ink);">${week.hrs.toFixed(1)}h this week</div>
-            </div>`;
-
-            week.entries.sort((a,b)=>b.date.localeCompare(a.date)).forEach(e => {
-              const dayName = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-              const row = document.createElement('div');
-              row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:5px;';
-              row.innerHTML = `
-                <div>
-                  <div style="font-size:0.82rem;font-weight:600;color:var(--ink);">${dayName}</div>
-                  <div style="font-size:0.72rem;color:var(--ink-muted);">🟢 ${e.clockIn} → 🔴 ${e.clockOut||'—'}</div>
-                </div>
-                <div style="font-size:1rem;font-weight:800;color:var(--green);">${(e.hours||0).toFixed(1)}h</div>`;
-              weekSection.appendChild(row);
-            });
-            histContainer.appendChild(weekSection);
-          });
-        } catch(err) {
-          histContainer.innerHTML = '<div style="padding:12px;color:var(--red);font-size:0.82rem;">Error loading history</div>';
-        }
-      };
-
-      // Toggle filter
-      let currentDays = 30;
-      document.getElementById('tc-hist-filter')?.addEventListener('click', function() {
-        currentDays = currentDays === 30 ? 90 : currentDays === 90 ? 365 : 30;
-        this.textContent = currentDays === 30 ? 'Last 30 days' : currentDays === 90 ? 'Last 90 days' : 'Last 12 months';
-        loadHistory(currentDays);
-      });
-
-      loadHistory(30);
-      // ──────────────────────────────────────────────────────
-
-      body.appendChild(clockDiv);
-    } catch(e) { console.error(e); }
-
-  } else {
-    // ── Admin view: live dashboard ──
-    body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-muted);"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Loading...</div>';
-    main.appendChild(body);
-    await tcLoadAdminView(rid, today, body);
-    return;
-  }
-
   main.appendChild(body);
+
+  if (isAdmin) {
+    await tcRenderAdmin(rid, today, body, userData);
+  } else {
+    await tcRenderEmployee(rid, today, body, userData);
+  }
 }
 
-async function tcLoadAdminView(rid, today, body) {
+// ── HELPER: "9:00 AM" → "09:00" ──────────────────────────
+function to24hTC(t) {
+  if (!t) return '';
+  const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return t;
+  let h = parseInt(m[1]);
+  const min = m[2], ap = m[3].toUpperCase();
+  if (ap==='AM'&&h===12) h=0;
+  if (ap==='PM'&&h!==12) h+=12;
+  return h.toString().padStart(2,'0')+':'+min;
+}
+
+// ── HELPER: "09:00" → "9:00 AM" ──────────────────────────
+function to12hTC(t) {
+  if (!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ap = h>=12 ? 'PM' : 'AM';
+  return (h%12||12)+':'+(m||0).toString().padStart(2,'0')+' '+ap;
+}
+
+// ── HELPER: calc hours between two "HH:MM" values ─────────
+function calcHoursTC(inVal, outVal) {
+  if (!inVal || !outVal) return null;
+  const [ih,im]=inVal.split(':').map(Number), [oh,om]=outVal.split(':').map(Number);
+  let mins = (oh*60+om)-(ih*60+im);
+  if (mins < 0) mins += 1440;
+  return +(mins/60).toFixed(2);
+}
+
+// ── EMPLOYEE VIEW ─────────────────────────────────────────
+async function tcRenderEmployee(rid, today, body, userData) {
+  const myName = localStorage.getItem('cnp-staff-name') || '';
+  if (!myName) {
+    body.innerHTML = '<div style="text-align:center;padding:60px 20px;">'
+      +'<div style="font-size:3rem;margin-bottom:12px;">👤</div>'
+      +'<div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Who are you?</div>'
+      +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:20px;">Go to Staff and tap your name first.</div>'
+      +'<button onclick="navigate(\'staff\')" style="height:44px;padding:0 24px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Go to Staff</button></div>';
+    return;
+  }
+  body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
   try {
-    const weekStart = schedFmtDate(schedGetMonday(new Date()));
-    const [allSnap, staffSnap] = await Promise.all([
+    const snap = await getDocs(query(collection(db,'timeEntries'),
+      where('restaurantId','==',rid), where('employeeName','==',myName)));
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const todayEntries = all.filter(e=>e.date===today);
+    const openEntry = todayEntries.find(e=>!e.clockOut);
+    const todayHrs  = todayEntries.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
+    body.innerHTML = '';
+
+    // Live clock
+    const clockWrap = document.createElement('div');
+    clockWrap.style.cssText = 'text-align:center;padding:0 0 24px;';
+    const timeEl = document.createElement('div');
+    timeEl.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:4.5rem;color:var(--ink);letter-spacing:0.04em;line-height:1;';
+    const dateEl = document.createElement('div');
+    dateEl.style.cssText = 'font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;';
+    dateEl.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const tick = () => timeEl.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    tick(); setInterval(tick, 1000);
+    clockWrap.appendChild(timeEl); clockWrap.appendChild(dateEl);
+
+    // Status card
+    const status = document.createElement('div');
+    status.style.cssText = 'border-radius:16px;padding:16px 20px;margin-bottom:20px;border:2px solid '
+      +(openEntry?'var(--green)':'var(--border)')+';background:'+(openEntry?'#EDFAF4':'var(--cream)')+';';
+    if (openEntry) {
+      status.innerHTML = '<div style="font-size:0.7rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">🟢 Currently Clocked In</div>'
+        +'<div style="font-size:1.5rem;font-weight:800;color:var(--ink);">'+myName+'</div>'
+        +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-top:4px;">Since '+openEntry.clockIn+'</div>';
+    } else {
+      status.innerHTML = '<div style="font-size:0.7rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚪ Not Clocked In</div>'
+        +'<div style="font-size:1.5rem;font-weight:800;color:var(--ink);">'+myName+'</div>'
+        +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-top:4px;">Today: '+todayHrs.toFixed(1)+'h completed</div>';
+    }
+    clockWrap.appendChild(status);
+
+    // Big action button
+    const actionBtn = document.createElement('button');
+    actionBtn.style.cssText = 'width:100%;max-width:320px;height:72px;border-radius:20px;border:none;cursor:pointer;'
+      +'font-family:"Inter",sans-serif;font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:0.01em;'
+      +'background:'+(openEntry?'linear-gradient(135deg,#E53935,#C62828)':'linear-gradient(135deg,#1D9E75,#16856A)')+';'
+      +'box-shadow:0 10px 30px '+(openEntry?'rgba(229,57,53,0.4)':'rgba(29,158,117,0.4)')+';'
+      +'margin-bottom:24px;display:block;margin-left:auto;margin-right:auto;';
+    actionBtn.textContent = openEntry ? '🔴  Clock Out' : '🟢  Clock In';
+    actionBtn.addEventListener('click', async () => {
+      actionBtn.disabled=true; actionBtn.style.opacity='0.7';
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      try {
+        if (openEntry) {
+          const hrs = calcHoursTC(to24hTC(openEntry.clockIn), now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'));
+          await setDoc(doc(db,'timeEntries',openEntry.id),{clockOut:time,hours:hrs,updatedAt:serverTimestamp()},{merge:true});
+          await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:myName,message:myName+' clocked out at '+time+' ('+(hrs||0).toFixed(1)+'h)',date:today,time,read:false,createdAt:serverTimestamp()});
+          showToast('🔴 Clocked out — '+(hrs||0).toFixed(1)+'h today');
+        } else {
+          await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:myName,date:today,clockIn:time,clockOut:null,hours:null,createdAt:serverTimestamp()});
+          await addDoc(collection(db,'notifications'),{type:'clockin',restaurantId:rid,employeeName:myName,message:myName+' clocked in at '+time,date:today,time,read:false,createdAt:serverTimestamp()});
+          showToast('🟢 Clocked in at '+time+'!');
+        }
+        await tcRenderEmployee(rid, today, body, userData);
+      } catch(err){ showToast('Error: '+err.message,'error'); actionBtn.disabled=false; actionBtn.style.opacity='1'; }
+    });
+    clockWrap.appendChild(actionBtn);
+    body.appendChild(clockWrap);
+
+    // History table
+    const histTitle = document.createElement('div');
+    histTitle.style.cssText = 'font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:10px;';
+    histTitle.textContent = '📅 My Time History (last 30 days)';
+    body.appendChild(histTitle);
+
+    const completed = all.filter(e=>e.hours).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,40);
+    if (!completed.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:20px;color:var(--ink-muted);font-size:0.82rem;background:var(--cream);border-radius:12px;';
+      empty.textContent = 'No completed shifts yet';
+      body.appendChild(empty); return;
+    }
+
+    const totalHrsAll = completed.reduce((s,e)=>s+(e.hours||0),0);
+    const summaryRow = document.createElement('div');
+    summaryRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;';
+    [{label:'Total Hours',val:totalHrsAll.toFixed(1)+'h',color:'var(--green)'},
+     {label:'Days Worked',val:new Set(completed.map(e=>e.date)).size,color:'var(--ink)'},
+     {label:'Avg/Day',val:(totalHrsAll/Math.max(1,new Set(completed.map(e=>e.date)).size)).toFixed(1)+'h',color:'#F2A623'}
+    ].forEach(s=>{
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--cream);border-radius:12px;padding:12px;text-align:center;';
+      card.innerHTML = '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:'+s.color+';">'+s.val+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div>';
+      summaryRow.appendChild(card);
+    });
+    body.appendChild(summaryRow);
+
+    completed.forEach(e => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:6px;';
+      const d = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      row.innerHTML = '<div><div style="font-size:0.82rem;font-weight:600;color:var(--ink);">'+d+'</div>'
+        +'<div style="font-size:0.72rem;color:var(--ink-muted);">🟢 '+e.clockIn+' → 🔴 '+(e.clockOut||'—')+'</div></div>'
+        +'<div style="font-size:1rem;font-weight:800;color:var(--green);">'+(e.hours||0).toFixed(1)+'h</div>';
+      body.appendChild(row);
+    });
+  } catch(err){ console.error(err); body.innerHTML = '<div style="padding:20px;color:var(--red);">Error: '+err.message+'</div>'; }
+}
+
+// ── ADMIN VIEW ────────────────────────────────────────────
+async function tcRenderAdmin(rid, today, body, userData) {
+  window._tcAdminTab = window._tcAdminTab || 'live';
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:16px;';
+  [{id:'live',label:'🟢 Live'},{id:'timesheet',label:'📋 Timesheet'},{id:'export',label:'📊 Export'}].forEach(t=>{
+    const btn = document.createElement('button');
+    btn.id = 'tc-admin-tab-'+t.id;
+    btn.style.cssText = 'height:38px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;'
+      +(window._tcAdminTab===t.id?'background:var(--ink);color:#fff;border-color:var(--ink);':'background:transparent;color:var(--ink-muted);');
+    btn.textContent = t.label;
+    btn.onclick = () => { window._tcAdminTab=t.id; tcSwitchAdminTab(rid, today, content, userData); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+  const content = document.createElement('div');
+  content.id = 'tc-admin-content';
+  body.appendChild(content);
+  await tcSwitchAdminTab(rid, today, content, userData);
+}
+
+async function tcSwitchAdminTab(rid, today, content, userData) {
+  [{id:'live'},{id:'timesheet'},{id:'export'}].forEach(t=>{
+    const btn = document.getElementById('tc-admin-tab-'+t.id);
+    if (!btn) return;
+    btn.style.background  = window._tcAdminTab===t.id?'var(--ink)':'transparent';
+    btn.style.color       = window._tcAdminTab===t.id?'#fff':'var(--ink-muted)';
+    btn.style.borderColor = window._tcAdminTab===t.id?'var(--ink)':'var(--border)';
+  });
+  content.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  if (window._tcAdminTab==='live')           await tcAdminLive(rid, today, content);
+  else if (window._tcAdminTab==='timesheet') await tcAdminTimesheet(rid, content);
+  else                                        await tcAdminExport(rid, content);
+}
+
+// ── LIVE TAB ─────────────────────────────────────────────
+async function tcAdminLive(rid, today, el) {
+  try {
+    const [entrySnap, staffSnap] = await Promise.all([
       getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid))),
       getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)))
     ]);
-    const allEntries   = allSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const todayEntries = allEntries.filter(e=>e.date===today);
-    const weekEntries  = allEntries.filter(e=>e.date>=weekStart);
-    const staff        = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false);
+    const all    = entrySnap.docs.map(d=>({id:d.id,...d.data()}));
+    const todayE = all.filter(e=>e.date===today);
+    const staff  = staffSnap.docs.map(d=>d.data()).filter(s=>s.active!==false);
+    const clocked= todayE.filter(e=>!e.clockOut);
+    const wStart = schedFmtDate(schedGetMonday(new Date()));
+    const weekHrs= all.filter(e=>e.date>=wStart&&e.hours).reduce((s,e)=>s+(e.hours||0),0);
 
-    const clockedIn = todayEntries.filter(e=>!e.clockOut);
-    const totalWeekHrs = weekEntries.filter(e=>e.hours).reduce((sum,s)=>sum+(s.hours||0),0);
-
-    body.innerHTML = '';
-
-    // Stats
+    el.innerHTML = '';
     const stats = document.createElement('div');
     stats.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
-    [{label:'Clocked In Now',value:clockedIn.length+' / '+staff.length,icon:'🟢',color:'var(--green)'},
-     {label:'Hours This Week',value:totalWeekHrs.toFixed(1)+'h',icon:'⏱️',color:'var(--ink)'},
-     {label:'Entries Today',value:todayEntries.length,icon:'📅',color:'var(--ink)'}
+    [{icon:'🟢',val:clocked.length+' / '+staff.length,label:'Clocked In Now',c:'var(--green)'},
+     {icon:'⏱️',val:weekHrs.toFixed(1)+'h',label:'Hours This Week',c:'var(--ink)'},
+     {icon:'📅',val:todayE.length,label:'Entries Today',c:'var(--ink)'}
     ].forEach(s=>{
-      const card = document.createElement('div');
-      card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;';
-      card.innerHTML = `<div style="font-size:1.5rem;margin-bottom:4px;">${s.icon}</div><div style="font-size:1.2rem;font-weight:800;color:${s.color};">${s.value}</div><div style="font-size:0.7rem;color:var(--ink-muted);">${s.label}</div>`;
-      stats.appendChild(card);
+      const c = document.createElement('div');
+      c.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;';
+      c.innerHTML = '<div style="font-size:1.4rem;">'+s.icon+'</div>'
+        +'<div style="font-size:1.2rem;font-weight:800;color:'+s.c+';margin:4px 0;">'+s.val+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div>';
+      stats.appendChild(c);
     });
-    body.appendChild(stats);
+    el.appendChild(stats);
 
-    // Live clocked in
-    if (clockedIn.length > 0) {
-      const liveTitle = document.createElement('div');
-      liveTitle.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:10px;';
-      liveTitle.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;"></div> Currently on shift';
-      body.appendChild(liveTitle);
-      clockedIn.forEach(e => {
-        const nowMs = new Date() - new Date(today+'T'+e.clockIn);
-        const hrs = Math.floor(nowMs/3600000);
-        const mins = Math.floor((nowMs%3600000)/60000);
+    if (clocked.length) {
+      const t = document.createElement('div');
+      t.style.cssText = 'font-size:0.75rem;font-weight:700;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;';
+      t.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;"></div>Currently on shift';
+      el.appendChild(t);
+      clocked.forEach(e=>{
+        const inH = to24hTC(e.clockIn);
+        const [ih,im] = inH.split(':').map(Number);
+        const sinceMin = new Date().getHours()*60+new Date().getMinutes() - (ih*60+(im||0));
         const card = document.createElement('div');
         card.style.cssText = 'background:#EDFAF4;border:1.5px solid rgba(29,158,117,0.3);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;';
-        const initials = (e.employeeName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-        card.innerHTML = `<div style="width:38px;height:38px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:#fff;flex-shrink:0;">${initials}</div>`
-          + `<div style="flex:1;"><div style="font-size:0.9rem;font-weight:700;color:var(--ink);">${e.employeeName}</div><div style="font-size:0.75rem;color:var(--ink-muted);">Clocked in ${e.clockIn} · ${hrs}h ${mins}m</div></div>`
-          + `<div style="font-size:1.2rem;font-weight:800;color:var(--green);">${hrs}h ${mins}m</div>`;
-        body.appendChild(card);
+        const ini = (e.employeeName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        card.innerHTML = '<div style="width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0;">'+ini+'</div>'
+          +'<div style="flex:1;"><div style="font-size:0.9rem;font-weight:700;color:var(--ink);">'+e.employeeName+'</div>'
+          +'<div style="font-size:0.75rem;color:var(--ink-muted);">In at '+e.clockIn+' · '+Math.max(0,Math.floor(sinceMin/60))+'h '+Math.max(0,sinceMin%60)+'m</div></div>'
+          +'<div style="font-size:1.1rem;font-weight:800;color:var(--green);">'+Math.max(0,Math.floor(sinceMin/60))+'h '+Math.max(0,sinceMin%60)+'m</div>';
+        el.appendChild(card);
       });
     }
 
-    // Weekly hours per employee — tap to see history
-    const weekTitle = document.createElement('div');
-    weekTitle.style.cssText = 'font-size:0.82rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:20px 0 10px;';
-    weekTitle.textContent = 'Weekly Hours — tap to view history';
-    body.appendChild(weekTitle);
+    const wt = document.createElement('div');
+    wt.style.cssText = 'font-size:0.75rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;';
+    wt.textContent = 'This week — tap to view & edit';
+    el.appendChild(wt);
 
-    const empHours = {};
-    weekEntries.filter(e=>e.hours).forEach(e => {
-      empHours[e.employeeName] = (empHours[e.employeeName]||0) + (e.hours||0);
+    const empHrs = {};
+    all.filter(e=>e.date>=wStart&&e.hours).forEach(e=>{ empHrs[e.employeeName]=(empHrs[e.employeeName]||0)+(e.hours||0); });
+    if (!Object.keys(empHrs).length) { el.innerHTML += '<div style="padding:16px;text-align:center;color:var(--ink-muted);font-size:0.82rem;">No entries this week</div>'; return; }
+    Object.entries(empHrs).sort((a,b)=>b[1]-a[1]).forEach(([name,hrs])=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;cursor:pointer;';
+      row.onmouseenter=()=>row.style.background='var(--cream)'; row.onmouseleave=()=>row.style.background='#fff';
+      const ini=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue=[...name].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+      row.innerHTML='<div style="display:flex;align-items:center;gap:10px;">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:hsl('+hue+',50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:hsl('+hue+',50%,35%)">'+ini+'</div>'
+        +'<div style="font-size:0.875rem;font-weight:600;color:var(--ink);">'+name+'</div></div>'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+        +'<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">'+hrs.toFixed(1)+'h</div>'
+        +'<div style="font-size:0.72rem;color:var(--green);font-weight:600;">Edit →</div></div>';
+      row.onclick = () => { window._tcAdminTab='timesheet'; window._tcTimesheetFilter=name; tcSwitchAdminTab(rid, today, el.parentElement, {}); };
+      el.appendChild(row);
     });
+  } catch(err){ el.innerHTML='<div style="padding:16px;color:var(--red);">Error: '+err.message+'</div>'; console.error(err); }
+}
 
-    if (Object.keys(empHours).length === 0) {
-      const empty = document.createElement('div');
-      empty.style.cssText = 'text-align:center;padding:24px;color:var(--ink-muted);font-size:0.82rem;background:var(--cream);border-radius:12px;';
-      empty.textContent = 'No time entries this week yet';
-      body.appendChild(empty);
-    } else {
-      Object.entries(empHours).sort((a,b)=>b[1]-a[1]).forEach(([name, hrs])=>{
+// ── TIMESHEET TAB ─────────────────────────────────────────
+async function tcAdminTimesheet(rid, el) {
+  try {
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date.localeCompare(a.date));
+    el.innerHTML = '';
+
+    // Filter bar
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;';
+    const empSel = document.createElement('select');
+    empSel.id = 'ts-filter-emp';
+    empSel.style.cssText = 'height:38px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.82rem;outline:none;background:#fff;';
+    empSel.innerHTML = '<option value="">All employees</option>';
+    [...new Set(all.map(e=>e.employeeName).filter(Boolean))].sort().forEach(n=>{
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      if (window._tcTimesheetFilter===n) opt.selected = true;
+      empSel.appendChild(opt);
+    });
+    const daysSel = document.createElement('select');
+    daysSel.id = 'ts-filter-days';
+    daysSel.style.cssText = 'height:38px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.82rem;outline:none;background:#fff;';
+    daysSel.innerHTML = '<option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option>';
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = 'height:38px;padding:0 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.78rem;font-weight:700;cursor:pointer;';
+    addBtn.textContent = '+ Add Entry';
+    addBtn.onclick = () => tcAddManual(rid, empSel.value);
+    filterBar.appendChild(empSel); filterBar.appendChild(daysSel); filterBar.appendChild(addBtn);
+    el.appendChild(filterBar);
+
+    const tableWrap = document.createElement('div');
+    tableWrap.id = 'ts-table-wrap';
+    el.appendChild(tableWrap);
+
+    const renderTable = () => {
+      const empFilter = empSel.value;
+      const days = parseInt(daysSel.value||'30');
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-days);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const filtered = all.filter(e=>(!empFilter||e.employeeName===empFilter)&&e.date>=cutoffStr);
+      tableWrap.innerHTML = '';
+
+      if (!filtered.length) {
+        tableWrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-muted);">No entries in this period</div>'; return;
+      }
+
+      const totalHrs = filtered.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
+      const summary = document.createElement('div');
+      summary.style.cssText = 'display:flex;gap:16px;margin-bottom:12px;font-size:0.82rem;color:var(--ink-muted);';
+      summary.innerHTML = '<span><strong style="color:var(--ink);">'+filtered.length+'</strong> entries</span>'
+        +'<span><strong style="color:var(--green);">'+totalHrs.toFixed(1)+'h</strong> total</span>';
+      tableWrap.appendChild(summary);
+
+      filtered.forEach(e => {
+        const isMissing = !e.clockOut;
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;';
-        row.onmouseenter = () => row.style.background = 'var(--cream)';
-        row.onmouseleave = () => row.style.background = '#fff';
-        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-        const hue = [...name].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
-        row.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:32px;height:32px;border-radius:50%;background:hsl(${hue},50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:hsl(${hue},50%,35%);">${initials}</div>
-          <div style="font-size:0.875rem;font-weight:600;color:var(--ink);">${name}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:0.95rem;font-weight:800;color:var(--ink);">${hrs.toFixed(1)}h</div>
-          <div style="font-size:0.72rem;color:var(--green);font-weight:600;">View History →</div>
-        </div>`;
-        row.addEventListener('click', () => tcShowEmpHistory(name, rid, body));
-        body.appendChild(row);
+        row.id = 'ts-row-'+e.id;
+        row.style.cssText = 'display:grid;grid-template-columns:100px 1fr 1fr 60px 70px;gap:8px;align-items:center;background:#fff;'
+          +'border:1px solid '+(isMissing?'#FFCDD2':'var(--border)')+';border-radius:10px;padding:10px 14px;margin-bottom:6px;';
+        const d = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+        const dateEl = document.createElement('div');
+        dateEl.style.cssText = 'font-size:0.72rem;font-weight:700;color:var(--ink-muted);';
+        dateEl.textContent = d;
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:0.82rem;font-weight:600;color:var(--ink);';
+        nameEl.textContent = e.employeeName||'—';
+        const timesEl = document.createElement('div');
+        timesEl.style.cssText = 'font-size:0.75rem;color:var(--ink-muted);';
+        timesEl.innerHTML = '🟢 '+(e.clockIn||'—')+' → 🔴 '+(e.clockOut||'<span style="color:#F2A623;font-weight:700;">Missing ⚠️</span>');
+        const hrsEl = document.createElement('div');
+        hrsEl.style.cssText = 'font-size:0.9rem;font-weight:800;color:'+(e.hours?'var(--green)':'#F2A623')+';text-align:center;';
+        hrsEl.textContent = e.hours ? e.hours.toFixed(1)+'h' : '—';
+        const btnGroup = document.createElement('div');
+        btnGroup.style.cssText = 'display:flex;gap:4px;';
+        const editBtn = document.createElement('button');
+        editBtn.style.cssText = 'height:28px;padding:0 8px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.68rem;font-weight:600;cursor:pointer;color:var(--ink-muted);';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => tcEditEntry(e.id, rid, row);
+        const delBtn = document.createElement('button');
+        delBtn.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;background:#FFF0F0;color:#E53935;cursor:pointer;font-size:0.8rem;';
+        delBtn.textContent = '🗑️';
+        delBtn.onclick = async () => {
+          if (!confirm('Delete this entry?')) return;
+          try { await deleteDoc(doc(db,'timeEntries',e.id)); row.remove(); showToast('Deleted'); }
+          catch(err){ showToast('Error: '+err.message,'error'); }
+        };
+        btnGroup.appendChild(editBtn); btnGroup.appendChild(delBtn);
+        row.appendChild(dateEl); row.appendChild(nameEl); row.appendChild(timesEl);
+        row.appendChild(hrsEl); row.appendChild(btnGroup);
+        tableWrap.appendChild(row);
       });
-    }
-  } catch(e) { console.error(e); body.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading time clock data.</div>'; }
-}
-
-async function tcAction(rid, myName, openEntry, today, userData) {
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-  try {
-    if (openEntry) {
-      // Clock OUT
-      const clockInTime = new Date(today + 'T' + openEntry.clockIn.replace(/\s?[AP]M/,''));
-      const hrs = +((now - new Date(today + 'T' + openEntry.clockIn)) / 3600000).toFixed(2);
-      await setDoc(doc(db,'timeEntries',openEntry.id), {
-        clockOut: time, hours: hrs, updatedAt: serverTimestamp()
-      }, {merge:true});
-
-      // Notification to admin
-      await addDoc(collection(db,'notifications'), {
-        type:'clockout', restaurantId:rid, employeeName:myName,
-        message: myName + ' clocked out at ' + time + ' (' + hrs.toFixed(1) + 'h)',
-        date:today, time, read:false, createdAt:serverTimestamp()
-      });
-      showToast('🔴 Clocked out — ' + hrs.toFixed(1) + 'h today');
-    } else {
-      // Clock IN
-      await addDoc(collection(db,'timeEntries'), {
-        restaurantId:rid, employeeName:myName,
-        date:today, clockIn:time, clockOut:null, hours:null,
-        createdAt:serverTimestamp()
-      });
-
-      // Notification to admin
-      await addDoc(collection(db,'notifications'), {
-        type:'clockin', restaurantId:rid, employeeName:myName,
-        message: myName + ' clocked in at ' + time,
-        date:today, time, read:false, createdAt:serverTimestamp()
-      });
-      showToast('🟢 Clocked in at ' + time + '!');
-    }
-    renderTimeClock(document.getElementById('main-content'), userData);
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function tcShowEmpHistory(empName, rid, body) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:24px;max-height:88vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
-
-  const initials = empName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const hue = [...empName].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
-
-  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-      <div style="width:44px;height:44px;border-radius:50%;background:hsl(${hue},50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;color:hsl(${hue},50%,35%);">${initials}</div>
-      <div>
-        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;color:var(--ink);">${empName}</div>
-        <div style="font-size:0.72rem;color:var(--ink-muted);">Full time clock history</div>
-      </div>
-      <div style="margin-left:auto;display:flex;gap:6px;">
-        <button id="tc-add-manual-btn" style="height:34px;padding:0 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">+ Add Entry</button>
-        <button onclick="tcExportEmpHistory('${empName}','${rid}')" style="height:34px;padding:0 14px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--ink-muted);">📊 Export</button>
-      </div>
-    </div>
-    <div id="emp-hist-content"></div>`;
-
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
-
-  // Wire Add Manual Entry button
-  box.querySelector('#tc-add-manual-btn').addEventListener('click', () => {
-    tcManualEntryModal(null, empName, rid, () => tcShowEmpHistoryRefresh(empName, rid, histContent));
-  });
-
-  const histContent = box.querySelector('#emp-hist-content');
-  histContent.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
-
-  try {
-    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('employeeName','==',empName)));
-    const allEntries = snap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.hours).sort((a,b)=>b.date.localeCompare(a.date));
-
-    if (!allEntries.length) { histContent.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-muted);">No completed shifts yet</div>'; return; }
-
-    const totalHrs = allEntries.reduce((s,e)=>s+(e.hours||0),0);
-    const totalDays = new Set(allEntries.map(e=>e.date)).size;
-
-    // Summary
-    histContent.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--green);">${totalHrs.toFixed(0)}</div>
-        <div style="font-size:0.68rem;color:var(--ink-muted);">Total Hours</div>
-      </div>
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--ink);">${totalDays}</div>
-        <div style="font-size:0.68rem;color:var(--ink-muted);">Days Worked</div>
-      </div>
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#F2A623;">${totalDays?(totalHrs/totalDays).toFixed(1):'0'}</div>
-        <div style="font-size:0.68rem;color:var(--ink-muted);">Avg Hrs/Day</div>
-      </div>
-    </div>`;
-
-    // Week groups
-    const weekMap = {};
-    allEntries.forEach(e => {
-      const mon = schedFmtDate(schedGetMonday(new Date(e.date+'T12:00:00')));
-      if (!weekMap[mon]) weekMap[mon] = {hrs:0, entries:[]};
-      weekMap[mon].hrs += e.hours||0;
-      weekMap[mon].entries.push(e);
-    });
-
-    Object.entries(weekMap).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([ws, week]) => {
-      const wsDate = new Date(ws+'T12:00:00');
-      const weDate = new Date(wsDate.getTime()+6*24*60*60*1000);
-      const weekLabel = wsDate.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' + weDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-
-      const weekDiv = document.createElement('div');
-      weekDiv.style.cssText = 'margin-bottom:14px;';
-      weekDiv.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);">${weekLabel}</div>
-        <div style="font-size:0.82rem;font-weight:800;color:var(--ink);">${week.hrs.toFixed(1)}h</div>
-      </div>`;
-
-      week.entries.sort((a,b)=>b.date.localeCompare(a.date)).forEach(e => {
-        const dayName = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:5px;gap:8px;';
-        row.innerHTML = `
-          <div style="flex:1;">
-            <div style="font-size:0.82rem;font-weight:600;color:var(--ink);">${dayName}</div>
-            <div style="font-size:0.7rem;color:var(--ink-muted);">🟢 ${e.clockIn} → 🔴 ${e.clockOut||'<span style="color:#F2A623;font-weight:600;">Missing</span>'}${!e.clockOut?' ⚠️':''}</div>
-          </div>
-          <div style="font-size:0.95rem;font-weight:800;color:${e.hours?'var(--green)':'#F2A623'};">${e.hours?e.hours.toFixed(1)+'h':'—'}</div>
-          <div style="display:flex;gap:4px;">
-            <button data-id="${e.id}" class="tc-edit-btn" style="height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.68rem;font-weight:600;cursor:pointer;color:var(--ink-muted);">Edit</button>
-            <button data-id="${e.id}" class="tc-del-btn" style="width:28px;height:28px;border-radius:7px;border:none;background:#FFF0F0;color:#E53935;font-size:0.75rem;cursor:pointer;">🗑️</button>
-          </div>`;
-
-        // Edit button
-        row.querySelector('.tc-edit-btn').addEventListener('click', () => {
-          tcManualEntryModal(e, empName, rid, () => tcShowEmpHistoryRefresh(empName, rid, histContent));
-        });
-
-        // Delete button
-        row.querySelector('.tc-del-btn').addEventListener('click', async () => {
-          if (!confirm('Delete this time entry?')) return;
-          try {
-            await deleteDoc(doc(db,'timeEntries',e.id));
-            row.remove();
-            showToast('Entry deleted');
-          } catch(err) { showToast('Error','error'); }
-        });
-
-        weekDiv.appendChild(row);
-      });
-      histContent.appendChild(weekDiv);
-    });
-  } catch(e) { histContent.innerHTML = '<div style="padding:12px;color:var(--red);">Error loading history</div>'; }
-}
-
-async function tcShowEmpHistoryRefresh(empName, rid, histContent) {
-  histContent.innerHTML = '<div style="text-align:center;padding:20px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
-  try {
-    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('employeeName','==',empName)));
-    const allEntries = snap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.clockIn).sort((a,b)=>b.date.localeCompare(a.date));
-    const completed = allEntries.filter(e=>e.hours);
-    const totalHrs = completed.reduce((s,e)=>s+(e.hours||0),0);
-    const totalDays = new Set(completed.map(e=>e.date)).size;
-
-    // Helper to get Monday of a week
-    const getMonday = d => {
-      const dt = new Date(d+'T12:00:00');
-      const day = dt.getDay();
-      const diff = day===0?-6:1-day;
-      dt.setDate(dt.getDate()+diff);
-      return dt.toISOString().split('T')[0];
     };
 
-    histContent.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--green);">${totalHrs.toFixed(0)}</div><div style="font-size:0.68rem;color:var(--ink-muted);">Total Hours</div></div>
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--ink);">${totalDays}</div><div style="font-size:0.68rem;color:var(--ink-muted);">Days Worked</div></div>
-      <div style="background:var(--cream);border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#F2A623;">${totalDays?(totalHrs/totalDays).toFixed(1):'0'}</div><div style="font-size:0.68rem;color:var(--ink-muted);">Avg Hrs/Day</div></div>
-    </div>`;
-
-    const weekMap = {};
-    allEntries.forEach(e => {
-      const mon = getMonday(e.date);
-      if (!weekMap[mon]) weekMap[mon]={hrs:0,entries:[]};
-      if (e.hours) weekMap[mon].hrs += e.hours;
-      weekMap[mon].entries.push(e);
-    });
-
-    Object.entries(weekMap).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([ws,week]) => {
-      const wsDate = new Date(ws+'T12:00:00');
-      const weDate = new Date(wsDate.getTime()+6*24*60*60*1000);
-      const weekLabel = wsDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+weDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-      const weekDiv = document.createElement('div');
-      weekDiv.style.cssText = 'margin-bottom:14px;';
-      weekDiv.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);">${weekLabel}</div><div style="font-size:0.82rem;font-weight:800;color:var(--ink);">${week.hrs.toFixed(1)}h</div></div>`;
-      week.entries.sort((a,b)=>b.date.localeCompare(a.date)).forEach(e => {
-        const dayName = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:5px;gap:8px;';
-        row.innerHTML = `
-          <div style="flex:1;"><div style="font-size:0.82rem;font-weight:600;color:var(--ink);">${dayName}</div>
-          <div style="font-size:0.7rem;color:var(--ink-muted);">🟢 ${e.clockIn} → 🔴 ${e.clockOut||'<span style="color:#F2A623;font-weight:600;">Missing ⚠️</span>'}</div></div>
-          <div style="font-size:0.95rem;font-weight:800;color:${e.hours?'var(--green)':'#F2A623'};">${e.hours?e.hours.toFixed(1)+'h':'—'}</div>
-          <div style="display:flex;gap:4px;">
-            <button class="tc-edit-btn" style="height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.68rem;font-weight:600;cursor:pointer;color:var(--ink-muted);">Edit</button>
-            <button class="tc-del-btn" style="width:28px;height:28px;border-radius:7px;border:none;background:#FFF0F0;color:#E53935;font-size:0.75rem;cursor:pointer;">🗑️</button>
-          </div>`;
-        row.querySelector('.tc-edit-btn').addEventListener('click', () => tcManualEntryModal(e, empName, rid, () => tcShowEmpHistoryRefresh(empName, rid, histContent)));
-        row.querySelector('.tc-del-btn').addEventListener('click', async () => {
-          if (!confirm('Delete this time entry?')) return;
-          try { await deleteDoc(doc(db,'timeEntries',e.id)); row.remove(); showToast('Entry deleted'); }
-          catch(err) { showToast('Error','error'); }
-        });
-        weekDiv.appendChild(row);
-      });
-      histContent.appendChild(weekDiv);
-    });
-  } catch(err) { console.error(err); histContent.innerHTML = '<div style="padding:12px;color:var(--red);">Error: '+err.message+'</div>'; }
+    empSel.addEventListener('change', renderTable);
+    daysSel.addEventListener('change', renderTable);
+    window._tcTimesheetFilter = '';
+    renderTable();
+  } catch(err){ el.innerHTML='<div style="padding:16px;color:var(--red);">Error: '+err.message+'</div>'; console.error(err); }
 }
 
-function tcManualEntryModal(existingEntry, empName, rid, onSave) {
-  const isEdit = !!existingEntry;
+// ── EXPORT TAB ────────────────────────────────────────────
+async function tcAdminExport(rid, el) {
+  const wStart = schedFmtDate(schedGetMonday(new Date()));
+  const wEnd   = new Date().toISOString().split('T')[0];
+  el.innerHTML = '';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;';
+  card.innerHTML = '<div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">📊 Export Timesheet</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Download hours as CSV for payroll</div>';
 
-  // Convert stored "9:00 AM" → "09:00" for <input type="time">
-  const to24h = t => {
-    if (!t) return '';
-    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (!m) return t; // already 24h or unknown
-    let h = parseInt(m[1]);
-    const min = m[2];
-    const ap = m[3].toUpperCase();
-    if (ap === 'AM' && h === 12) h = 0;
-    if (ap === 'PM' && h !== 12) h += 12;
-    return h.toString().padStart(2,'0') + ':' + min;
-  };
+  const fromWrap = document.createElement('div'); fromWrap.style.cssText = 'margin-bottom:12px;';
+  fromWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">From Date</label>';
+  const fromInput = document.createElement('input'); fromInput.type='date'; fromInput.id='exp-from'; fromInput.value=wStart;
+  fromInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
+  fromWrap.appendChild(fromInput); card.appendChild(fromWrap);
 
-  const initClockIn  = to24h(existingEntry?.clockIn  || '');
-  const initClockOut = to24h(existingEntry?.clockOut || '');
-  const overlay2 = document.createElement('div');
-  overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
-  const box2 = document.createElement('div');
-  box2.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:400px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.3);';
+  const toWrap = document.createElement('div'); toWrap.style.cssText = 'margin-bottom:20px;';
+  toWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">To Date</label>';
+  const toInput = document.createElement('input'); toInput.type='date'; toInput.id='exp-to'; toInput.value=wEnd;
+  toInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
+  toWrap.appendChild(toInput); card.appendChild(toWrap);
 
-  box2.innerHTML = `
-    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">${isEdit?'✏️ Edit Time Entry':'➕ Add Manual Entry'}</div>
-    <div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">${empName}${isEdit?' · '+existingEntry.date:''}</div>
+  const dlBtn = document.createElement('button');
+  dlBtn.style.cssText = 'width:100%;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  dlBtn.textContent = '📥 Download CSV';
+  dlBtn.addEventListener('click', async () => {
+    const from = fromInput.value, to = toInput.value;
+    if (!from||!to) { showToast('Select date range','error'); return; }
+    dlBtn.disabled=true; dlBtn.textContent='Exporting...';
+    try {
+      const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+      const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=from&&e.date<=to)
+        .sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
+      if (!entries.length) { showToast('No entries in that range','error'); dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV'; return; }
+      let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
+      entries.forEach(e=>{ csv += '"'+e.employeeName+'","'+e.date+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n'; });
+      const blob = new Blob([csv],{type:'text/csv'});
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='timeclock-'+from+'-to-'+to+'.csv'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('📊 Exported '+entries.length+' entries!');
+    } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
+    dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV';
+  });
+  card.appendChild(dlBtn);
+  el.appendChild(card);
+}
 
-    ${!isEdit?`<div style="margin-bottom:14px;">
-      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Date *</label>
-      <input type="date" id="tc-manual-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
-    </div>`:''}
+// ── EDIT ENTRY MODAL ──────────────────────────────────────
+window.tcEditEntry = async function(entryId, rid, rowEl) {
+  let entry;
+  try { const d = await getDoc(doc(db,'timeEntries',entryId)); entry={id:d.id,...d.data()}; }
+  catch(err){ showToast('Could not load entry','error'); return; }
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-      <div>
-        <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>
-        <input type="time" id="tc-manual-in" value="${initClockIn}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--green);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;">
-      </div>
-      <div>
-        <label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>
-        <input type="time" id="tc-manual-out" value="${initClockOut}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #FFCDD2;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;">
-      </div>
-    </div>
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:380px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.3);';
+  const dayLabel = entry.date ? new Date(entry.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) : '';
+  const initIn  = to24hTC(entry.clockIn  || '');
+  const initOut = to24hTC(entry.clockOut || '');
+  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:4px;">✏️ Edit Time Entry</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">'+(entry.employeeName||'')+(dayLabel?' · '+dayLabel:'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>'
+    +'<input type="time" id="edit-in" value="'+initIn+'" style="width:100%;height:44px;border-radius:10px;border:2px solid var(--green);padding:0 12px;font-family:var(--font-body);font-size:0.9rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>'
+    +'<input type="time" id="edit-out" value="'+initOut+'" style="width:100%;height:44px;border-radius:10px;border:2px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.9rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div></div>'
+    +'<div id="edit-err" style="display:none;background:#FFF0F0;border:1px solid #FFCDD2;color:#C62828;font-size:0.78rem;padding:10px;border-radius:9px;margin-bottom:12px;"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button id="edit-save-btn" style="flex:1;height:48px;border-radius:12px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">💾 Save Changes</button>'
+    +'<button style="height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button></div>';
 
-    <div style="background:#FFF8ED;border:1px solid #F2A623;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:0.75rem;color:#854F0B;">
-      ℹ️ Leave Clock Out empty if employee is still on shift. Hours will calculate automatically.
-    </div>
+  box.querySelector('button:last-child').onclick = () => overlay.remove();
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>box.querySelector('#edit-in')?.focus(), 50);
 
-    <div id="tc-manual-err" style="display:none;background:#FFF0F0;border:1px solid #FFCDD2;color:#C62828;font-size:0.78rem;padding:10px 14px;border-radius:10px;margin-bottom:12px;"></div>
-
-    <div style="display:flex;gap:8px;">
-      <button id="tc-manual-save" style="flex:1;height:48px;border-radius:12px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">${isEdit?'💾 Save Changes':'✅ Add Entry'}</button>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button>
-    </div>`;
-
-  overlay2.appendChild(box2);
-  document.body.appendChild(overlay2);
-
-  box2.querySelector('#tc-manual-save').addEventListener('click', async () => {
-    const saveBtn = box2.querySelector('#tc-manual-save');
-    const errEl = box2.querySelector('#tc-manual-err');
-    const dateVal = isEdit ? existingEntry.date : box2.querySelector('#tc-manual-date')?.value;
-    const clockIn = box2.querySelector('#tc-manual-in')?.value;
-    const clockOut = box2.querySelector('#tc-manual-out')?.value;
-
-    if (!dateVal || !clockIn) {
-      errEl.style.display='block'; errEl.textContent='Date and Clock In time are required.'; return;
-    }
-
-    // Calculate hours
-    let hours = null;
-    if (clockOut) {
-      const [ih,im] = clockIn.split(':').map(Number);
-      const [oh,om] = clockOut.split(':').map(Number);
-      let mins = (oh*60+om) - (ih*60+im);
-      if (mins < 0) mins += 24*60;
-      hours = +(mins/60).toFixed(2);
-      if (hours <= 0) { errEl.style.display='block'; errEl.textContent='Clock out must be after clock in.'; return; }
-    }
-
-    const fmt12 = t => { if(!t) return ''; const [h,m]=t.split(':').map(Number); const ap=h>=12?'PM':'AM'; return `${h%12||12}:${m.toString().padStart(2,'0')} ${ap}`; };
-
+  box.querySelector('#edit-save-btn').addEventListener('click', async () => {
+    const inVal  = box.querySelector('#edit-in')?.value;
+    const outVal = box.querySelector('#edit-out')?.value;
+    const errEl  = box.querySelector('#edit-err');
+    const saveBtn= box.querySelector('#edit-save-btn');
+    if (!inVal) { errEl.style.display='block'; errEl.textContent='Clock In is required.'; return; }
+    const hours = outVal ? calcHoursTC(inVal, outVal) : null;
+    if (outVal && (!hours || hours<=0)) { errEl.style.display='block'; errEl.textContent='Clock out must be after clock in.'; return; }
     saveBtn.disabled=true; saveBtn.textContent='Saving...';
     try {
-      if (isEdit) {
-        await setDoc(doc(db,'timeEntries',existingEntry.id), {
-          clockIn: fmt12(clockIn), clockOut: clockOut ? fmt12(clockOut) : null,
-          hours, updatedAt: serverTimestamp(), manualEdit: true
-        }, {merge:true});
-      } else {
-        await addDoc(collection(db,'timeEntries'), {
-          restaurantId: rid, employeeName: empName,
-          date: dateVal, clockIn: fmt12(clockIn),
-          clockOut: clockOut ? fmt12(clockOut) : null,
-          hours, manualEntry: true, createdAt: serverTimestamp()
-        });
+      await setDoc(doc(db,'timeEntries',entryId),{clockIn:to12hTC(inVal),clockOut:outVal?to12hTC(outVal):null,hours,updatedAt:serverTimestamp(),manualEdit:true},{merge:true});
+      overlay.remove(); showToast('✅ Entry updated!');
+      // Update the timesheet row in-place if it exists
+      if (rowEl) {
+        const timesCell = rowEl.children[2];
+        const hrsCell   = rowEl.children[3];
+        if (timesCell) timesCell.innerHTML = '🟢 '+to12hTC(inVal)+' → 🔴 '+(outVal?to12hTC(outVal):'<span style="color:#F2A623;font-weight:700;">Missing ⚠️</span>');
+        if (hrsCell)   { hrsCell.textContent = hours?hours.toFixed(1)+'h':'—'; hrsCell.style.color=hours?'var(--green)':'#F2A623'; }
+        rowEl.style.borderColor = outVal?'var(--border)':'#FFCDD2';
       }
-      overlay2.remove();
-      showToast(isEdit ? '✅ Entry updated!' : '✅ Entry added!');
-      if (onSave) onSave();
-    } catch(err) {
-      errEl.style.display='block'; errEl.textContent='Error: '+err.message;
-      saveBtn.disabled=false; saveBtn.textContent=isEdit?'💾 Save Changes':'✅ Add Entry';
-    }
+    } catch(err){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; saveBtn.disabled=false; saveBtn.textContent='💾 Save Changes'; }
   });
 }
 
-window.tcExportEmpHistory = async function(empName, rid) {
-  try {
-    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('employeeName','==',empName)));
-    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours).sort((a,b)=>b.date.localeCompare(a.date));
-    let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
-    entries.forEach(e => { csv += `"${e.employeeName}","${e.date}","${e.clockIn}","${e.clockOut||''}","${(e.hours||0).toFixed(2)}"\n`; });
-    const blob = new Blob([csv],{type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href=url; a.download=empName.replace(' ','-')+'-timeclock.csv'; a.click();
-    showToast('📊 Exported!');
-  } catch(e) { showToast('Export failed','error'); }
-}
+// ── ADD MANUAL ENTRY ──────────────────────────────────────
+window.tcAddManual = function(rid, empName) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:380px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.3);';
+  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">➕ Add Manual Entry</div>'
+    +'<div id="add-err" style="display:none;background:#FFF0F0;border:1px solid #FFCDD2;color:#C62828;font-size:0.78rem;padding:10px;border-radius:9px;margin-bottom:12px;"></div>'
+    +'<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Employee *</label>'
+    +'<input id="add-emp" type="text" value="'+(empName||'')+'" placeholder="Employee name" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Date *</label>'
+    +'<input id="add-date" type="date" value="'+new Date().toISOString().split('T')[0]+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>'
+    +'<input type="time" id="add-in" style="width:100%;height:44px;border-radius:10px;border:2px solid var(--green);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>'
+    +'<input type="time" id="add-out" style="width:100%;height:44px;border-radius:10px;border:2px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button id="add-save-btn" style="flex:1;height:48px;border-radius:12px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">✅ Add Entry</button>'
+    +'<button style="height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button></div>';
 
-window.openKioskMode = async function(rid) {
-  // Full screen overlay
-  const kiosk = document.createElement('div');
-  kiosk.id = 'kiosk-mode';
-  kiosk.style.cssText = 'position:fixed;inset:0;background:#0B2818;z-index:999999;display:flex;flex-direction:column;font-family:"Inter",sans-serif;overflow:hidden;';
+  box.querySelector('button:last-child').onclick = ()=>overlay.remove();
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>box.querySelector('#add-emp')?.focus(),50);
 
-  // Header bar
-  const topBar = document.createElement('div');
-  topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 28px 16px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;';
-
-  // Logo + live clock
-  const logoSide = document.createElement('div');
-  logoSide.style.cssText = 'display:flex;align-items:center;gap:16px;';
-  logoSide.innerHTML = '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.4rem;letter-spacing:0.06em;color:#fff;">Chef Nek <span style="color:#1D9E75;">Pro</span></div>';
-
-  const liveClock = document.createElement('div');
-  liveClock.id = 'kiosk-clock';
-  liveClock.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:2.2rem;color:#fff;letter-spacing:0.04em;line-height:1;';
-  const kioskDate = document.createElement('div');
-  kioskDate.style.cssText = 'font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:2px;';
-  kioskDate.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-
-  const updateKioskClock = () => {
-    liveClock.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  };
-  updateKioskClock();
-  const kioskClockInterval = setInterval(updateKioskClock, 1000);
-
-  const clockSide = document.createElement('div');
-  clockSide.style.cssText = 'text-align:right;';
-  clockSide.appendChild(liveClock);
-  clockSide.appendChild(kioskDate);
-
-  topBar.appendChild(logoSide);
-  topBar.appendChild(clockSide);
-  kiosk.appendChild(topBar);
-
-  // Main content area
-  const kioskBody = document.createElement('div');
-  kioskBody.id = 'kiosk-body';
-  kioskBody.style.cssText = 'flex:1;overflow-y:auto;padding:28px;';
-  kiosk.appendChild(kioskBody);
-
-  // Exit button (small, bottom corner — admin only)
-  const exitBtn = document.createElement('button');
-  exitBtn.style.cssText = 'position:fixed;bottom:16px;right:16px;height:36px;padding:0 14px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-family:"Inter",sans-serif;font-size:0.72rem;cursor:pointer;z-index:9999999;';
-  exitBtn.textContent = '✕ Exit Kiosk';
-  exitBtn.addEventListener('click', () => {
-    clearInterval(kioskClockInterval);
-    kiosk.remove();
-  });
-  kiosk.appendChild(exitBtn);
-
-  document.body.appendChild(kiosk);
-
-  // Try fullscreen
-  try { document.documentElement.requestFullscreen?.(); } catch(e) {}
-
-  await kioskShowStaffList(rid, kioskBody);
-}
-
-async function kioskShowStaffList(rid, body) {
-  const today = new Date().toISOString().split('T')[0];
-  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.4);">Loading staff...</div>';
-
-  try {
-    const [staffSnap, entriesSnap] = await Promise.all([
-      getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid))),
-      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)))
-    ]);
-
-    const staff = staffSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    const todayEntries = entriesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.date===today);
-    const clockedInNames = new Set(todayEntries.filter(e=>!e.clockOut).map(e=>e.employeeName));
-
-    body.innerHTML = '';
-
-    // Title
-    const title = document.createElement('div');
-    title.style.cssText = 'text-align:center;margin-bottom:32px;';
-    title.innerHTML = '<div style="font-size:1.1rem;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:4px;">Tap your name to clock in or out</div>'
-      + '<div style="font-size:0.8rem;color:rgba(255,255,255,0.3);">' + clockedInNames.size + ' of ' + staff.length + ' staff currently clocked in</div>';
-    body.appendChild(title);
-
-    // Staff grid
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;max-width:900px;margin:0 auto;';
-
-    staff.forEach(emp => {
-      const isClockedIn = clockedInNames.has(emp.name);
-      const initials = (emp.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-      const hue = [...(emp.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
-      const entry = todayEntries.find(e=>e.employeeName===emp.name && !e.clockOut);
-
-      const card = document.createElement('button');
-      card.style.cssText = 'background:' + (isClockedIn?'rgba(29,158,117,0.15)':'rgba(255,255,255,0.05)') + ';'
-        + 'border:2px solid ' + (isClockedIn?'rgba(29,158,117,0.5)':'rgba(255,255,255,0.1)') + ';'
-        + 'border-radius:20px;padding:28px 16px;cursor:pointer;text-align:center;transition:all 0.2s;'
-        + 'font-family:"Inter",sans-serif;';
-      card.onmouseenter = () => { card.style.transform='scale(1.03)'; card.style.borderColor=isClockedIn?'#1D9E75':'rgba(255,255,255,0.3)'; };
-      card.onmouseleave = () => { card.style.transform=''; card.style.borderColor=isClockedIn?'rgba(29,158,117,0.5)':'rgba(255,255,255,0.1)'; };
-
-      card.innerHTML = `
-        <div style="width:64px;height:64px;border-radius:50%;background:hsl(${hue},50%,35%);border:3px solid hsl(${hue},50%,55%);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:#fff;margin:0 auto 14px;">${initials}</div>
-        <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:6px;">${emp.name}</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:10px;">${emp.role||''}</div>
-        <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;background:${isClockedIn?'rgba(29,158,117,0.3)':'rgba(255,255,255,0.08)'};font-size:0.72rem;font-weight:700;color:${isClockedIn?'#5DCAA5':'rgba(255,255,255,0.4)'};">
-          ${isClockedIn?'🟢 Clocked In · '+entry?.clockIn:'⚪ Not clocked in'}
-        </div>`;
-
-      card.addEventListener('click', () => kioskShowClockAction(rid, emp, isClockedIn, entry, body));
-      grid.appendChild(card);
-    });
-
-    body.appendChild(grid);
-  } catch(e) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#E57373;">Error loading staff. Please try again.</div>';
-    console.error(e);
-  }
-}
-
-async function kioskShowClockAction(rid, emp, isClockedIn, openEntry, body) {
-  const today = new Date().toISOString().split('T')[0];
-  body.innerHTML = '';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'max-width:480px;margin:40px auto;text-align:center;';
-
-  const initials = (emp.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const hue = [...(emp.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
-
-  wrap.innerHTML = `
-    <div style="width:100px;height:100px;border-radius:50%;background:hsl(${hue},50%,35%);border:4px solid hsl(${hue},50%,55%);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:#fff;margin:0 auto 20px;">${initials}</div>
-    <div style="font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;">${emp.name}</div>
-    <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:8px;">${emp.role||''}</div>
-    <div style="font-size:0.85rem;color:${isClockedIn?'#5DCAA5':'rgba(255,255,255,0.3)'};margin-bottom:40px;">
-      ${isClockedIn?'🟢 Clocked in at '+openEntry?.clockIn:'⚪ Not yet clocked in today'}
-    </div>`;
-
-  // Big action button
-  const actionBtn = document.createElement('button');
-  actionBtn.style.cssText = 'width:100%;max-width:360px;height:90px;border-radius:24px;border:none;cursor:pointer;font-family:"Inter",sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:0.02em;'
-    + 'background:' + (isClockedIn?'linear-gradient(135deg,#E53935,#C62828)':'linear-gradient(135deg,#1D9E75,#16856A)') + ';'
-    + 'color:#fff;box-shadow:0 12px 40px ' + (isClockedIn?'rgba(229,57,53,0.5)':'rgba(29,158,117,0.5)') + ';'
-    + 'margin-bottom:24px;display:block;margin-left:auto;margin-right:auto;';
-  actionBtn.textContent = isClockedIn ? '🔴 Clock Out' : '🟢 Clock In';
-
-  actionBtn.addEventListener('click', async () => {
-    actionBtn.disabled = true;
-    actionBtn.style.opacity = '0.7';
-    actionBtn.textContent = 'Saving...';
-
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
+  box.querySelector('#add-save-btn').addEventListener('click', async () => {
+    const name   = box.querySelector('#add-emp')?.value.trim();
+    const date   = box.querySelector('#add-date')?.value;
+    const inVal  = box.querySelector('#add-in')?.value;
+    const outVal = box.querySelector('#add-out')?.value;
+    const errEl  = box.querySelector('#add-err');
+    const saveBtn= box.querySelector('#add-save-btn');
+    if (!name||!date||!inVal) { errEl.style.display='block'; errEl.textContent='Employee, date and clock in are required.'; return; }
+    const hours = outVal ? calcHoursTC(inVal,outVal) : null;
+    if (outVal&&(!hours||hours<=0)){ errEl.style.display='block'; errEl.textContent='Clock out must be after clock in.'; return; }
+    saveBtn.disabled=true; saveBtn.textContent='Saving...';
     try {
-      if (isClockedIn && openEntry) {
-        const hrs = +((now - new Date(today+'T'+openEntry.clockIn))/3600000).toFixed(2);
-        await setDoc(doc(db,'timeEntries',openEntry.id),{clockOut:time,hours:hrs,updatedAt:serverTimestamp()},{merge:true});
-        await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:emp.name,message:emp.name+' clocked out at '+time+' ('+hrs.toFixed(1)+'h)',date:today,time,read:false,createdAt:serverTimestamp()});
-        kioskShowSuccess(body, '🔴', emp.name, 'Clocked Out', time, hrs.toFixed(1)+'h today', rid);
-      } else {
-        await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:emp.name,date:today,clockIn:time,clockOut:null,hours:null,createdAt:serverTimestamp()});
-        await addDoc(collection(db,'notifications'),{type:'clockin',restaurantId:rid,employeeName:emp.name,message:emp.name+' clocked in at '+time,date:today,time,read:false,createdAt:serverTimestamp()});
-        kioskShowSuccess(body, '🟢', emp.name, 'Clocked In', time, 'Have a great shift!', rid);
-      }
-    } catch(e) {
-      actionBtn.disabled=false; actionBtn.style.opacity='1';
-      actionBtn.textContent = isClockedIn?'🔴 Clock Out':'🟢 Clock In';
-      console.error(e);
-    }
+      await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:name,date,clockIn:to12hTC(inVal),clockOut:outVal?to12hTC(outVal):null,hours,manualEntry:true,createdAt:serverTimestamp()});
+      overlay.remove(); showToast('✅ Entry added!');
+      window._tcAdminTab='timesheet'; window._tcTimesheetFilter=name;
+      const content=document.getElementById('tc-admin-content');
+      if(content) await tcAdminTimesheet(rid,content);
+    } catch(err){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; saveBtn.disabled=false; saveBtn.textContent='✅ Add Entry'; }
   });
-
-  wrap.appendChild(actionBtn);
-
-  // Back button
-  const backBtn = document.createElement('button');
-  backBtn.style.cssText = 'background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);height:48px;padding:0 28px;border-radius:100px;font-family:"Inter",sans-serif;font-size:0.875rem;cursor:pointer;';
-  backBtn.textContent = '← Back';
-  backBtn.addEventListener('click', () => kioskShowStaffList(rid, body));
-  wrap.appendChild(backBtn);
-
-  body.appendChild(wrap);
-}
-
-function kioskShowSuccess(body, icon, name, action, time, sub, rid) {
-  body.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'max-width:480px;margin:60px auto;text-align:center;';
-  wrap.innerHTML = `
-    <div style="font-size:5rem;margin-bottom:20px;animation:pulse 0.5s ease;">${icon}</div>
-    <div style="font-size:2.5rem;font-weight:800;color:#fff;margin-bottom:8px;">${action}!</div>
-    <div style="font-size:1.5rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:8px;">${name}</div>
-    <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:8px;">${time}</div>
-    <div style="font-size:0.9rem;color:${icon==='🟢'?'#5DCAA5':'#FF8A80'};margin-bottom:48px;">${sub}</div>`;
-
-  // Auto return to staff list after 3 seconds
-  const countdown = document.createElement('div');
-  countdown.style.cssText = 'font-size:0.8rem;color:rgba(255,255,255,0.3);margin-bottom:16px;';
-  countdown.textContent = 'Returning in 3 seconds...';
-  wrap.appendChild(countdown);
-
-  let secs = 3;
-  const timer = setInterval(() => {
-    secs--;
-    countdown.textContent = 'Returning in ' + secs + ' second' + (secs!==1?'s':'') + '...';
-    if (secs <= 0) { clearInterval(timer); kioskShowStaffList(rid, body); }
-  }, 1000);
-
-  const nowBtn = document.createElement('button');
-  nowBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);height:44px;padding:0 24px;border-radius:100px;font-family:"Inter",sans-serif;font-size:0.875rem;cursor:pointer;';
-  nowBtn.textContent = '← Back to staff list';
-  nowBtn.addEventListener('click', () => { clearInterval(timer); kioskShowStaffList(rid, body); });
-  wrap.appendChild(nowBtn);
-
-  body.appendChild(wrap);
 }
 
 window.tcExportWeek = async function(rid) {
   const weekStart = schedFmtDate(schedGetMonday(new Date()));
-  const weekEnd = schedFmtDate(new Date(schedGetMonday(new Date()).getTime()+6*24*60*60*1000));
   try {
-    // Fetch all entries for restaurant and filter client-side (avoids composite index)
     const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
-    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours && e.date >= weekStart);
-
+    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=weekStart);
     if (!entries.length) { showToast('No hours to export this week','error'); return; }
-
-    // Group by employee
-    const byEmp = {};
-    entries.forEach(e => { if(!byEmp[e.employeeName]) byEmp[e.employeeName]=[]; byEmp[e.employeeName].push(e); });
-
     let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
-    Object.entries(byEmp).forEach(([name, rows])=>{
-      rows.sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
-        csv += `"${name}","${r.date}","${r.clockIn}","${r.clockOut||''}","${(r.hours||0).toFixed(2)}"\n`;
-      });
+    entries.sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||'')).forEach(e=>{
+      csv += '"'+e.employeeName+'","'+e.date+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n';
     });
-
-    const blob = new Blob([csv], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'timeclock-week-' + weekStart + '.csv'; a.click();
+    const blob=new Blob([csv],{type:'text/csv'}), url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='timeclock-week-'+weekStart+'.csv'; a.click();
     URL.revokeObjectURL(url);
-    showToast('📊 Exported ' + entries.length + ' entries!');
-  } catch(e) { console.error(e); showToast('Export failed: ' + e.message, 'error'); }
+    showToast('📊 Exported '+entries.length+' entries!');
+  } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
 }
+
+
 
 // ============================================
 // SUPPLIERS & PURCHASE ORDERS
