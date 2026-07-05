@@ -4891,6 +4891,23 @@ async function loadClients() {
   }
 }
 
+window.viewClientDashboard = function(client) {
+  window._viewingRestaurantId = client.id;
+  window._viewingClientName = client.restaurantName || client.email;
+  const sel = document.getElementById('global-client-select');
+  if (sel) sel.value = client.id;
+  navigate('dashboard');
+  showToast('Viewing ' + (client.restaurantName || 'client'));
+}
+
+window.exitClientView = function() {
+  window._viewingRestaurantId = null;
+  window._viewingClientName = null;
+  const sel = document.getElementById('global-client-select');
+  if (sel) sel.value = '';
+  navigate('clients');
+}
+
 window.clientMarkPaid = async function(uid, listEl) {
   try {
     await setDoc(doc(db,'users',uid),{plan:'pro',paidAt:new Date().toISOString()},{merge:true});
