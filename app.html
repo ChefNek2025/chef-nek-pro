@@ -12214,8 +12214,10 @@ window.tcExportWeek = async function(rid) {
   const weekStart = schedFmtDate(schedGetMonday(new Date()));
   const weekEnd = schedFmtDate(new Date(schedGetMonday(new Date()).getTime()+6*24*60*60*1000));
   try {
-    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid), where('date','>=',weekStart)));
-    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours);
+    // Fetch all entries for restaurant and filter client-side (avoids composite index)
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours && e.date >= weekStart);
+
     if (!entries.length) { showToast('No hours to export this week','error'); return; }
 
     // Group by employee
@@ -12233,8 +12235,9 @@ window.tcExportWeek = async function(rid) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'timeclock-week-' + weekStart + '.csv'; a.click();
-    showToast('📊 Exported!');
-  } catch(e) { showToast('Export failed','error'); }
+    URL.revokeObjectURL(url);
+    showToast('📊 Exported ' + entries.length + ' entries!');
+  } catch(e) { console.error(e); showToast('Export failed: ' + e.message, 'error'); }
 }
 
 // ============================================
