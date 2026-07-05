@@ -4723,215 +4723,191 @@ window.updateQty = async function(itemId, newQty) {
 // CLIENTS PAGE (ADMIN ONLY)
 // ============================================
 function renderClients(main, userData) {
-  main.innerHTML = `
-    <div class="page-header">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div>
-          <h1 class="page-title">Manage clients</h1>
-          <p class="page-sub">View and manage all restaurant accounts</p>
-        </div>
-        <button onclick="showAddClientModal()" class="form-btn-small" style="height:42px;padding:0 20px;">+ Add client</button>
-        <button onclick="showDataMigrationTool()" style="height:42px;padding:0 14px;border-radius:8px;border:1.5px solid var(--amber);background:var(--amber-light);color:#854F0B;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🔧 Fix lost data</button>
-      </div>
-    </div>
-    <div class="page-body">
-      <div id="clients-list"><div class="empty-state"><div class="loading-spinner" style="margin:0 auto 12px;"></div></div></div>
+  main.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">🍳 Command Center</h1><p class="page-sub">All your client restaurants in one view</p></div>
+      <button onclick="showAddClientModal()" style="height:42px;padding:0 20px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,0.3);">+ Add Restaurant</button>
     </div>`;
+  main.appendChild(header);
+  const body = document.createElement('div');
+  body.className = 'page-body';
+  body.id = 'clients-list';
+  body.innerHTML = '<div class="empty-state"><div class="loading-spinner" style="margin:0 auto 12px;"></div></div>';
+  main.appendChild(body);
   loadClients();
-}
-
-window.showAddClientModal = function() {
-  const existing = document.getElementById('add-client-modal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'add-client-modal';
-  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#fff;border-radius:24px;width:100%;max-width:460px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.2);';
-  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:var(--ink);margin-bottom:6px;">Add new client</div>'
-    + '<div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Creates a login account for the restaurant.</div>'
-    + '<div style="display:flex;flex-direction:column;gap:12px;">'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Restaurant name *</label><input type="text" id="new-client-restaurant" class="form-input-small" style="width:100%;" placeholder="e.g. Black Lion Kitchen"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Owner full name</label><input type="text" id="new-client-owner" class="form-input-small" style="width:100%;" placeholder="e.g. Marcus Johnson"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Email address *</label><input type="email" id="new-client-email" class="form-input-small" style="width:100%;" placeholder="e.g. marcus@blacklion.com"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Temporary password *</label><input type="text" id="new-client-password" class="form-input-small" style="width:100%;" value="ChefNek2024!"></div>'
-    + '</div>';
-  const btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;margin-top:20px;';
-  const saveBtn = document.createElement('button');
-  saveBtn.id = 'add-client-modal-btn';
-  saveBtn.textContent = 'Create account';
-  saveBtn.style.cssText = 'flex:1;height:48px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
-  saveBtn.onclick = createClientAccount;
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.style.cssText = 'height:48px;padding:0 20px;border-radius:12px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;font-family:var(--font-body);';
-  cancelBtn.onclick = () => modal.remove();
-  btns.appendChild(saveBtn);
-  btns.appendChild(cancelBtn);
-  box.appendChild(btns);
-  modal.appendChild(box);
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
-  setTimeout(() => document.getElementById('new-client-restaurant')?.focus(), 50);
-}
-
-async function createClientAccount() {
-  const restaurant = document.getElementById('new-client-restaurant')?.value.trim();
-  const owner = document.getElementById('new-client-owner')?.value.trim() || '';
-  const email = document.getElementById('new-client-email')?.value.trim();
-  const password = document.getElementById('new-client-password')?.value.trim();
-  const btn = document.getElementById('add-client-modal-btn');
-  if (!restaurant || !email || !password) { showToast('Fill all required fields', 'error'); return; }
-  if (password.length < 6) { showToast('Password must be 6+ characters', 'error'); return; }
-  if (btn) { btn.textContent = 'Creating...'; btn.disabled = true; }
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      email, restaurantName: restaurant, ownerName: owner,
-      isAdmin: false, status: 'active', createdAt: serverTimestamp()
-    });
-    showToast(restaurant + ' account created!');
-    document.getElementById('add-client-modal')?.remove();
-    loadClients();
-  } catch(e) {
-    if (btn) { btn.textContent = 'Create account'; btn.disabled = false; }
-    showToast(e.message || 'Error creating account', 'error');
-  }
-}
-
-window.viewClientDashboard = function(client) {
-  window._viewingRestaurantId = client.id;
-  window._viewingClientName = client.restaurantName || client.email;
-  const sel = document.getElementById('global-client-select');
-  if (sel) sel.value = client.id;
-  navigate('dashboard');
-  showToast('Viewing ' + (client.restaurantName || 'client'));
-}
-
-window.exitClientView = function() {
-  window._viewingRestaurantId = null;
-  window._viewingClientName = null;
-  const sel = document.getElementById('global-client-select');
-  if (sel) sel.value = '';
-  navigate('clients');
 }
 
 async function loadClients() {
   const listEl = document.getElementById('clients-list');
   if (!listEl) return;
   try {
-    const snap = await getDocs(collection(db, 'users'));
+    const snap = await getDocs(collection(db,'users'));
+    const now = new Date();
     const clients = snap.docs
-      .filter(d => !d.data().isAdmin)
-      .map(d => ({id: d.id, ...d.data()}))
-      .sort((a,b) => (a.restaurantName||'').localeCompare(b.restaurantName||''));
+      .filter(d => !d.data().isAdmin && d.data().email !== ADMIN_EMAIL)
+      .map(d => ({id:d.id,...d.data()}))
+      .sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    listEl.innerHTML = '';
 
-    if (clients.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><div class="empty-state-title">No clients yet</div><div class="empty-state-sub">Click "+ Add client" to create the first restaurant account</div></div>';
+    const founders = clients.filter(c=>c.plan==='founding');
+    const paid     = clients.filter(c=>['pro','starter','growth'].includes(c.plan));
+    const trials   = clients.filter(c=>!['founding','pro','starter','growth'].includes(c.plan));
+    const mrr      = paid.length * 49;
+    const expiredTrials = trials.filter(c=>{
+      const s = c.trialStart ? new Date(c.trialStart) : new Date(c.createdAt?.toDate?.() || now);
+      return Math.floor((now-s)/(1000*60*60*24)) >= (c.trialDays||30);
+    });
+
+    const statsBar = document.createElement('div');
+    statsBar.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;';
+    [{label:'Total Restaurants',val:clients.length,icon:'🍳',color:'var(--ink)'},
+     {label:'Monthly Revenue',val:'$'+mrr+'/mo',icon:'💰',color:'var(--green)'},
+     {label:'Founding (Free)',val:founders.length+' of 3',icon:'🏆',color:'#F2A623'},
+     {label:'Trials',val:trials.length+(expiredTrials.length?' · '+expiredTrials.length+' expired':''),icon:'⏳',color:expiredTrials.length?'#E53935':'var(--ink)'}
+    ].forEach(s=>{
+      const c=document.createElement('div');
+      c.style.cssText='background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:10px;';
+      c.innerHTML='<span style="font-size:1.4rem;">'+s.icon+'</span><div><div style="font-size:1.1rem;font-weight:800;color:'+s.color+';">'+s.val+'</div><div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div></div>';
+      statsBar.appendChild(c);
+    });
+    listEl.appendChild(statsBar);
+
+    if (!clients.length) {
+      listEl.innerHTML += '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🍳</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No restaurants yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Clients who sign up will appear here automatically.</div></div>';
       return;
     }
 
-    listEl.innerHTML = '';
-
-    // Stats
-    const activeCount = clients.filter(c=>c.status!=='suspended').length;
-    const paidCount = clients.filter(c=>c.paymentStatus==='paid').length;
-    const totalRevenue = clients.reduce((s,c)=>s+(c.monthlyFee||0),0);
-    const stats = document.createElement('div');
-    stats.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
-    stats.innerHTML = '<div class="stat-card"><div class="stat-card-label">Total clients</div><div class="stat-card-value green">' + clients.length + '</div></div>'
-      + '<div class="stat-card"><div class="stat-card-label">Active</div><div class="stat-card-value">' + activeCount + '</div></div>'
-      + '<div class="stat-card"><div class="stat-card-label">Monthly revenue</div><div class="stat-card-value amber">$' + totalRevenue + '</div></div>';
-    listEl.appendChild(stats);
-
     clients.forEach(client => {
+      const plan = client.plan || 'trial';
+      const trialStart = client.trialStart ? new Date(client.trialStart) : new Date(client.createdAt?.toDate?.() || now);
+      const daysUsed = Math.floor((now-trialStart)/(1000*60*60*24));
+      const daysLeft = Math.max(0,(client.trialDays||30)-daysUsed);
+      const isFounder = plan==='founding';
+      const isPaid    = ['pro','starter','growth'].includes(plan);
+      const isTrial   = !isFounder&&!isPaid;
+      const isExpired = isTrial&&daysLeft===0;
+
+      const pb = isFounder
+        ? {label:'🏆 Founding',bg:'#FFF8ED',color:'#C17F3A',border:'#F2A623'}
+        : isPaid
+        ? {label:'✅ Paid $49/mo',bg:'#EDFAF4',color:'#0A5C3F',border:'#1D9E75'}
+        : isExpired
+        ? {label:'🔴 Trial Expired',bg:'#FFF0F0',color:'#C62828',border:'#FFCDD2'}
+        : {label:'⏳ '+daysLeft+'d left',bg:daysLeft<=5?'#FFF0F0':'#FFF8ED',color:daysLeft<=5?'#C62828':'#C17F3A',border:daysLeft<=5?'#FFCDD2':'#F2A623'};
+
+      const joined = client.createdAt?.toDate?.()
+        ? client.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : client.trialStart||'—';
+
+      const initials = (client.restaurantName||client.email||'?').split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue = [...(client.restaurantName||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+
       const card = document.createElement('div');
-      card.className = 'card';
-      card.style.cssText = 'margin-bottom:12px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s;';
-      card.title = 'Click to view ' + (client.restaurantName||'client') + ' dashboard';
+      card.style.cssText = 'background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:12px;transition:all 0.2s;';
       card.onmouseenter = () => { card.style.borderColor='var(--green)'; card.style.boxShadow='0 4px 20px rgba(29,158,117,0.12)'; };
-      card.onmouseleave = () => { card.style.borderColor=''; card.style.boxShadow=''; };
-      card.onclick = (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        viewClientDashboard(client);
-      };
+      card.onmouseleave = () => { card.style.borderColor='var(--border)'; card.style.boxShadow=''; };
 
-      const status = client.status || 'active';
-      const payStatus = client.paymentStatus || 'unpaid';
-      const statusColor = status==='active' ? '#1D9E75' : '#E24B4A';
-      const statusBg = status==='active' ? 'var(--green-light)' : '#FCEBEB';
-      const payColor = payStatus==='paid' ? '#1D9E75' : payStatus==='overdue' ? '#E24B4A' : '#B5860A';
-      const payBg = payStatus==='paid' ? 'var(--green-light)' : payStatus==='overdue' ? '#FCEBEB' : '#FFF8E1';
+      // Header row
+      const topRow = document.createElement('div');
+      topRow.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;';
+      topRow.innerHTML = '<div style="width:46px;height:46px;border-radius:12px;background:hsl('+hue+',50%,88%);border:2px solid hsl('+hue+',50%,70%);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:hsl('+hue+',50%,30%);flex-shrink:0;">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+        +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+(client.restaurantName||'Unnamed')+'</div>'
+        +'<div style="font-size:0.65rem;font-weight:800;background:'+pb.bg+';color:'+pb.color+';border:1px solid '+pb.border+';padding:2px 8px;border-radius:100px;">'+pb.label+'</div>'
+        +(client.cuisine?'<div style="font-size:0.62rem;color:var(--ink-muted);background:var(--cream);border:1px solid var(--border);padding:2px 8px;border-radius:100px;">'+client.cuisine+'</div>':'')
+        +'</div>'
+        +'<div style="font-size:0.75rem;color:var(--ink-muted);">'+(client.email||'')+'</div>'
+        +'</div>';
+      card.appendChild(topRow);
 
-      // Top row: name + badges
-      const top = document.createElement('div');
-      top.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;';
-      top.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-        + '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">' + (client.restaurantName||'Unnamed') + '</div>'
-        + '<span style="font-size:0.65rem;background:var(--green-light);color:var(--green-dark);padding:2px 8px;border-radius:20px;font-weight:600;">Click to view</span>'
-        + '<span style="font-size:0.65rem;background:'+statusBg+';color:'+statusColor+';padding:2px 8px;border-radius:20px;font-weight:700;">' + (status==='active'?'Active':'Suspended') + '</span>'
-        + '<span style="font-size:0.65rem;background:'+payBg+';color:'+payColor+';padding:2px 8px;border-radius:20px;font-weight:700;">' + (payStatus==='paid'?'Paid':payStatus==='overdue'?'Overdue':'Unpaid') + '</span>'
-        + '</div>'
-        + '<div style="font-size:0.8rem;color:var(--ink-muted);">' + (client.email||'') + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">'
-        + '<div style="font-size:0.68rem;color:var(--ink-muted);font-family:monospace;background:var(--cream);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);cursor:pointer;" onclick="copyUID(\'' + client.id + '\')" title="Click to copy Firebase UID">'
-        + 'UID: ' + client.id.substring(0,16) + '...'
-        + '</div>'
-        + '<span style="font-size:0.65rem;color:var(--green);cursor:pointer;font-weight:600;" onclick="copyUID(\'' + client.id + '\')">📋 Copy</span>'
-        + '</div>';
-      card.appendChild(top);
+      // Meta grid
+      const metaGrid = document.createElement('div');
+      metaGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
+      [{label:'Joined',val:joined},{label:'Team',val:client.teamSize||client.staffCount||'—'},{label:'Revenue',val:isPaid?'$49/mo':isFounder?'Founding':'$0'}].forEach(m=>{
+        metaGrid.innerHTML += '<div style="background:var(--cream);border-radius:10px;padding:10px 12px;"><div style="font-size:0.65rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+m.val+'</div></div>';
+      });
+      card.appendChild(metaGrid);
 
-      // UID row
-      const uidRow = document.createElement('div');
-      uidRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0 4px;flex-wrap:wrap;';
-      const uidCode = document.createElement('code');
-      uidCode.style.cssText = 'font-size:0.68rem;color:var(--ink-muted);background:var(--cream);padding:3px 10px;border-radius:6px;border:0.5px solid var(--border);word-break:break-all;';
-      uidCode.textContent = 'UID: ' + client.id;
-      const copySpan = document.createElement('button');
-      copySpan.textContent = '📋 Copy UID';
-      copySpan.style.cssText = 'height:24px;padding:0 10px;border-radius:6px;border:0.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:0.68rem;font-weight:600;cursor:pointer;font-family:var(--font-body);white-space:nowrap;flex-shrink:0;';
-      copySpan.onclick = (e) => { e.stopPropagation(); copyUID(client.id); };
-      uidRow.appendChild(uidCode);
-      uidRow.appendChild(copySpan);
-      card.appendChild(uidRow);
+      // Trial bar
+      if (isTrial) {
+        const prog = Math.min(100,Math.round(daysUsed/(client.trialDays||30)*100));
+        const barEl = document.createElement('div');
+        barEl.style.cssText = 'margin-bottom:12px;';
+        barEl.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:'+(isExpired?'#E53935':'var(--ink-muted)')+';margin-bottom:4px;"><span>Trial progress</span><span>'+(isExpired?'Expired':daysLeft+'d remaining')+'</span></div>'
+          +'<div style="height:6px;background:var(--border);border-radius:100px;overflow:hidden;">'
+          +'<div style="height:100%;width:'+prog+'%;background:'+(isExpired?'#E53935':daysLeft<=5?'#F2A623':'var(--green)')+';border-radius:100px;"></div></div>';
+        card.appendChild(barEl);
+      }
 
-      // Action buttons
+      // Actions
       const actions = document.createElement('div');
-      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;border-top:0.5px solid var(--border);padding-top:12px;margin-top:8px;';
+      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
 
-      const mkBtn = (label, color, bg, border, fn) => {
-        const b = document.createElement('button');
-        b.textContent = label;
-        b.style.cssText = 'height:32px;padding:0 12px;border-radius:8px;border:0.5px solid '+border+';background:'+bg+';color:'+color+';font-family:var(--font-body);font-size:0.78rem;cursor:pointer;font-weight:500;';
-        b.onclick = fn;
-        return b;
-      };
+      const viewBtn = document.createElement('button');
+      viewBtn.style.cssText = 'flex:1;height:36px;border-radius:9px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;';
+      viewBtn.textContent = '🍳 View Dashboard';
+      viewBtn.onclick = () => viewClientDashboard(client);
+      actions.appendChild(viewBtn);
 
-      actions.appendChild(mkBtn('📥 Import menu', '#0A6B3A', '#E0F5EC', '#0A6B3A', () => showMenuImportTool(client)));
-      actions.appendChild(mkBtn('View menu', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => { window._menuViewingRestaurantId=client.id; navigate('menudesign'); }));
-      const posSystem = client.posSystem || (client.cloverMerchantId ? 'clover' : null);
-      const posIcons = {clover:'🍀',square:'⬛',toast:'🍞',lightspeed:'⚡',manual:'✏️'};
-      const posLabel = posSystem ? (posIcons[posSystem]||'🔌') + ' ' + posSystem.charAt(0).toUpperCase() + posSystem.slice(1) + ' ✓' : '🔌 Connect POS';
-      const posBg = posSystem ? '#E0F5EC' : 'var(--cream)';
-      const posColor = posSystem ? '#0A6B3A' : 'var(--ink-soft)';
-      actions.appendChild(mkBtn(posLabel, posColor, posBg, posSystem?'#0A6B3A':'var(--border)', () => showPOSConnector(client)));
-      actions.appendChild(mkBtn(status==='active'?'Suspend':'Activate', status==='active'?'#B5860A':'var(--green-dark)', status==='active'?'#FFF8E1':'var(--green-light)', status==='active'?'#F2A623':'var(--green)', () => toggleClientStatus(client.id, client.restaurantName, status)));
-      actions.appendChild(mkBtn(payStatus==='paid'?'Mark unpaid':'Mark paid', payStatus==='paid'?'var(--ink-muted)':'var(--green-dark)', payStatus==='paid'?'var(--cream)':'var(--green-light)', payStatus==='paid'?'var(--border)':'var(--green)', () => togglePaymentStatus(client.id, client.restaurantName, payStatus)));
-      actions.appendChild(mkBtn('✏️ Edit name', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => editClientName(client)));
-      actions.appendChild(mkBtn('Receipt', '#5B3DB5', '#F3EEFF', '#5B3DB5', () => showReceiptModal(client)));
-      actions.appendChild(mkBtn('Reset password', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => resetClientPassword(client.email, client.restaurantName)));
-      actions.appendChild(mkBtn('Delete', '#A32D2D', '#FCEBEB', '#F09595', () => deleteClient(client.id, client.restaurantName)));
+      if (client.phone) {
+        const callBtn = document.createElement('a');
+        callBtn.href = 'tel:'+client.phone;
+        callBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+        callBtn.title = 'Call'; callBtn.textContent = '📞';
+        actions.appendChild(callBtn);
+      }
+
+      const emailBtn = document.createElement('a');
+      emailBtn.href = 'mailto:'+(client.email||'')+'?subject=Chef Nek Pro — '+(client.restaurantName||'');
+      emailBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+      emailBtn.title = 'Email'; emailBtn.textContent = '📧';
+      actions.appendChild(emailBtn);
+
+      if (!isPaid && !isFounder) {
+        const paidBtn = document.createElement('button');
+        paidBtn.style.cssText = 'height:36px;padding:0 12px;border-radius:9px;border:none;background:#FFF8ED;color:#C17F3A;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+        paidBtn.textContent = '💳 Mark Paid';
+        paidBtn.onclick = () => clientMarkPaid(client.id, listEl);
+        actions.appendChild(paidBtn);
+      }
+
+      const suspendBtn = document.createElement('button');
+      suspendBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-size:0.85rem;cursor:pointer;';
+      suspendBtn.title = client.status==='suspended'?'Reactivate':'Suspend';
+      suspendBtn.textContent = client.status==='suspended'?'✅':'⏸️';
+      suspendBtn.onclick = () => clientSuspend(client.id, client.status, listEl);
+      actions.appendChild(suspendBtn);
 
       card.appendChild(actions);
       listEl.appendChild(card);
     });
-  } catch(e) {
-    console.error(e);
-    listEl.innerHTML = '<div class="card"><p style="color:var(--ink-muted);">Error loading clients.</p></div>';
+  } catch(err) {
+    listEl.innerHTML = '<div style="padding:20px;color:var(--red);">Error: '+err.message+'</div>';
+    console.error(err);
   }
 }
 
+window.clientMarkPaid = async function(uid, listEl) {
+  try {
+    await setDoc(doc(db,'users',uid),{plan:'pro',paidAt:new Date().toISOString()},{merge:true});
+    showToast('✅ Marked as paid — $49/mo');
+    loadClients();
+  } catch(e){ showToast('Error: '+e.message,'error'); }
+}
+
+window.clientSuspend = async function(uid, currentStatus, listEl) {
+  const newStatus = currentStatus==='suspended' ? 'active' : 'suspended';
+  if (!confirm(newStatus==='suspended'?'Suspend this restaurant?':'Reactivate this restaurant?')) return;
+  try {
+    await setDoc(doc(db,'users',uid),{status:newStatus},{merge:true});
+    showToast(newStatus==='suspended'?'Restaurant suspended':'Restaurant reactivated');
+    loadClients();
+  } catch(e){ showToast('Error: '+e.message,'error'); }
+}
 window.toggleClientStatus = async function(uid, name, currentStatus) {
   const newStatus = currentStatus==='active' ? 'suspended' : 'active';
   if (!confirm((newStatus==='suspended'?'Suspend ':'Activate ') + (name||'client') + '?')) return;
