@@ -11875,6 +11875,22 @@ async function tcShowEmpHistoryRefresh(empName, rid, histContent) {
 
 function tcManualEntryModal(existingEntry, empName, rid, onSave) {
   const isEdit = !!existingEntry;
+
+  // Convert stored "9:00 AM" → "09:00" for <input type="time">
+  const to24h = t => {
+    if (!t) return '';
+    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return t; // already 24h or unknown
+    let h = parseInt(m[1]);
+    const min = m[2];
+    const ap = m[3].toUpperCase();
+    if (ap === 'AM' && h === 12) h = 0;
+    if (ap === 'PM' && h !== 12) h += 12;
+    return h.toString().padStart(2,'0') + ':' + min;
+  };
+
+  const initClockIn  = to24h(existingEntry?.clockIn  || '');
+  const initClockOut = to24h(existingEntry?.clockOut || '');
   const overlay2 = document.createElement('div');
   overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
   const box2 = document.createElement('div');
@@ -11892,11 +11908,11 @@ function tcManualEntryModal(existingEntry, empName, rid, onSave) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div>
         <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>
-        <input type="time" id="tc-manual-in" value="${existingEntry?.clockIn||''}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--green);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;">
+        <input type="time" id="tc-manual-in" value="${initClockIn}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--green);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;">
       </div>
       <div>
         <label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>
-        <input type="time" id="tc-manual-out" value="${existingEntry?.clockOut||''}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #FFCDD2;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;">
+        <input type="time" id="tc-manual-out" value="${initClockOut}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #FFCDD2;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;">
       </div>
     </div>
 
