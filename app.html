@@ -955,6 +955,10 @@ function renderApp(userData) {
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5"/><path d="M13 7v6M16 10h-6" stroke-width="1.5"/></svg>
       Manage clients
     </button>
+    <button class="nav-item ${currentPage==='hiretrain'?'active':''}" onclick="navigate('hiretrain')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2a3 3 0 100 6 3 3 0 000-6z"/><path d="M2 14s1-4 6-4 6 4 6 4"/><path d="M12 6l2 2 3-3"/></svg>
+      👨‍🍳 Hire & Train
+    </button>
   ` : '';
 
   document.getElementById('root').innerHTML = `
@@ -1207,6 +1211,7 @@ function renderPage(userData) {
     case 'foodcost':    renderFoodCost(main, userData); break;
     case 'templog':     renderTempLog(main, userData); break;
     case 'clients':   renderClients(main, userData); break;
+    case 'hiretrain': renderHireTrain(main, userData); break;
     case 'billing':     renderBilling(main, userData); break;
     case 'teamhub':     renderTeamHub(main, userData); break;
     case 'staff':       renderStaff(main, userData); break;
@@ -4889,6 +4894,405 @@ async function loadClients() {
     listEl.innerHTML = '<div style="padding:20px;color:var(--red);">Error: '+err.message+'</div>';
     console.error(err);
   }
+}
+
+// ============================================
+// HIRE & TRAIN — Admin Only
+// Chef Nek's private hiring pipeline
+// ============================================
+async function renderHireTrain(main, userData) {
+  main.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">👨‍🍳 Hire & Train</h1>
+        <p class="page-sub">Your private kitchen worker pipeline</p>
+      </div>
+      <button onclick="htShowApplicantModal()" style="height:42px;padding:0 20px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,0.3);">+ Add Applicant</button>
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Tabs
+  window._htTab = window._htTab || 'pipeline';
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;';
+  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'}].forEach(t=>{
+    const btn = document.createElement('button');
+    btn.id = 'ht-tab-'+t.id;
+    btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;'
+      +(window._htTab===t.id?'background:var(--ink);color:#fff;border-color:var(--ink);':'background:transparent;color:var(--ink-muted);');
+    btn.textContent = t.label;
+    btn.onclick = () => { window._htTab=t.id; htRenderTab(body); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+
+  const content = document.createElement('div');
+  content.id = 'ht-content';
+  body.appendChild(content);
+  main.appendChild(body);
+  await htRenderTab(body);
+}
+
+async function htRenderTab(body) {
+  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'}].forEach(t=>{
+    const btn = document.getElementById('ht-tab-'+t.id);
+    if (!btn) return;
+    btn.style.background  = window._htTab===t.id?'var(--ink)':'transparent';
+    btn.style.color       = window._htTab===t.id?'#fff':'var(--ink-muted)';
+    btn.style.borderColor = window._htTab===t.id?'var(--ink)':'var(--border)';
+  });
+  const el = document.getElementById('ht-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  const snap = await getDocs(collection(db,'htApplicants'));
+  const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  if (window._htTab==='pipeline')  htRenderPipeline(el, all);
+  else if (window._htTab==='certified') htRenderCertified(el, all);
+  else if (window._htTab==='placed') htRenderPlaced(el, all);
+  else htRenderTrainingSchedule(el, all);
+}
+
+// Pipeline stages
+const HT_STAGES = [
+  {id:'applied',   label:'📥 Applied',        color:'#6B7280', bg:'#F3F4F6'},
+  {id:'screening', label:'📞 Screening',       color:'#2563EB', bg:'#EEF4FF'},
+  {id:'training',  label:'🎓 In Training',     color:'#F2A623', bg:'#FFF8ED'},
+  {id:'ready',     label:'✅ Job Ready',        color:'#1D9E75', bg:'#EDFAF4'},
+  {id:'placed',    label:'🍳 Placed',           color:'#7C3AED', bg:'#F5F0FF'},
+  {id:'rejected',  label:'❌ Not a Fit',        color:'#E53935', bg:'#FFF0F0'},
+];
+
+function htRenderPipeline(el, all) {
+  el.innerHTML = '';
+  const active = all.filter(a=>!['placed','rejected'].includes(a.stage||'applied'));
+  if (!active.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">📥</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No applicants yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Click + Add Applicant when someone reaches out about training.</div></div>';
+    return;
+  }
+  // Stats
+  const statsRow = document.createElement('div');
+  statsRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;';
+  HT_STAGES.slice(0,4).forEach(s=>{
+    const count = all.filter(a=>a.stage===s.id).length;
+    const c = document.createElement('div');
+    c.style.cssText = 'background:'+s.bg+';border-radius:12px;padding:12px;text-align:center;border:1px solid '+s.color+'30;';
+    c.innerHTML = '<div style="font-size:1.4rem;font-weight:800;color:'+s.color+';">'+count+'</div>'
+      +'<div style="font-size:0.65rem;color:'+s.color+';font-weight:600;">'+s.label+'</div>';
+    statsRow.appendChild(c);
+  });
+  el.appendChild(statsRow);
+
+  active.forEach(a => el.appendChild(htApplicantCard(a, true)));
+}
+
+function htRenderCertified(el, all) {
+  el.innerHTML = '';
+  const certs = all.filter(a=>a.stage==='ready'||a.certified);
+  if (!certs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">✅</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No certified workers yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Workers who complete training appear here. Restaurants can browse these profiles.</div></div>';
+    return;
+  }
+  const intro = document.createElement('div');
+  intro.style.cssText = 'background:linear-gradient(135deg,#EDFAF4,#D4F5E8);border:1.5px solid var(--green);border-radius:14px;padding:16px 18px;margin-bottom:16px;';
+  intro.innerHTML = '<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:4px;">✅ '+certs.length+' Chef Nek Certified Worker'+(certs.length>1?'s':'')+'</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);">These workers completed Chef Nek training and know the platform. Ready to be placed with client restaurants.</div>';
+  el.appendChild(intro);
+  certs.forEach(a => el.appendChild(htApplicantCard(a, true)));
+}
+
+function htRenderPlaced(el, all) {
+  el.innerHTML = '';
+  const placed = all.filter(a=>a.stage==='placed');
+  if (!placed.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🍳</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No placements yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">When you place a certified worker at a restaurant it shows here.</div></div>';
+    return;
+  }
+
+  const totalFees = placed.reduce((s,a)=>s+(a.placementFee||0),0);
+  const totalTraining = placed.reduce((s,a)=>s+(a.trainingFee||0),0);
+
+  const revenueCard = document.createElement('div');
+  revenueCard.style.cssText = 'background:linear-gradient(135deg,#0B2818,#0A0A14);border-radius:16px;padding:20px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;';
+  [{label:'Workers Placed',val:placed.length,icon:'🍳'},{label:'Training Revenue',val:'$'+totalTraining,icon:'🎓'},{label:'Placement Fees',val:'$'+totalFees,icon:'💰'}].forEach(s=>{
+    revenueCard.innerHTML += '<div style="text-align:center;"><div style="font-size:1.3rem;">'+s.icon+'</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#fff;">'+s.val+'</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">'+s.label+'</div></div>';
+  });
+  el.appendChild(revenueCard);
+  placed.forEach(a => el.appendChild(htApplicantCard(a, false)));
+}
+
+function htRenderTrainingSchedule(el, all) {
+  el.innerHTML = '';
+  const inTraining = all.filter(a=>a.stage==='training'||a.trainingDate);
+
+  const schedCard = document.createElement('div');
+  schedCard.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;';
+  schedCard.innerHTML = '<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:16px;">📅 Upcoming Training Sessions</div>';
+
+  if (!inTraining.length) {
+    schedCard.innerHTML += '<div style="text-align:center;padding:20px;color:var(--ink-muted);font-size:0.82rem;">No training sessions scheduled yet</div>';
+  } else {
+    inTraining.sort((a,b)=>(a.trainingDate||'').localeCompare(b.trainingDate||'')).forEach(a=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);';
+      const ini = (a.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue = [...(a.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+      row.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:hsl('+hue+',50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;color:hsl('+hue+',50%,35%);flex-shrink:0;">'+ini+'</div>'
+        +'<div style="flex:1;"><div style="font-size:0.875rem;font-weight:600;color:var(--ink);">'+a.name+'</div>'
+        +'<div style="font-size:0.72rem;color:var(--ink-muted);">'+(a.position||'Kitchen')+' · '+(a.trainingType==='inperson'?'🍳 In-Person at Black Lion':'💻 Zoom Online')+'</div></div>'
+        +'<div style="text-align:right;"><div style="font-size:0.78rem;font-weight:700;color:var(--ink);">'+(a.trainingDate||'TBD')+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+(a.trainingTime||'')+'</div></div>'
+        +'<button onclick="htMarkTrained(\''+a.id+'\')" style="height:30px;padding:0 10px;border-radius:8px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.68rem;font-weight:700;cursor:pointer;white-space:nowrap;">✅ Complete</button>';
+      schedCard.appendChild(row);
+    });
+  }
+  el.appendChild(schedCard);
+
+  // Add session button
+  const addBtn = document.createElement('button');
+  addBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;';
+  addBtn.textContent = '+ Schedule New Training Session';
+  addBtn.onclick = () => htShowApplicantModal();
+  el.appendChild(addBtn);
+}
+
+function htApplicantCard(a, showActions) {
+  const stage  = HT_STAGES.find(s=>s.id===(a.stage||'applied')) || HT_STAGES[0];
+  const ini    = (a.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const hue    = [...(a.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:10px;';
+
+  // Header
+  const top = document.createElement('div');
+  top.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;';
+  top.innerHTML = '<div style="width:42px;height:42px;border-radius:50%;background:hsl('+hue+',50%,85%);border:2px solid hsl('+hue+',50%,65%);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;color:hsl('+hue+',50%,30%);flex-shrink:0;">'+ini+'</div>'
+    +'<div style="flex:1;min-width:0;">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+    +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+(a.name||'Unnamed')+'</div>'
+    +'<div style="font-size:0.65rem;font-weight:800;background:'+stage.bg+';color:'+stage.color+';border:1px solid '+stage.color+'40;padding:2px 8px;border-radius:100px;">'+stage.label+'</div>'
+    +(a.certified?'<div style="font-size:0.65rem;font-weight:800;background:#EDFAF4;color:#0A5C3F;border:1px solid #1D9E75;padding:2px 8px;border-radius:100px;">✅ Certified</div>':'')
+    +'</div>'
+    +'<div style="font-size:0.75rem;color:var(--ink-muted);">'+(a.phone||'')+(a.email?' · '+a.email:'')+'</div>'
+    +'</div>';
+  card.appendChild(top);
+
+  // Info grid
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
+  [{label:'Position',val:a.position||'—'},{label:'Experience',val:a.experience||'—'},{label:'Training',val:a.trainingType==='inperson'?'In-Person':'Zoom Online'}].forEach(m=>{
+    grid.innerHTML += '<div style="background:var(--cream);border-radius:9px;padding:9px 11px;"><div style="font-size:0.62rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+m.val+'</div></div>';
+  });
+  card.appendChild(grid);
+
+  // Training notes
+  if (a.notes) {
+    const notesEl = document.createElement('div');
+    notesEl.style.cssText = 'background:#FAFAF8;border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:0.78rem;color:var(--ink-muted);line-height:1.5;';
+    notesEl.textContent = '📝 ' + a.notes;
+    card.appendChild(notesEl);
+  }
+
+  // Fees row
+  if (a.trainingFee || a.placementFee) {
+    const feesRow = document.createElement('div');
+    feesRow.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
+    if (a.trainingFee) feesRow.innerHTML += '<div style="font-size:0.75rem;color:var(--ink-muted);">🎓 Training fee: <strong style="color:var(--green);">$'+a.trainingFee+'</strong></div>';
+    if (a.placementFee) feesRow.innerHTML += '<div style="font-size:0.75rem;color:var(--ink-muted);">💰 Placement fee: <strong style="color:var(--green);">$'+a.placementFee+'</strong></div>';
+    card.appendChild(feesRow);
+  }
+
+  if (!showActions) return card;
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+  // Stage selector
+  const stageSel = document.createElement('select');
+  stageSel.style.cssText = 'height:34px;border-radius:9px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.75rem;outline:none;background:#fff;color:var(--ink);flex:1;';
+  HT_STAGES.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value=s.id; opt.textContent=s.label;
+    if (s.id===(a.stage||'applied')) opt.selected=true;
+    stageSel.appendChild(opt);
+  });
+  stageSel.onchange = () => htUpdateStage(a.id, stageSel.value);
+  actions.appendChild(stageSel);
+
+  if (a.phone) {
+    const callBtn = document.createElement('a');
+    callBtn.href='tel:'+a.phone;
+    callBtn.style.cssText='height:34px;width:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+    callBtn.textContent='📞';
+    actions.appendChild(callBtn);
+  }
+
+  const editBtn = document.createElement('button');
+  editBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--ink-muted);';
+  editBtn.textContent='Edit';
+  editBtn.onclick=()=>htShowApplicantModal(a);
+  actions.appendChild(editBtn);
+
+  if (a.stage==='ready' && !a.certified) {
+    const certBtn = document.createElement('button');
+    certBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+    certBtn.textContent='🏆 Certify';
+    certBtn.onclick=()=>htCertify(a.id);
+    actions.appendChild(certBtn);
+  }
+
+  const delBtn = document.createElement('button');
+  delBtn.style.cssText='height:34px;width:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;';
+  delBtn.textContent='🗑️';
+  delBtn.onclick=async()=>{ if(!confirm('Delete this applicant?'))return; await deleteDoc(doc(db,'htApplicants',a.id)); showToast('Deleted'); htRenderTab(document.querySelector('.page-body')); };
+  actions.appendChild(delBtn);
+
+  card.appendChild(actions);
+  return card;
+}
+
+window.htShowApplicantModal = function(existing) {
+  const isEdit = !!existing;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  const fields = [
+    ['text','ht-name','Full Name *','e.g. Marcus Johnson'],
+    ['tel','ht-phone','Phone Number','e.g. +1 (202) 555-0100'],
+    ['email','ht-email','Email Address','e.g. marcus@email.com'],
+  ];
+
+  box.innerHTML = '<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>'
+    +'<div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">'+(isEdit?'✏️ Edit Applicant':'➕ Add Applicant')+'</div>';
+
+  fields.forEach(([type,id,label,ph])=>{
+    box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">'+label+'</label>'
+      +'<input type="'+type+'" id="'+id+'" placeholder="'+ph+'" value="'+(existing?.[id.replace('ht-','')]||'').replace(/"/g,'&quot;')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);"></div>';
+  });
+
+  // Position + Experience
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Position *</label>'
+    +'<select id="ht-position" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +['Line Cook','Prep Cook','Sous Chef','Pastry Cook','Dishwasher','Kitchen Manager','FOH Staff','Other'].map(p=>`<option value="${p}"${existing?.position===p?' selected':''}>${p}</option>`).join('')
+    +'</select></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Experience</label>'
+    +'<select id="ht-experience" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +['No experience','0-1 year','1-2 years','2-5 years','5+ years'].map(e=>`<option value="${e}"${existing?.experience===e?' selected':''}>${e}</option>`).join('')
+    +'</select></div></div>';
+
+  // Training type + Date + Time
+  box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Type</label>'
+    +'<select id="ht-trainingtype" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +'<option value="zoom"'+(existing?.trainingType==='zoom'?' selected':'')+'>💻 Zoom Online</option>'
+    +'<option value="inperson"'+(existing?.trainingType==='inperson'?' selected':'')+'>🍳 In-Person at Black Lion Kitchen</option>'
+    +'</select></div>';
+
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Date</label>'
+    +'<input type="date" id="ht-trainingdate" value="'+(existing?.trainingDate||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Time</label>'
+    +'<input type="time" id="ht-trainingtime" value="'+(existing?.trainingTime||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div></div>';
+
+  // Fees
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Fee $</label>'
+    +'<input type="number" id="ht-trainingfee" placeholder="e.g. 150" value="'+(existing?.trainingFee||'')+'" min="0" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #C8EEE0;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#F2A623;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Placement Fee $</label>'
+    +'<input type="number" id="ht-placementfee" placeholder="e.g. 299" value="'+(existing?.placementFee||'')+'" min="0" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #FFD5A8;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF8ED;"></div></div>';
+
+  // Placed at restaurant
+  box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Placed At Restaurant</label>'
+    +'<input type="text" id="ht-placedat" placeholder="e.g. Island Grill DC" value="'+(existing?.placedAt||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);"></div>';
+
+  // Notes
+  box.innerHTML += '<div style="margin-bottom:20px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Notes</label>'
+    +'<textarea id="ht-notes" placeholder="Skills, attitude, anything to remember..." style="width:100%;height:70px;border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;resize:none;">'+(existing?.notes||'')+'</textarea></div>';
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+  const saveBtn = document.createElement('button');
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  saveBtn.textContent = isEdit ? '💾 Save Changes' : '✅ Add Applicant';
+  saveBtn.onclick = async () => {
+    const name = document.getElementById('ht-name')?.value.trim();
+    if (!name) { showToast('Name is required','error'); return; }
+    saveBtn.disabled=true; saveBtn.textContent='Saving...';
+    const data = {
+      name,
+      phone: document.getElementById('ht-phone')?.value.trim()||'',
+      email: document.getElementById('ht-email')?.value.trim()||'',
+      position: document.getElementById('ht-position')?.value||'Line Cook',
+      experience: document.getElementById('ht-experience')?.value||'',
+      trainingType: document.getElementById('ht-trainingtype')?.value||'zoom',
+      trainingDate: document.getElementById('ht-trainingdate')?.value||'',
+      trainingTime: document.getElementById('ht-trainingtime')?.value||'',
+      trainingFee: parseFloat(document.getElementById('ht-trainingfee')?.value||0)||0,
+      placementFee: parseFloat(document.getElementById('ht-placementfee')?.value||0)||0,
+      placedAt: document.getElementById('ht-placedat')?.value.trim()||'',
+      notes: document.getElementById('ht-notes')?.value.trim()||'',
+      stage: existing?.stage||'applied',
+      certified: existing?.certified||false,
+      updatedAt: serverTimestamp(),
+    };
+    try {
+      if (isEdit) {
+        await setDoc(doc(db,'htApplicants',existing.id), data, {merge:true});
+      } else {
+        data.createdAt = serverTimestamp();
+        await addDoc(collection(db,'htApplicants'), data);
+      }
+      overlay.remove();
+      showToast(isEdit?'✅ Saved!':'✅ Applicant added!');
+      htRenderTab(document.querySelector('.page-body'));
+    } catch(err){ showToast('Error: '+err.message,'error'); saveBtn.disabled=false; saveBtn.textContent=isEdit?'💾 Save Changes':'✅ Add Applicant'; }
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.style.cssText = 'height:50px;padding:0 20px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = () => overlay.remove();
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>document.getElementById('ht-name')?.focus(),100);
+}
+
+window.htUpdateStage = async function(id, stage) {
+  try {
+    await setDoc(doc(db,'htApplicants',id),{stage,updatedAt:serverTimestamp()},{merge:true});
+    showToast('Stage updated');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
+}
+
+window.htCertify = async function(id) {
+  if (!confirm('Mark this worker as Chef Nek Certified?')) return;
+  try {
+    const certDate = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    await setDoc(doc(db,'htApplicants',id),{certified:true,certifiedDate:certDate,stage:'ready',updatedAt:serverTimestamp()},{merge:true});
+    showToast('🏆 Worker certified!');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
+}
+
+window.htMarkTrained = async function(id) {
+  try {
+    await setDoc(doc(db,'htApplicants',id),{stage:'ready',trainingCompleted:true,updatedAt:serverTimestamp()},{merge:true});
+    showToast('✅ Training marked complete!');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
 }
 
 window.viewClientDashboard = function(client) {
