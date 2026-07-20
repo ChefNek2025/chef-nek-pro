@@ -556,6 +556,145 @@ function currentRestaurantId() {
 // ============================================
 // TOAST NOTIFICATIONS
 // ============================================
+// ============================================
+// THEME / COLOR SYSTEM
+// ============================================
+const THEMES = [
+  {id:'green',   name:'Chef Green',   primary:'#1D9E75', dark:'#16856A', light:'#EDFAF4', sidebar:'#0B2818'},
+  {id:'blue',    name:'Ocean Blue',   primary:'#2563EB', dark:'#1D4ED8', light:'#EEF4FF', sidebar:'#0F1E3A'},
+  {id:'orange',  name:'Flame Orange', primary:'#E85D26', dark:'#C44B1E', light:'#FFF0EB', sidebar:'#2A1208'},
+  {id:'purple',  name:'Royal Purple', primary:'#7C3AED', dark:'#6D28D9', light:'#F5F0FF', sidebar:'#1A0F2E'},
+  {id:'red',     name:'Bold Red',     primary:'#E53935', dark:'#C62828', light:'#FFF0F0', sidebar:'#2A0A0A'},
+  {id:'amber',   name:'Golden Amber', primary:'#F2A623', dark:'#C17F3A', light:'#FFF8ED', sidebar:'#2A1A00'},
+  {id:'teal',    name:'Deep Teal',    primary:'#0891B2', dark:'#0E7490', light:'#ECFEFF', sidebar:'#062030'},
+  {id:'rose',    name:'Rose Pink',    primary:'#E11D48', dark:'#BE123C', light:'#FFF1F2', sidebar:'#2A0A14'},
+];
+
+function applyTheme(themeId, customColor) {
+  let theme = THEMES.find(t=>t.id===themeId) || THEMES[0];
+  const root = document.documentElement;
+
+  if (customColor) {
+    // Build theme from custom hex color
+    const hex = customColor.replace('#','');
+    const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+    const darken = (v,amt) => Math.max(0,Math.min(255,v-amt));
+    const darkHex = '#'+[r,g,b].map(v=>darken(v,20).toString(16).padStart(2,'0')).join('');
+    const lightR=Math.min(255,Math.round(r*0.15+240)), lightG=Math.min(255,Math.round(g*0.15+240)), lightB=Math.min(255,Math.round(b*0.15+240));
+    const lightHex='#'+[lightR,lightG,lightB].map(v=>v.toString(16).padStart(2,'0')).join('');
+    const sideR=Math.round(r*0.15), sideG=Math.round(g*0.15), sideB=Math.round(b*0.15);
+    const sideHex='#'+[sideR,sideG,sideB].map(v=>Math.max(0,v).toString(16).padStart(2,'0')).join('');
+    theme = {primary:customColor, dark:darkHex, light:lightHex, sidebar:sideHex};
+  }
+
+  root.style.setProperty('--green',      theme.primary);
+  root.style.setProperty('--green-dark', theme.dark);
+  root.style.setProperty('--green-light',theme.light);
+
+  // Update sidebar background
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.style.background = theme.sidebar || '#0B2818';
+
+  // Update mobile top bar accent
+  const mobileBar = document.getElementById('mobile-top-bar');
+  // Update any gradient buttons already rendered
+  document.querySelectorAll('[style*="linear-gradient(135deg,#1D9E75"]').forEach(el=>{
+    el.style.background = 'linear-gradient(135deg,'+theme.primary+','+theme.dark+')';
+  });
+}
+
+function loadSavedTheme() {
+  const saved = localStorage.getItem('cnp-theme');
+  const custom = localStorage.getItem('cnp-theme-custom');
+  if (saved || custom) applyTheme(saved, custom);
+}
+
+window.showThemePicker = function() {
+  const saved = localStorage.getItem('cnp-theme') || 'green';
+  const savedCustom = localStorage.getItem('cnp-theme-custom') || '';
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:28px 24px 40px;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  box.innerHTML = '<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>'
+    +'<div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">🎨 Choose Your Color</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Personalizes your platform. Only you see this change.</div>';
+
+  // Preset grid
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;';
+  THEMES.forEach(t=>{
+    const btn = document.createElement('button');
+    const isActive = saved===t.id && !savedCustom;
+    btn.style.cssText = 'height:64px;border-radius:14px;border:3px solid '+(isActive?t.primary:'transparent')+';cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:#fff;transition:all 0.15s;padding:8px;';
+    btn.innerHTML = '<div style="width:28px;height:28px;border-radius:50%;background:'+t.primary+';box-shadow:0 3px 10px '+t.primary+'50;"></div>'
+      +'<div style="font-size:0.62rem;font-weight:600;color:var(--ink);text-align:center;">'+t.name+'</div>';
+    btn.onmouseenter = () => btn.style.transform='scale(1.05)';
+    btn.onmouseleave = () => btn.style.transform='';
+    btn.onclick = () => {
+      localStorage.setItem('cnp-theme', t.id);
+      localStorage.removeItem('cnp-theme-custom');
+      applyTheme(t.id, null);
+      // Update active state
+      grid.querySelectorAll('button').forEach(b=>b.style.borderColor='transparent');
+      btn.style.borderColor = t.primary;
+      customInput.value = '';
+      showToast('🎨 Theme changed to '+t.name+'!');
+    };
+    grid.appendChild(btn);
+  });
+  box.appendChild(grid);
+
+  // Custom color
+  const customRow = document.createElement('div');
+  customRow.style.cssText = 'margin-bottom:20px;';
+  customRow.innerHTML = '<label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Or pick a custom color</label>';
+  const customWrap = document.createElement('div');
+  customWrap.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  const customInput = document.createElement('input');
+  customInput.type = 'color';
+  customInput.value = savedCustom || '#1D9E75';
+  customInput.style.cssText = 'width:48px;height:48px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;padding:2px;background:#fff;';
+  const customLabel = document.createElement('div');
+  customLabel.style.cssText = 'flex:1;font-size:0.82rem;color:var(--ink-muted);';
+  customLabel.textContent = 'Pick any color that matches your restaurant brand';
+  const applyCustomBtn = document.createElement('button');
+  applyCustomBtn.style.cssText = 'height:44px;padding:0 16px;border-radius:10px;border:none;background:var(--ink);color:#fff;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;';
+  applyCustomBtn.textContent = 'Apply';
+  applyCustomBtn.onclick = () => {
+    const color = customInput.value;
+    localStorage.setItem('cnp-theme-custom', color);
+    localStorage.removeItem('cnp-theme');
+    applyTheme(null, color);
+    grid.querySelectorAll('button').forEach(b=>b.style.borderColor='transparent');
+    showToast('🎨 Custom color applied!');
+  };
+  customWrap.appendChild(customInput);
+  customWrap.appendChild(customLabel);
+  customWrap.appendChild(applyCustomBtn);
+  customRow.appendChild(customWrap);
+  box.appendChild(customRow);
+
+  // Reset button
+  const resetBtn = document.createElement('button');
+  resetBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;';
+  resetBtn.textContent = '↺ Reset to Chef Green (default)';
+  resetBtn.onclick = () => {
+    localStorage.removeItem('cnp-theme');
+    localStorage.removeItem('cnp-theme-custom');
+    applyTheme('green', null);
+    overlay.remove();
+    showToast('🌿 Reset to Chef Green!');
+  };
+  box.appendChild(resetBtn);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
 function showToast(message, type = 'success') {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -1073,6 +1212,10 @@ function renderApp(userData) {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="4" width="14" height="10" rx="2"/><path d="M1 8h14"/><path d="M4 12h2"/><path d="M9 12h3"/></svg>
             Billing & Plan
           </button>` : ''}
+          <button onclick="showThemePicker()" style="width:100%;height:44px;border-radius:10px;border:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;padding:0 14px;margin-bottom:8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></svg>
+            🎨 Change Color
+          </button>
           <button class="signout-btn" onclick="handleSignOut()">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><polyline points="10,5 13,8 10,11"/><line x1="13" y1="8" x2="5" y2="8"/></svg>
             Sign out
@@ -1086,6 +1229,8 @@ function renderApp(userData) {
     </div>
   `;
   renderPage(userData);
+  // Load saved theme
+  loadSavedTheme();
   // Start notification listener for admin
   if (isAdmin) {
     const rid = currentRestaurantId() || userData.uid;
