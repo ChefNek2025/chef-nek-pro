@@ -572,35 +572,48 @@ const THEMES = [
 
 function applyTheme(themeId, customColor) {
   let theme = THEMES.find(t=>t.id===themeId) || THEMES[0];
-  const root = document.documentElement;
 
   if (customColor) {
-    // Build theme from custom hex color
     const hex = customColor.replace('#','');
     const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
     const darken = (v,amt) => Math.max(0,Math.min(255,v-amt));
-    const darkHex = '#'+[r,g,b].map(v=>darken(v,20).toString(16).padStart(2,'0')).join('');
-    const lightR=Math.min(255,Math.round(r*0.15+240)), lightG=Math.min(255,Math.round(g*0.15+240)), lightB=Math.min(255,Math.round(b*0.15+240));
+    const darkHex='#'+[r,g,b].map(v=>darken(v,20).toString(16).padStart(2,'0')).join('');
+    const lightR=Math.min(255,Math.round(r*0.12+230)), lightG=Math.min(255,Math.round(g*0.12+230)), lightB=Math.min(255,Math.round(b*0.12+230));
     const lightHex='#'+[lightR,lightG,lightB].map(v=>v.toString(16).padStart(2,'0')).join('');
-    const sideR=Math.round(r*0.15), sideG=Math.round(g*0.15), sideB=Math.round(b*0.15);
-    const sideHex='#'+[sideR,sideG,sideB].map(v=>Math.max(0,v).toString(16).padStart(2,'0')).join('');
-    theme = {primary:customColor, dark:darkHex, light:lightHex, sidebar:sideHex};
+    const sideR=Math.round(r*0.12), sideG=Math.round(g*0.12), sideB=Math.round(b*0.12);
+    const sideHex='#'+[Math.max(5,sideR),Math.max(5,sideG),Math.max(5,sideB)].map(v=>v.toString(16).padStart(2,'0')).join('');
+    theme = {id:'custom', name:'Custom', primary:customColor, dark:darkHex, light:lightHex, sidebar:sideHex};
   }
 
-  root.style.setProperty('--green',      theme.primary);
-  root.style.setProperty('--green-dark', theme.dark);
-  root.style.setProperty('--green-light',theme.light);
+  const p=theme.primary, d=theme.dark, l=theme.light, s=theme.sidebar||'#0B2818';
 
-  // Update sidebar background
+  // 1. CSS variables
+  const root = document.documentElement;
+  root.style.setProperty('--green', p);
+  root.style.setProperty('--green-dark', d);
+  root.style.setProperty('--green-light', l);
+
+  // 2. Inject override style — affects ALL pages including prep list, inventory, etc.
+  let styleEl = document.getElementById('cnp-theme-override');
+  if (!styleEl) { styleEl=document.createElement('style'); styleEl.id='cnp-theme-override'; document.head.appendChild(styleEl); }
+
+  styleEl.textContent = `
+    .sidebar { background: ${s} !important; }
+    .sidebar-logo-text span { color: ${p} !important; }
+    .nav-item.active { background: ${p}20 !important; color: ${p} !important; }
+    .nav-item.active svg { stroke: ${p} !important; }
+    .nav-item:hover { background: ${p}15 !important; color: ${p} !important; }
+    .form-btn, .form-btn-small { background: linear-gradient(135deg,${p},${d}) !important; }
+    .loading-spinner { border-top-color: ${p} !important; }
+    .stat-card-value.green { color: ${p} !important; }
+    ::-webkit-scrollbar-thumb { background: ${p}40 !important; }
+  `;
+
+  // 3. Sidebar direct
   const sidebar = document.querySelector('.sidebar');
-  if (sidebar) sidebar.style.background = theme.sidebar || '#0B2818';
+  if (sidebar) sidebar.style.background = s;
 
-  // Update mobile top bar accent
-  const mobileBar = document.getElementById('mobile-top-bar');
-  // Update any gradient buttons already rendered
-  document.querySelectorAll('[style*="linear-gradient(135deg,#1D9E75"]').forEach(el=>{
-    el.style.background = 'linear-gradient(135deg,'+theme.primary+','+theme.dark+')';
-  });
+  window._currentTheme = theme;
 }
 
 function loadSavedTheme() {
