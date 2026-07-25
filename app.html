@@ -503,7 +503,24 @@
 <body>
 <div id="root">
   <div class="loading-screen">
-    <div class="loading-logo">Chef Nek <span>Pro</span></div>
+    <div class="loading-logo">
+      <svg width="140" height="60" viewBox="0 0 140 60" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="load-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#34D4A0"/>
+            <stop offset="50%" stop-color="#1D9E75"/>
+            <stop offset="100%" stop-color="#0A5C3F"/>
+          </linearGradient>
+        </defs>
+        <text x="4" y="52" font-family="'DM Sans','Arial Black',sans-serif" font-size="54" font-weight="900" fill="#1A1A14">K</text>
+        <circle cx="102" cy="30" r="26" fill="url(#load-g)"/>
+        <circle cx="102" cy="30" r="17" fill="#F8F5F0"/>
+        <path d="M89 35 A13 12 0 0 1 115 35 Z" fill="#1A1A14"/>
+        <circle cx="102" cy="22" r="3" fill="#1A1A14"/>
+        <rect x="87" y="35" width="30" height="3.5" rx="1.5" fill="#1A1A14"/>
+        <rect x="84" y="37.5" width="36" height="2.5" rx="1" fill="#1A1A14"/>
+      </svg>
+    </div>
     <div style="font-size:0.8rem;font-style:italic;color:#F2A623;font-weight:500;">From Struggling to Thriving</div>
     <div class="loading-spinner"></div>
   </div>
@@ -725,8 +742,25 @@ window.renderLogin = function() {
   document.getElementById('root').innerHTML = `
     <div class="login-page">
       <div class="login-left">
-        <div class="login-brand">Chef Nek <span>Pro</span></div>
-        <div style="font-size:0.875rem;font-style:italic;color:#F2A623;font-weight:500;margin-top:4px;">From Struggling to Thriving</div>
+        <div class="login-brand">
+          <svg width="160" height="68" viewBox="0 0 160 68" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="ll-g" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34D4A0"/>
+                <stop offset="50%" stop-color="#1D9E75"/>
+                <stop offset="100%" stop-color="#0A5C3F"/>
+              </linearGradient>
+            </defs>
+            <text x="4" y="58" font-family="'DM Sans','Arial Black',sans-serif" font-size="62" font-weight="900" fill="white">K</text>
+            <circle cx="115" cy="34" r="29" fill="url(#ll-g)"/>
+            <circle cx="115" cy="34" r="19" fill="rgba(0,0,0,0.55)"/>
+            <path d="M101 39 A14 13 0 0 1 129 39 Z" fill="white" opacity="0.9"/>
+            <circle cx="115" cy="25" r="3.5" fill="white" opacity="0.9"/>
+            <rect x="99" y="39" width="32" height="4" rx="2" fill="white" opacity="0.9"/>
+            <rect x="96" y="42" width="38" height="3" rx="1.5" fill="white" opacity="0.75"/>
+          </svg>
+        </div>
+        <div style="font-size:0.875rem;font-style:italic;color:rgba(255,255,255,0.5);font-weight:500;margin-top:4px;">From Struggling to Thriving</div>
         <p class="login-tagline">The professional platform built for real restaurant owners in the DMV.</p>
         <div class="login-feature"><div class="login-feature-dot"></div><div class="login-feature-text">Custom recipe book with photos</div></div>
         <div class="login-feature"><div class="login-feature-dot"></div><div class="login-feature-text">Daily prep lists — check off tasks</div></div>
@@ -794,7 +828,21 @@ window.renderRegister = function() {
     <div style="min-height:100vh;background:linear-gradient(135deg,#0B2818,#0A0A14);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Inter',sans-serif;">
       <div style="width:100%;max-width:480px;">
         <div style="text-align:center;margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.06em;color:#fff;">Chef Nek <span style="color:#1D9E75;">Pro</span></div>
+          <svg width="120" height="50" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="ob-g" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34D4A0"/>
+                <stop offset="50%" stop-color="#1D9E75"/>
+                <stop offset="100%" stop-color="#0A5C3F"/>
+              </linearGradient>
+            </defs>
+            <text x="4" y="42" font-family="'DM Sans','Arial Black',sans-serif" font-size="44" font-weight="900" fill="white">K</text>
+            <circle cx="87" cy="25" r="21" fill="url(#ob-g)"/>
+            <circle cx="87" cy="25" r="14" fill="rgba(0,0,0,0.5)"/>
+            <path d="M76 29 A11 10 0 0 1 98 29 Z" fill="white" opacity="0.9"/>
+            <circle cx="87" cy="19" r="3" fill="white" opacity="0.9"/>
+            <rect x="75" y="29" width="24" height="3" rx="1.5" fill="white" opacity="0.9"/>
+          </svg>
           <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:4px;font-style:italic;">From Struggling to Thriving</div>
         </div>
         <div style="background:#fff;border-radius:24px;padding:32px 28px;box-shadow:0 40px 80px rgba(0,0,0,0.4);">
@@ -1121,8 +1169,21 @@ function renderApp(userData) {
           <line x1="0" y1="1" x2="18" y2="1"/><line x1="0" y1="7" x2="18" y2="7"/><line x1="0" y1="13" x2="18" y2="13"/>
         </svg>
       </button>
-      <div style="flex:1;text-align:center;">
-        <div style="font-family:var(--font-display);font-size:0.95rem;font-weight:700;color:var(--ink);" id="mobile-page-title">Chef Nek Pro</div>
+      <div style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg width="68" height="28" viewBox="0 0 68 28" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="mob-g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#34D4A0"/>
+              <stop offset="100%" stop-color="#0A5C3F"/>
+            </linearGradient>
+          </defs>
+          <text x="2" y="23" font-family="'DM Sans','Arial Black',sans-serif" font-size="24" font-weight="900" fill="var(--ink)">K</text>
+          <circle cx="50" cy="14" r="12" fill="url(#mob-g)"/>
+          <circle cx="50" cy="14" r="8"  fill="var(--cream)"/>
+          <path d="M44 16 A6 5.5 0 0 1 56 16 Z" fill="var(--ink)"/>
+          <circle cx="50" cy="10" r="1.8" fill="var(--ink)"/>
+          <rect x="43" y="16" width="14" height="2" rx="1" fill="var(--ink)"/>
+        </svg>
         <div id="mobile-client-label" style="font-size:0.65rem;color:var(--green);font-weight:600;display:none;"></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
@@ -1143,8 +1204,26 @@ function renderApp(userData) {
     <div class="app-layout">
       <aside class="sidebar" id="main-sidebar">
         <div class="sidebar-logo">
-          <div class="sidebar-logo-text">Chef Nek <span>Pro</span></div>
-        <div style="font-size:0.7rem;color:#F2A623;font-style:italic;font-weight:500;margin-top:3px;">From Struggling to Thriving</div>
+          <svg width="130" height="54" viewBox="0 0 130 54" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sl-g" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34D4A0"/>
+                <stop offset="50%" stop-color="#1D9E75"/>
+                <stop offset="100%" stop-color="#0A5C3F"/>
+              </linearGradient>
+            </defs>
+            <!-- K -->
+            <text x="4" y="46" font-family="'DM Sans','Arial Black',sans-serif" font-size="48" font-weight="900" fill="white">K</text>
+            <!-- O ring outer -->
+            <circle cx="92" cy="27" r="23" fill="url(#sl-g)"/>
+            <!-- O ring inner -->
+            <circle cx="92" cy="27" r="15" fill="#0B2818"/>
+            <!-- Tiny cloche inside O -->
+            <path d="M81 31 A11 10 0 0 1 103 31 Z" fill="white" opacity="0.85"/>
+            <circle cx="92" cy="20" r="3" fill="white" opacity="0.85"/>
+            <rect x="79" y="31" width="26" height="3" rx="1.5" fill="white" opacity="0.85"/>
+          </svg>
+          <div style="font-size:0.62rem;color:rgba(255,255,255,0.35);font-style:italic;font-weight:500;margin-top:1px;letter-spacing:0.04em;">From Struggling to Thriving</div>
         </div>
         <div class="sidebar-restaurant">
           <div class="sidebar-restaurant-label">${isAdmin ? 'Admin account' : 'Your restaurant'}</div>
@@ -11954,12 +12033,31 @@ function to12hTC(t) {
   return (h%12||12)+':'+(m||0).toString().padStart(2,'0')+' '+ap;
 }
 
-// ── HELPER: calc hours between two "HH:MM" values ─────────
+// ── HELPER: calc hours between two time values (handles both 12h and 24h) ─
 function calcHoursTC(inVal, outVal) {
   if (!inVal || !outVal) return null;
-  const [ih,im]=inVal.split(':').map(Number), [oh,om]=outVal.split(':').map(Number);
-  let mins = (oh*60+om)-(ih*60+im);
-  if (mins < 0) mins += 1440;
+  // Convert to 24h if needed (handles "9:00 AM", "09:00", etc.)
+  const to24 = t => {
+    if (!t) return null;
+    // Already 24h format "HH:MM"
+    if (/^\d{1,2}:\d{2}$/.test(t.trim())) return t.trim();
+    // 12h format "9:00 AM" or "09:00 AM"
+    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return null;
+    let h = parseInt(m[1]); const min = m[2]; const ap = m[3].toUpperCase();
+    if (ap==='AM' && h===12) h=0;
+    if (ap==='PM' && h!==12) h+=12;
+    return h.toString().padStart(2,'0')+':'+min;
+  };
+  const i24 = to24(inVal);
+  const o24 = to24(outVal);
+  if (!i24 || !o24) return null;
+  const [ih,im] = i24.split(':').map(Number);
+  const [oh,om] = o24.split(':').map(Number);
+  if (isNaN(ih)||isNaN(im)||isNaN(oh)||isNaN(om)) return null;
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins < 0) mins += 1440; // overnight shift
+  if (mins === 0) return null;
   return +(mins/60).toFixed(2);
 }
 
@@ -12027,8 +12125,8 @@ async function tcRenderEmployee(rid, today, body, userData) {
         if (openEntry) {
           const hrs = calcHoursTC(to24hTC(openEntry.clockIn), now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'));
           await setDoc(doc(db,'timeEntries',openEntry.id),{clockOut:time,hours:hrs,updatedAt:serverTimestamp()},{merge:true});
-          await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:myName,message:myName+' clocked out at '+time+' ('+(hrs||0).toFixed(1)+'h)',date:today,time,read:false,createdAt:serverTimestamp()});
-          showToast('🔴 Clocked out — '+(hrs||0).toFixed(1)+'h today');
+          await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:myName,message:myName+' clocked out at '+time+(hrs&&!isNaN(hrs)?' ('+hrs.toFixed(1)+'h)':''),date:today,time,read:false,createdAt:serverTimestamp()});
+          showToast('🔴 Clocked out'+(hrs&&!isNaN(hrs)?' — '+hrs.toFixed(1)+'h today':''));
         } else {
           await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:myName,date:today,clockIn:time,clockOut:null,hours:null,createdAt:serverTimestamp()});
           await addDoc(collection(db,'notifications'),{type:'clockin',restaurantId:rid,employeeName:myName,message:myName+' clocked in at '+time,date:today,time,read:false,createdAt:serverTimestamp()});
@@ -12184,7 +12282,7 @@ async function tcAdminLive(rid, today, el) {
         +'<div style="width:32px;height:32px;border-radius:50%;background:hsl('+hue+',50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:hsl('+hue+',50%,35%)">'+ini+'</div>'
         +'<div style="font-size:0.875rem;font-weight:600;color:var(--ink);">'+name+'</div></div>'
         +'<div style="display:flex;align-items:center;gap:8px;">'
-        +'<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">'+hrs.toFixed(1)+'h</div>'
+        +'<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">'+(isNaN(hrs)?'—':hrs.toFixed(1)+'h')+'</div>'
         +'<div style="font-size:0.72rem;color:var(--green);font-weight:600;">Edit →</div></div>';
       row.onclick = () => { window._tcAdminTab='timesheet'; window._tcTimesheetFilter=name; tcSwitchAdminTab(rid, today, el.parentElement, {}); };
       el.appendChild(row);
