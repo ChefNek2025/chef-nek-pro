@@ -172,9 +172,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-eyebrow">🍳 DMV Kitchen Staffing — Powered by Chef Nek</div>
-  <h1>The Smarter Way to<br>Staff Your <span>Kitchen</span></h1>
-  <p>Chef Nek personally trains and certifies kitchen workers. Every placement comes with real skills, food safety knowledge, and platform training built in.</p>
+  <div class="hero-eyebrow">🍳 DMV Kitchen Staffing — Free Training Available Now</div>
+  <h1>Free Kitchen Training.<br>Real <span>Job Placement.</span></h1>
+  <p>Chef Nek personally trains and certifies kitchen workers. Chef Nek personally trains kitchen workers — completely free. Get certified and placed in a top DMV kitchen.</p>
 
   <!-- TOGGLE -->
   <div class="toggle-wrap">
@@ -365,9 +365,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
         <div class="training-grid">
           <div class="training-card selected" id="train-zoom" onclick="selectTraining('zoom')">
             <div class="training-icon">💻</div>
-            <div class="training-type">Online Training</div>
-            <div class="training-price">$150</div>
-            <div class="training-desc">4 sessions via Zoom. Learn kitchen basics, food safety, and the Chef Nek Pro platform.</div>
+            <div class="training-type">Online Training <span style="background:#1D9E75;color:#fff;font-size:0.6rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:700;">FREE</span></div>
+            <div class="training-price" style="color:var(--green);">FREE</div>
+            <div class="training-desc">Learn kitchen basics, food safety, and the Chef Nek Pro platform. Completely free to start.</div>
             <div class="training-features">
               <div class="training-feature">4 Zoom sessions (2hrs each)</div>
               <div class="training-feature">Kitchen basics & food safety</div>
@@ -377,9 +377,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
           </div>
           <div class="training-card" id="train-inperson" onclick="selectTraining('inperson')">
             <div class="training-icon">🍳</div>
-            <div class="training-type">In-Person Training</div>
-            <div class="training-price">$299</div>
-            <div class="training-desc">Train at Black Lion Kitchen with Chef Nek himself. Hands-on, real kitchen experience.</div>
+            <div class="training-type">In-Person Training <span style="background:#1D9E75;color:#fff;font-size:0.6rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:700;">FREE</span></div>
+            <div class="training-price" style="color:var(--green);">FREE</div>
+            <div class="training-desc">Train at Black Lion Kitchen with Chef Nek himself. Hands-on real kitchen experience. Free to start.</div>
             <div class="training-features">
               <div class="training-feature">At Black Lion Kitchen, DMV</div>
               <div class="training-feature">Hands-on with real equipment</div>
@@ -391,7 +391,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
 
         <div class="err-box" id="a-err"></div>
         <button class="submit-btn" id="a-submit" onclick="submitApplication()" style="background:linear-gradient(135deg,#C49828,#8B6510)">
-          🏆 Submit Application
+          🏆 Apply for Free Training
         </button>
         <p style="text-align:center;font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:12px;">Chef Nek reviews every application personally.</p>
       </div>
@@ -443,7 +443,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
 <!-- STATS -->
 <div class="stats-bar">
   <div class="stat-item"><span class="stat-val">DMV</span><div class="stat-label">Area Only</div></div>
-  <div class="stat-item"><span class="stat-val">48h</span><div class="stat-label">Response Time</div></div>
+  <div class="stat-item"><span class="stat-val">FREE</span><div class="stat-label">Training Cost</div></div>
   <div class="stat-item"><span class="stat-val">100%</span><div class="stat-label">Personally Trained</div></div>
   <div class="stat-item"><span class="stat-val">$0</span><div class="stat-label">To Post a Job</div></div>
 </div>
@@ -650,7 +650,7 @@ window.submitApplication = async () => {
       availability: document.getElementById('a-avail')?.value,
       bio: document.getElementById('a-bio')?.value || '',
       trainingType: window._trainingType,
-      trainingFee: window._trainingType === 'inperson' ? 299 : 150,
+      trainingFee: 0,
       stage: 'applied', source: 'hire-page',
       requestType: 'worker-application',
       certified: false, createdAt: serverTimestamp()
