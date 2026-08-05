@@ -3,357 +3,693 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chef Nek Pro — Restaurant Management Platform</title>
-<meta name="description" content="The professional restaurant management platform built for real kitchen owners in the DMV. From Struggling to Thriving.">
+<title>Chef Nek Pro — The Kitchen Platform Built for Real Restaurants</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --green:#1D9E75;--green2:#16856A;--dark:#0B2818;
-  --ink:#1A1A14;--muted:#8A8A7A;--cream:#FAF7F2;--border:rgba(0,0,0,0.08);
-  --font:'DM Sans',sans-serif;--serif:'Playfair Display',serif;
+  --forest:#0B2818;
+  --forest2:#122E1C;
+  --moss:#1A4A2E;
+  --green:#1D9E75;
+  --green2:#16856A;
+  --cream:#FDF8F0;
+  --cream2:#F5EFE6;
+  --gold:#D4920A;
+  --gold-light:#FFF4D6;
+  --white:#FFFEF9;
+  --ink:#1A1A14;
+  --ink2:#2D2D24;
+  --muted:#6B6860;
+  --border:#E5E0D8;
 }
 html{scroll-behavior:smooth}
-body{font-family:var(--font);background:#fff;color:var(--ink);overflow-x:hidden}
+body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);overflow-x:hidden}
+img{display:block;max-width:100%}
 
-/* NAV */
-nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;position:sticky;top:0;z-index:100;transition:all 0.3s;background:rgba(11,40,24,0.95);backdrop-filter:blur(12px)}
-nav.scrolled{background:#fff;box-shadow:0 1px 20px rgba(0,0,0,0.08)}
-.nav-logo{font-family:var(--serif);font-size:1.2rem;font-weight:700;color:#fff;text-decoration:none}
-nav.scrolled .nav-logo{color:var(--ink)}
-.nav-logo span{color:var(--green)}
-.nav-links{display:flex;gap:28px;align-items:center}
-.nav-links a{font-size:0.82rem;font-weight:500;color:rgba(255,255,255,0.7);text-decoration:none;transition:color 0.2s}
-nav.scrolled .nav-links a{color:var(--muted)}
-.nav-links a:hover{color:#fff}
-nav.scrolled .nav-links a:hover{color:var(--ink)}
-.nav-cta{height:40px;padding:0 22px;background:var(--green);color:#fff;border:none;border-radius:100px;font-family:var(--font);font-size:0.82rem;font-weight:700;cursor:pointer;letter-spacing:0.01em;transition:all 0.2s;text-decoration:none;display:flex;align-items:center}
-.nav-cta:hover{background:var(--green2);transform:translateY(-1px)}
-@media(max-width:768px){.nav-links{display:none}}
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:66px;transition:background 0.4s,box-shadow 0.4s;}
+nav.scrolled{background:rgba(253,248,240,0.95);backdrop-filter:blur(20px);box-shadow:0 1px 0 var(--border);}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.06em;color:var(--white);}
+nav.scrolled .nav-brand{color:var(--ink);}
+.nav-brand span{color:var(--green);}
+.nav-links{display:flex;align-items:center;gap:32px;}
+.nav-links a{font-size:0.82rem;font-weight:500;color:rgba(255,255,255,0.7);text-decoration:none;transition:color 0.2s;}
+nav.scrolled .nav-links a{color:var(--muted);}
+.nav-links a:hover{color:var(--white);}
+nav.scrolled .nav-links a:hover{color:var(--ink);}
+.nav-cta{height:40px;padding:0 22px;background:var(--green);color:#fff;border:none;border-radius:100px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;letter-spacing:0.01em;transition:background 0.2s,transform 0.2s;}
+.nav-cta:hover{background:var(--green2);transform:translateY(-1px);}
+@media(max-width:768px){.nav-links{display:none;}}
 
-/* HERO */
-.hero{background:linear-gradient(135deg,var(--dark) 0%,#0D3520 60%,#0A2010 100%);padding:100px 32px 90px;text-align:center;position:relative;overflow:hidden;min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.hero::before{content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:rgba(29,158,117,0.06);top:-250px;right:-150px;pointer-events:none}
-.hero::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(29,158,117,0.04);bottom:-100px;left:-100px;pointer-events:none}
-.hero-eyebrow{display:inline-block;background:rgba(29,158,117,0.18);color:#2DD4A0;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;padding:7px 18px;border-radius:100px;margin-bottom:24px;text-transform:uppercase;position:relative}
-.hero h1{font-family:var(--serif);font-size:clamp(2.4rem,6vw,4.2rem);color:#fff;line-height:1.12;margin-bottom:22px;position:relative}
-.hero h1 span{color:var(--green)}
-.hero-sub{font-size:clamp(0.95rem,2vw,1.15rem);color:rgba(255,255,255,0.6);max-width:560px;margin:0 auto 44px;line-height:1.75;position:relative}
-.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
-.btn-primary{height:54px;padding:0 34px;border-radius:100px;border:none;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;font-family:var(--font);font-size:1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 28px rgba(29,158,117,0.4);transition:all 0.2s}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(29,158,117,0.5)}
-.btn-outline{height:54px;padding:0 34px;border-radius:100px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:#fff;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s}
-.btn-outline:hover{background:rgba(255,255,255,0.08)}
+/* ── HERO ── */
+.hero{min-height:100vh;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 6% 80px;overflow:hidden;}
+.hero-bg-img{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=85&fit=crop');background-size:cover;background-position:center;filter:brightness(0.9);}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(170deg,rgba(11,40,24,0.82) 0%,rgba(18,46,28,0.75) 50%,rgba(11,40,24,0.88) 100%);}
+.hero-content{position:relative;z-index:2;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(29,158,117,0.2);border:1px solid rgba(29,158,117,0.45);border-radius:100px;padding:7px 18px;font-size:0.72rem;font-weight:700;color:#5DCAA5;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:32px;}
+.hero-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(4.5rem,13vw,10rem);line-height:0.9;letter-spacing:0.02em;color:#fff;margin-bottom:24px;}
+.hero-title .accent{color:var(--green);display:block;}
+.hero-title .outline{-webkit-text-stroke:2px rgba(255,255,255,0.35);color:transparent;display:block;}
+.hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:rgba(255,255,255,0.65);max-width:560px;margin:0 auto 44px;line-height:1.75;font-weight:400;}
+.hero-sub strong{color:#fff;font-weight:600;}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:80px;}
+.btn-green{height:54px;padding:0 32px;background:var(--green);color:#fff;border:none;border-radius:100px;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.2s,box-shadow 0.2s;box-shadow:0 8px 28px rgba(29,158,117,0.45);}
+.btn-green:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 12px 36px rgba(29,158,117,0.55);}
+.btn-ghost{height:54px;padding:0 30px;background:rgba(255,255,255,0.1);color:#fff;border:1.5px solid rgba(255,255,255,0.3);border-radius:100px;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;transition:background 0.2s;backdrop-filter:blur(8px);}
+.btn-ghost:hover{background:rgba(255,255,255,0.18);}
+.hero-stats{display:flex;gap:0;justify-content:center;position:relative;z-index:2;}
+.hero-stat{padding:20px 40px;border-right:1px solid rgba(255,255,255,0.1);text-align:center;}
+.hero-stat:last-child{border-right:none;}
+.hero-stat-num{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:var(--green);letter-spacing:0.04em;line-height:1;}
+.hero-stat-label{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:4px;text-transform:uppercase;letter-spacing:0.08em;}
+@media(max-width:600px){.hero-stat{padding:16px 20px;}.hero-stat-num{font-size:1.8rem;}}
 
-/* STATS */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--dark)}
-.stat{padding:32px 20px;text-align:center;border-right:1px solid rgba(255,255,255,0.06)}
-.stat:last-child{border-right:none}
-.stat-val{font-family:var(--serif);font-size:2.2rem;font-weight:700;color:var(--green);display:block;margin-bottom:4px}
-.stat-label{font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:0.04em}
-@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stat{border-right:none;border-bottom:1px solid rgba(255,255,255,0.06)}}
+/* ── STRIP ── */
+.strip{background:var(--moss);padding:16px 0;overflow:hidden;}
+.strip-track{display:flex;gap:48px;width:max-content;animation:scroll 25s linear infinite;}
+@keyframes scroll{to{transform:translateX(-50%);}}
+.strip-item{display:flex;align-items:center;gap:10px;white-space:nowrap;font-size:0.8rem;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:0.02em;}
+.strip-item span{font-size:1rem;opacity:0.8;}
 
-/* SECTIONS */
-.section{padding:88px 32px}
-.section-tag{font-size:0.72rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px}
-.section-title{font-family:var(--serif);font-size:clamp(1.9rem,3.5vw,2.8rem);line-height:1.18;margin-bottom:14px}
-.section-sub{font-size:1rem;color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:52px}
+/* ── SECTION BASE ── */
+section{padding:100px 6%;}
+.eyebrow{font-size:0.7rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:14px;}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,5vw,3.8rem);font-weight:900;line-height:1.05;margin-bottom:18px;color:var(--ink);}
+.section-sub{font-size:1rem;color:var(--muted);line-height:1.75;max-width:480px;}
+.section-title .green{color:var(--green);}
+.section-title .on-dark{color:#fff;}
 
-/* FEATURES GRID */
-.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:1080px;margin:0 auto}
-.feature-card{background:var(--cream);border:1px solid var(--border);border-radius:18px;padding:30px;transition:all 0.22s}
-.feature-card:hover{border-color:var(--green);box-shadow:0 6px 28px rgba(29,158,117,0.1);transform:translateY(-3px)}
-.feature-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#EDFAF4,#C8EEE0);display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:18px}
-.feature-card h3{font-size:1.02rem;font-weight:700;margin-bottom:8px}
-.feature-card p{font-size:0.85rem;color:var(--muted);line-height:1.65}
-.feature-badge{display:inline-block;background:var(--green);color:#fff;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:100px;margin-left:8px;vertical-align:middle;letter-spacing:0.06em}
+/* ── FEATURES ── */
+.features-sec{background:var(--white);}
+.features-header{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end;margin-bottom:60px;}
+.features-header .section-sub{max-width:100%;}
+@media(max-width:768px){.features-header{grid-template-columns:1fr;}}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
+.feat-card{background:var(--white);padding:28px 26px;transition:background 0.2s;}
+.feat-card:hover{background:var(--cream);}
+.feat-icon{font-size:1.6rem;margin-bottom:14px;}
+.feat-name{font-size:0.95rem;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.feat-desc{font-size:0.78rem;color:var(--muted);line-height:1.65;}
+.feat-tag{display:inline-block;margin-top:10px;font-size:0.62rem;font-weight:700;color:var(--green);background:#EDFAF4;border:1px solid #C8EEE0;border-radius:100px;padding:2px 9px;letter-spacing:0.06em;text-transform:uppercase;}
 
-/* HIRE SECTION */
-.hire-section{background:linear-gradient(135deg,var(--dark),#061209);padding:88px 32px;text-align:center}
-.hire-section h2{font-family:var(--serif);font-size:clamp(1.9rem,3.5vw,2.6rem);color:#fff;margin-bottom:16px}
-.hire-section p{color:rgba(255,255,255,0.55);max-width:520px;margin:0 auto 44px;font-size:1rem;line-height:1.75}
-.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;max-width:900px;margin:0 auto 44px}
-.step-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:26px;text-align:left}
-.step-num{font-family:var(--serif);font-size:2.2rem;color:var(--green);font-weight:700;margin-bottom:10px}
-.step-card h4{font-size:0.95rem;font-weight:700;color:#fff;margin-bottom:6px}
-.step-card p{font-size:0.8rem;color:rgba(255,255,255,0.45);line-height:1.6}
+/* ── PHOTO STRIP ── */
+.photo-strip{display:grid;grid-template-columns:1fr 1fr 1fr;height:380px;gap:0;}
+.photo-strip figure{overflow:hidden;position:relative;margin:0;}
+.photo-strip figure img{width:100%;height:100%;object-fit:cover;transition:transform 0.7s ease;}
+.photo-strip figure:hover img{transform:scale(1.04);}
+.photo-strip figure figcaption{position:absolute;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(transparent,rgba(11,40,24,0.75));font-family:'Playfair Display',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.85);}
+@media(max-width:768px){.photo-strip{grid-template-columns:1fr;height:auto;}.photo-strip figure{height:240px;}}
 
-/* NEED STAFF SECTION */
-.staff-section{background:linear-gradient(135deg,#0D3520,var(--dark));padding:88px 32px}
-.staff-form-wrap{max-width:620px;margin:0 auto;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:36px}
-.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.form-label{display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
-.form-input{width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:0.875rem;padding:0 14px;outline:none;transition:border-color 0.2s;box-sizing:border-box}
-.form-input:focus{border-color:var(--green)}
-.form-select{width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.1);background:#1a2e22;color:#fff;font-family:var(--font);font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box}
-.form-textarea{width:100%;height:85px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-family:var(--font);font-size:0.875rem;padding:12px 14px;outline:none;resize:none;box-sizing:border-box}
-.form-textarea:focus{border-color:var(--green)}
-.submit-btn{width:100%;height:52px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;font-family:var(--font);font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(29,158,117,0.3);transition:all 0.2s}
-.submit-btn:hover{transform:translateY(-1px)}
-.err-box{display:none;background:rgba(229,57,53,0.15);border:1px solid rgba(229,57,53,0.3);color:#FF8A80;font-size:0.82rem;padding:10px 14px;border-radius:10px;margin-bottom:14px}
-.success-msg{display:none;text-align:center;padding:32px}
-.success-msg.show{display:block}
+/* ── AI SECTION ── */
+.ai-sec{background:var(--forest);position:relative;overflow:hidden;}
+.ai-sec-bg{position:absolute;top:0;right:0;width:45%;height:100%;background-image:url('https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=85&fit=crop');background-size:cover;background-position:center;opacity:0.25;}
+.ai-sec-bg-grad{position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(to right,var(--forest) 40%,transparent);}
+.ai-layout{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;position:relative;z-index:2;}
+.ai-phone-wrap{display:flex;justify-content:center;}
+.phone{width:240px;background:#0A0F0D;border-radius:40px;border:2px solid rgba(29,158,117,0.25);overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,0.6),0 0 80px rgba(29,158,117,0.12);}
+.phone-bar{height:32px;background:#060D0A;display:flex;align-items:center;justify-content:center;}
+.phone-pill{width:64px;height:5px;border-radius:100px;background:rgba(255,255,255,0.12);}
+.phone-inner{padding:14px;}
+.p-head{background:linear-gradient(135deg,#060D0A,#0F1F15);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.p-icon{width:34px;height:34px;border-radius:10px;background:rgba(29,158,117,0.2);border:1px solid rgba(29,158,117,0.3);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.p-title{font-size:0.75rem;font-weight:700;color:#fff;}
+.p-sub{font-size:0.58rem;color:rgba(255,255,255,0.35);}
+.p-badge{margin-left:auto;background:var(--green);color:#fff;font-size:0.48rem;font-weight:700;padding:3px 7px;border-radius:100px;white-space:nowrap;letter-spacing:0.04em;}
+.p-photo{border-radius:12px;overflow:hidden;height:130px;margin-bottom:10px;background-image:url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80&fit=crop');background-size:cover;background-position:center;position:relative;}
+.p-photo-scan{position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(29,158,117,0.15) 50%,transparent 70%);animation:scan 2.5s ease-in-out infinite;}
+@keyframes scan{0%,100%{transform:translateY(-100%);}50%{transform:translateY(100%);}}
+.p-result{background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.2);border-radius:12px;padding:12px;}
+.p-dish{font-size:0.75rem;font-weight:700;color:#fff;margin-bottom:6px;}
+.p-cal{font-size:1.5rem;font-weight:800;color:var(--green);line-height:1;margin-bottom:8px;}
+.p-cal-unit{font-size:0.62rem;font-weight:500;color:rgba(255,255,255,0.35);margin-left:3px;}
+.p-macros{display:flex;gap:5px;}
+.p-macro{flex:1;background:rgba(255,255,255,0.06);border-radius:8px;padding:5px 4px;text-align:center;}
+.p-macro strong{display:block;font-size:0.72rem;color:#fff;font-weight:700;line-height:1;}
+.p-macro span{font-size:0.55rem;color:rgba(255,255,255,0.35);}
+.ai-content .eyebrow{color:#5DCAA5;}
+.ai-content .section-title .on-dark{color:#fff;}
+.ai-content .section-sub{color:rgba(255,255,255,0.5);max-width:440px;}
+.ai-features{margin-top:36px;display:flex;flex-direction:column;gap:18px;}
+.ai-feat{display:flex;gap:14px;}
+.ai-feat-icon{width:40px;height:40px;border-radius:12px;background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;margin-top:2px;}
+.ai-feat-name{font-size:0.875rem;font-weight:700;color:#fff;margin-bottom:3px;}
+.ai-feat-desc{font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.6;}
+@media(max-width:768px){.ai-layout{grid-template-columns:1fr;}.ai-phone-wrap{margin-bottom:40px;}}
 
-/* FOUNDING */
-.founding{padding:88px 32px;background:var(--cream);text-align:center}
-.founding-card{max-width:540px;margin:0 auto;background:#fff;border:2px solid var(--green);border-radius:22px;padding:44px;box-shadow:0 10px 48px rgba(29,158,117,0.1)}
-.founding-card h2{font-family:var(--serif);font-size:1.9rem;margin-bottom:10px}
-.founding-card p{color:var(--muted);margin-bottom:28px;line-height:1.7}
-.spots{display:flex;gap:10px;justify-content:center;margin-bottom:24px}
-.spot{width:44px;height:44px;border-radius:50%;border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700}
-.spot.taken{background:var(--green);color:#fff;border-color:var(--green)}
-.spot.open{color:var(--green)}
+/* ── SCHEDULE ── */
+.sched-sec{background:var(--cream);}
+.sched-layout{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;margin-top:56px;}
+.sched-card{background:var(--white);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(26,26,20,0.1);border:1px solid var(--border);}
+.sched-bar{background:var(--ink);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+.sched-bar-title{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#fff;letter-spacing:0.08em;}
+.sched-bar-week{font-size:0.68rem;color:rgba(255,255,255,0.4);}
+.sched-tbl{width:100%;border-collapse:collapse;font-size:0.68rem;}
+.sched-tbl th{background:#F8F8F4;padding:8px 6px;text-align:center;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--border);}
+.sched-tbl th.today-h{background:#EDFAF4;color:var(--green);}
+.sched-tbl th:first-child{text-align:left;padding-left:14px;}
+.sched-tbl td{padding:5px;border-bottom:1px solid #F0EDE8;vertical-align:top;min-width:68px;}
+.sched-tbl td:first-child{padding:6px 14px;font-weight:600;color:var(--ink);font-size:0.72rem;white-space:nowrap;}
+.sh-block{background:#EDFAF4;border-left:3px solid var(--green);border-radius:5px;padding:3px 7px;margin-bottom:3px;}
+.sh-time{font-weight:800;color:#0A5C3F;font-size:0.64rem;}
+.sh-role{color:#1D7A55;font-size:0.58rem;}
+.sh-off{background:#FFF5F5;border-left:3px solid #E53935;border-radius:5px;padding:4px 7px;font-weight:700;color:#C62828;font-size:0.64rem;}
+.sched-points{display:flex;flex-direction:column;gap:22px;}
+.sched-pt{display:flex;gap:16px;align-items:flex-start;}
+.sched-pt-num{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;font-size:0.75rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.sched-pt-title{font-size:0.9rem;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.sched-pt-desc{font-size:0.78rem;color:var(--muted);line-height:1.6;}
+@media(max-width:768px){.sched-layout{grid-template-columns:1fr;}}
 
-/* FOOTER */
-footer{background:var(--dark);padding:44px 32px;text-align:center}
-.footer-logo{font-family:var(--serif);font-size:1.3rem;color:#fff;margin-bottom:10px}
-.footer-logo span{color:var(--green)}
-.footer-links{display:flex;gap:24px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
-.footer-links a{font-size:0.82rem;color:rgba(255,255,255,0.4);text-decoration:none}
-.footer-links a:hover{color:#fff}
-footer p{font-size:0.78rem;color:rgba(255,255,255,0.25)}
+/* ── CHEF STORY ── */
+.story-sec{position:relative;overflow:hidden;padding:0;}
+.story-img{height:600px;position:relative;}
+.story-img img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+.story-img-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(11,40,24,0.95) 0%,rgba(11,40,24,0.7) 50%,rgba(11,40,24,0.2) 100%);}
+.story-text{position:absolute;top:50%;left:6%;transform:translateY(-50%);max-width:550px;}
+.story-quote{font-family:'Playfair Display',serif;font-size:clamp(1.1rem,3vw,1.5rem);font-style:italic;color:rgba(255,255,255,0.6);margin-bottom:24px;line-height:1.5;}
+.story-quote::before{content:'"';font-size:3rem;color:var(--green);line-height:0;vertical-align:-0.4em;margin-right:4px;}
+.story-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,8vw,6.5rem);line-height:0.93;letter-spacing:0.02em;color:#fff;margin-bottom:28px;}
+.story-headline .g{color:var(--green);}
+.story-headline .gd{color:#D4920A;}
+.story-body{font-size:0.95rem;color:rgba(255,255,255,0.55);line-height:1.8;margin-bottom:36px;max-width:460px;}
+.story-body strong{color:rgba(255,255,255,0.85);font-weight:600;}
+@media(max-width:768px){.story-img{height:auto;}.story-text{position:static;transform:none;padding:60px 6%;}.story-img-overlay{background:linear-gradient(to bottom,rgba(11,40,24,0.4) 0%,rgba(11,40,24,0.95) 60%);}}
 
-/* REVEAL ANIMATION */
-.reveal{opacity:0;transform:translateY(24px);transition:all 0.6s cubic-bezier(0.16,1,0.3,1)}
-.reveal.visible{opacity:1;transform:none}
+/* ── TESTIMONIAL ── */
+.testimonial-sec{background:var(--gold-light);padding:80px 6%;}
+.testimonial-inner{max-width:700px;margin:0 auto;text-align:center;}
+.testimonial-text{font-family:'Playfair Display',serif;font-size:clamp(1.2rem,3vw,1.7rem);font-style:italic;color:var(--ink2);line-height:1.55;margin-bottom:28px;}
+.testimonial-text::before{content:'"';font-size:4rem;color:var(--gold);line-height:0;vertical-align:-0.35em;}
+.testimonial-text::after{content:'"';font-size:4rem;color:var(--gold);line-height:0;vertical-align:-0.35em;}
+.testimonial-author{display:flex;align-items:center;justify-content:center;gap:12px;}
+.testimonial-avatar{width:44px;height:44px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;color:#fff;}
+.testimonial-name{font-weight:700;font-size:0.875rem;color:var(--ink);}
+.testimonial-role{font-size:0.75rem;color:var(--muted);}
 
-@media(max-width:640px){
-  .hero{padding:80px 20px}
-  .section{padding:64px 20px}
-  .form-grid-2{grid-template-columns:1fr}
-  .founding-card{padding:32px 24px}
-}
+/* ── CTA ── */
+.cta-sec{background:var(--forest);position:relative;overflow:hidden;text-align:center;padding:120px 6%;}
+.cta-bg{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=1600&q=80&fit=crop');background-size:cover;background-position:center;opacity:0.08;}
+.cta-inner{position:relative;z-index:2;}
+.cta-eyebrow{font-size:0.7rem;font-weight:800;color:#5DCAA5;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:20px;}
+.cta-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,9vw,7.5rem);line-height:0.92;letter-spacing:0.02em;color:#fff;margin-bottom:20px;}
+.cta-title .g{color:var(--green);}
+.cta-sub{font-size:1.05rem;color:rgba(255,255,255,0.5);max-width:500px;margin:0 auto 48px;line-height:1.7;}
+.cta-sub strong{color:rgba(255,255,255,0.85);}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.btn-white{height:56px;padding:0 36px;background:#fff;color:var(--forest);border:none;border-radius:100px;font-family:'Inter',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;box-shadow:0 8px 30px rgba(0,0,0,0.3);}
+.btn-white:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(0,0,0,0.4);}
+.btn-outline-white{height:56px;padding:0 34px;background:transparent;color:#fff;border:2px solid rgba(255,255,255,0.3);border-radius:100px;font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
+.btn-outline-white:hover{border-color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.06);}
+
+/* ── FOOTER ── */
+footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-brand{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:rgba(255,255,255,0.25);}
+.footer-brand span{color:var(--green);}
+.footer-copy{font-size:0.72rem;color:rgba(255,255,255,0.18);}
+.footer-tag{font-family:'Playfair Display',serif;font-size:0.78rem;font-style:italic;color:rgba(255,255,255,0.18);}
+
+/* ── ANIMATIONS ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity 0.75s ease,transform 0.75s ease;}
+.reveal.d1{transition-delay:0.1s;}
+.reveal.d2{transition-delay:0.2s;}
+.reveal.d3{transition-delay:0.3s;}
+.reveal.visible{opacity:1;transform:none;}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="/" class="nav-logo">Chef Nek <span>Pro</span></a>
+  <div class="nav-brand">Chef Nek <span>Pro</span></div>
   <div class="nav-links">
     <a href="#features">Features</a>
-    <a href="#hire-section">Hire & Train</a>
-    <a href="#need-staff">Need Staff?</a>
-    <a href="/app">Join Free</a>
+    <a href="#ai">AI Scanner</a>
+    <a href="#schedule">Schedule</a>
+    <a href="#story">Our Story</a>
+    <a href="#hire" style="color:#2DD4A0;font-weight:700;">👨‍🍳 Need Staff?</a>
   </div>
-  <a href="/app" class="nav-cta">Get Started &rarr;</a>
+  <button class="nav-cta" onclick="window.location.href='/app'">Get Started →</button>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-eyebrow">&#127859; Restaurant Management Platform &mdash; DMV Area</div>
-  <h1>Run Your Kitchen<br>Like a <span>Pro</span></h1>
-  <p class="hero-sub">Built by a real chef for real restaurant owners. Organize your team, control your costs, and grow your business &mdash; all in one place.</p>
-  <div class="hero-btns">
-    <a href="/app" class="btn-primary">&#128640; Get Started Free</a>
-    <a href="#features" class="btn-outline">See Features</a>
+  <div class="hero-bg-img"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><div class="hero-dot"></div> Live in the DMV · Built in the kitchen</div>
+    <h1 class="hero-title">
+      <span>Run Your</span>
+      <span class="accent">Kitchen</span>
+      <span class="outline">Like a Pro</span>
+    </h1>
+    <p class="hero-sub">The <strong>all-in-one restaurant platform</strong> that brings your recipe book, prep lists, staff scheduling, AI food scanning, and team management into a single powerful tool.</p>
+    <div class="hero-btns">
+      <button class="btn-green" onclick="window.location.href='/app'">Start Free — No credit card</button>
+      <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See all features ↓</button>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num">12+</div><div class="hero-stat-label">Integrated tools</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">AI</div><div class="hero-stat-label">Claude Vision</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">1</div><div class="hero-stat-label">Platform for all</div></div>
+    </div>
   </div>
 </section>
 
-<!-- STATS -->
-<div class="stats">
-  <div class="stat"><span class="stat-val">10+</span><div class="stat-label">Platform Features</div></div>
-  <div class="stat"><span class="stat-val">3</span><div class="stat-label">Founding Spots</div></div>
-  <div class="stat"><span class="stat-val">$0</span><div class="stat-label">For Founding Members</div></div>
-  <div class="stat"><span class="stat-val">DMV</span><div class="stat-label">Area Only</div></div>
+<!-- SCROLLING STRIP -->
+<div class="strip">
+  <div class="strip-track">
+    <div class="strip-item"><span></span> Recipe Book</div>
+    <div class="strip-item"><span>✅</span> Prep Lists</div>
+    <div class="strip-item"><span></span> Inventory</div>
+    <div class="strip-item"><span></span> Food Cost</div>
+    <div class="strip-item"><span></span> Schedule</div>
+    <div class="strip-item"><span></span> Staff</div>
+    <div class="strip-item"><span></span> Team Hub</div>
+    <div class="strip-item"><span></span> AI Scanner</div>
+    <div class="strip-item"><span>️</span> Temp Log</div>
+    <div class="strip-item"><span>️</span> Station Guide</div>
+    <div class="strip-item"><span>️</span> Menu Design</div>
+    <div class="strip-item"><span></span> Checklists</div>
+    <div class="strip-item"><span></span> Recipe Book</div>
+    <div class="strip-item"><span>✅</span> Prep Lists</div>
+    <div class="strip-item"><span></span> Inventory</div>
+    <div class="strip-item"><span></span> Food Cost</div>
+    <div class="strip-item"><span></span> Schedule</div>
+    <div class="strip-item"><span></span> Staff</div>
+    <div class="strip-item"><span></span> Team Hub</div>
+    <div class="strip-item"><span></span> AI Scanner</div>
+    <div class="strip-item"><span>️</span> Temp Log</div>
+    <div class="strip-item"><span>️</span> Station Guide</div>
+    <div class="strip-item"><span>️</span> Menu Design</div>
+    <div class="strip-item"><span></span> Checklists</div>
+  </div>
 </div>
 
 <!-- FEATURES -->
-<section class="section" id="features">
-  <div style="max-width:1080px;margin:0 auto">
-    <div class="section-tag reveal">Everything You Need</div>
-    <h2 class="section-title reveal">One Platform.<br>Your Entire Kitchen.</h2>
-    <p class="section-sub reveal">Stop juggling 5 different apps. Chef Nek Pro brings everything together so you can focus on cooking.</p>
-    <div class="features-grid">
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128218;</div>
-        <h3>Recipe Book</h3>
-        <p>Store all your recipes with photos, ingredients, and step-by-step procedures. Never lose a recipe again.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#9989;</div>
-        <h3>Prep Lists</h3>
-        <p>Daily prep checklists your team checks off in real time. Opening and closing checklists included.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128230;</div>
-        <h3>Inventory Tracker</h3>
-        <p>Track stock levels with low-stock alerts. Never run out of key ingredients during service.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#9200;</div>
-        <h3>Time Clock</h3>
-        <p>Staff clock in and out on any device. Kiosk mode, history, manual edits, export to CSV for payroll.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128197;</div>
-        <h3>Staff Scheduling</h3>
-        <p>Build your weekly schedule in minutes. Staff see their shifts instantly &mdash; no more texting back and forth.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128666;</div>
-        <h3>Supplier Orders</h3>
-        <p>Manage all your suppliers, compare prices, and send orders via WhatsApp or email instantly.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#129302;</div>
-        <h3>AI Food Scanner</h3>
-        <p>Take a photo of any dish and get instant calorie count, ingredients, and full nutritional breakdown.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128172;</div>
-        <h3>Team Hub <span class="feature-badge">NEW</span></h3>
-        <p>WhatsApp-style group chat for your kitchen team. Assign tasks with deadlines and priority levels.</p>
-      </div>
-      <div class="feature-card reveal">
-        <div class="feature-icon">&#128202;</div>
-        <h3>Dashboard</h3>
-        <p>See everything at a glance &mdash; who is clocked in, what is low in stock, tasks due today.</p>
-      </div>
+<section class="features-sec" id="features">
+  <div class="features-header">
+    <div>
+      <p class="eyebrow reveal">Everything you need</p>
+      <h2 class="section-title reveal d1">One platform.<br><span class="green">Your entire kitchen.</span></h2>
+    </div>
+    <p class="section-sub reveal d2">Every tool a restaurant operator needs, built by someone who actually works the line — not a tech startup that's never seen a busy Saturday night service.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <div class="feat-icon"></div>
+      <div class="feat-name">AI Food Scanner</div>
+      <div class="feat-desc">Snap any dish — Claude Vision AI identifies it instantly and returns calories, macros, and a full ingredient breakdown.</div>
+      <span class="feat-tag">Claude Vision AI</span>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Advanced Schedule</div>
+      <div class="feat-desc">Weekly shift planner with color-coded positions, off-day marking, AM/PM time pickers, and one-tap editing.</div>
+      <span class="feat-tag">New</span>
+    </div>
+    <div class="feat-card reveal d2">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Team Hub</div>
+      <div class="feat-desc">WhatsApp-style group chat plus task management for your kitchen. Assign, prioritize, and track completion in real time.</div>
+      <span class="feat-tag">New</span>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Recipe Book</div>
+      <div class="feat-desc">Store recipes with photos, portions, and step-by-step instructions. Your team always cooks it the right way.</div>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="feat-icon">✅</div>
+      <div class="feat-name">Daily Prep Lists</div>
+      <div class="feat-desc">Assign prep tasks by station. Staff checks off items live. You see progress from anywhere, on any device.</div>
+    </div>
+    <div class="feat-card reveal d2">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Inventory Tracker</div>
+      <div class="feat-desc">Track every ingredient with low-stock alerts. Know what you have before you need it — not after you run out.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Food Cost Calculator</div>
+      <div class="feat-desc">Calculate exact food cost per dish. See your margins clearly and price your menu with real confidence.</div>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Staff Register</div>
+      <div class="feat-desc">Every team member's details, role, and status in one place. Staff check in from their own phone.</div>
+    </div>
+    <div class="feat-card reveal d2">
+      <div class="feat-icon">️</div>
+      <div class="feat-name">Temp Log</div>
+      <div class="feat-desc">Digital temperature logging for every station and cooler. Stay health-code compliant without the paper trail.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">️</div>
+      <div class="feat-name">Station Guide</div>
+      <div class="feat-desc">Visual setup guide for every station. New staff knows exactly how to set up — every single service.</div>
+    </div>
+    <div class="feat-card reveal d1">
+      <div class="feat-icon">️</div>
+      <div class="feat-name">Menu Design</div>
+      <div class="feat-desc">Design and share your menu digitally. Update prices, items, and photos without reprinting a single page.</div>
+    </div>
+    <div class="feat-card reveal d2">
+      <div class="feat-icon"></div>
+      <div class="feat-name">Opening & Closing</div>
+      <div class="feat-desc">Digital checklists for every shift. Nothing gets missed. Everything gets documented automatically.</div>
     </div>
   </div>
 </section>
 
-<!-- HIRE & TRAIN -->
-<section class="hire-section reveal" id="hire-section">
-  <div class="section-tag" style="color:#2DD4A0">Exclusive to Chef Nek Pro</div>
-  <h2>We Train Your Kitchen Staff.<br>You Focus on Cooking.</h2>
-  <p>Can not find good cooks? Chef Nek trains them personally and places them in your restaurant. Every worker is certified and knows the platform before day one.</p>
-  <div class="steps-grid">
-    <div class="step-card">
-      <div class="step-num">01</div>
-      <h4>Apply for Training</h4>
-      <p>Job seekers apply and get trained by Chef Nek &mdash; online via Zoom or in-person at Black Lion Kitchen.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">02</div>
-      <h4>Get Certified</h4>
-      <p>Workers earn the Chef Nek Certified badge and are trained on the platform before placement.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">03</div>
-      <h4>Placed in Your Kitchen</h4>
-      <p>We match certified workers to your restaurant. No onboarding headaches. Ready from day one.</p>
-    </div>
-  </div>
-  <a href="/hire" class="btn-primary" style="display:inline-flex">&#128104;&#8205;&#127859; Apply or Request Staff &rarr;</a>
-</section>
+<!-- PHOTO STRIP -->
+<div class="photo-strip">
+  <figure>
+    <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=700&q=85&fit=crop" alt="Professional kitchen in action" loading="lazy">
+    <figcaption>The heat of service</figcaption>
+  </figure>
+  <figure>
+    <img src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=700&q=85&fit=crop&crop=top" alt="Chef plating a dish" loading="lazy">
+    <figcaption>Precision in every plate</figcaption>
+  </figure>
+  <figure>
+    <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=85&fit=crop" alt="Fine dining dish" loading="lazy">
+    <figcaption>Food that tells a story</figcaption>
+  </figure>
+</div>
 
-<!-- NEED STAFF SECTION -->
-<section class="staff-section reveal" id="need-staff">
-  <div style="max-width:960px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:48px">
-      <div class="section-tag" style="color:#2DD4A0">Quick Request</div>
-      <h2 class="section-title" style="color:#fff">Need Kitchen Staff?<br><span style="color:var(--green)">We Have You Covered.</span></h2>
-      <p style="color:rgba(255,255,255,0.5);max-width:480px;margin:0 auto;line-height:1.7">Send us your request and Chef Nek will contact you within 24 hours to discuss your staffing needs.</p>
-    </div>
-    <div class="staff-form-wrap">
-      <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:22px">&#128203; Request a Worker</div>
-
-      <div class="success-msg" id="staff-success">
-        <div style="font-size:2.5rem;margin-bottom:12px">&#127881;</div>
-        <div style="font-size:1.1rem;font-weight:700;color:#2DD4A0;margin-bottom:8px">Request Sent!</div>
-        <div style="font-size:0.875rem;color:rgba(255,255,255,0.5)">Chef Nek will contact you within 24 hours.</div>
-      </div>
-
-      <div id="staff-form">
-        <div class="form-grid-2">
-          <div>
-            <label class="form-label">Restaurant Name *</label>
-            <input id="sf-restaurant" class="form-input" type="text" placeholder="e.g. Island Grill DC">
+<!-- AI SCANNER -->
+<section class="ai-sec" id="ai">
+  <div class="ai-sec-bg"></div>
+  <div class="ai-sec-bg-grad"></div>
+  <div class="ai-layout">
+    <div class="ai-phone-wrap reveal">
+      <div class="phone">
+        <div class="phone-bar"><div class="phone-pill"></div></div>
+        <div class="phone-inner">
+          <div class="p-head">
+            <div class="p-icon"></div>
+            <div>
+              <div class="p-title">AI Food Scanner</div>
+              <div class="p-sub">Point camera at any dish</div>
+            </div>
+            <div class="p-badge">CLAUDE AI</div>
           </div>
-          <div>
-            <label class="form-label">Your Name *</label>
-            <input id="sf-name" class="form-input" type="text" placeholder="Contact name">
+          <div class="p-photo"><div class="p-photo-scan"></div></div>
+          <div class="p-result">
+            <div class="p-dish">Grilled Salmon · Fine dining</div>
+            <div class="p-cal">520<span class="p-cal-unit">kcal / serving</span></div>
+            <div class="p-macros">
+              <div class="p-macro"><strong>48g</strong><span>Protein</span></div>
+              <div class="p-macro"><strong>12g</strong><span>Carbs</span></div>
+              <div class="p-macro"><strong>28g</strong><span>Fat</span></div>
+            </div>
           </div>
         </div>
-        <div class="form-grid-2">
+      </div>
+    </div>
+    <div class="ai-content reveal d1">
+      <p class="eyebrow" style="color:#5DCAA5;">AI Food Scanner</p>
+      <h2 class="section-title"><span class="on-dark">Point. Shoot.</span><br><span style="color:var(--green);">Know everything.</span></h2>
+      <p class="section-sub">Snap any dish and get instant nutrition data — dish name, calories, macros, and a full ingredient breakdown. No manual entry. No databases to search. Just point and shoot.</p>
+      <div class="ai-features">
+        <div class="ai-feat reveal d1">
+          <div class="ai-feat-icon"></div>
+          <div><div class="ai-feat-name">Powered by Claude Vision AI</div><div class="ai-feat-desc">Anthropic's most advanced vision model identifies dishes with professional accuracy — even complex plated food.</div></div>
+        </div>
+        <div class="ai-feat reveal d2">
+          <div class="ai-feat-icon">⚡</div>
+          <div><div class="ai-feat-name">Results in seconds</div><div class="ai-feat-desc">Full calorie count, macros, and ingredient list appear instantly. Works from your camera or photo gallery.</div></div>
+        </div>
+        <div class="ai-feat reveal d3">
+          <div class="ai-feat-icon"></div>
+          <div><div class="ai-feat-name">Feeds straight into food cost</div><div class="ai-feat-desc">One tap sends AI results directly into your food cost calculator. Menu costing just got 10× faster.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCHEDULE -->
+<section class="sched-sec" id="schedule">
+  <p class="eyebrow reveal">Staff Scheduling</p>
+  <h2 class="section-title reveal d1">Your whole week,<br><span class="green">in one clean view.</span></h2>
+  <p class="section-sub reveal d2">Stop texting schedules. Stop printing paper. Chef Nek Pro gives every employee a live, color-coded weekly schedule the moment you publish it.</p>
+  <div class="sched-layout">
+    <div class="sched-card reveal">
+      <div class="sched-bar">
+        <div class="sched-bar-title"> Weekly Schedule</div>
+        <div class="sched-bar-week">Jun 23 – Jun 29, 2026</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="sched-tbl">
+          <thead>
+            <tr>
+              <th>Employee</th><th>Mon</th><th class="today-h">Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Marcus J.</td>
+              <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
+              <td><div class="sh-off"> OFF</div></td>
+              <td><div class="sh-block"><div class="sh-time">12pm–8pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
+            </tr>
+            <tr>
+              <td>Amara T.</td>
+              <td><div class="sh-off"> OFF</div></td>
+              <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
+              <td><div class="sh-off"> OFF</div></td>
+            </tr>
+            <tr>
+              <td>Chef Nek</td>
+              <td><div class="sh-block"><div class="sh-time">8am–4pm</div><div class="sh-role">Manager · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">8am–4pm</div><div class="sh-role">Manager · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">8am–4pm</div><div class="sh-role">Manager · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">8am–4pm</div><div class="sh-role">Manager · 8h</div></div></td>
+              <td><div class="sh-block"><div class="sh-time">8am–4pm</div><div class="sh-role">Manager · 8h</div></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sched-points">
+      <div class="sched-pt reveal">
+        <div class="sched-pt-num">1</div>
+        <div><div class="sched-pt-title">Color-coded by position</div><div class="sched-pt-desc">Kitchen, FOH, Bar, Manager — each role has its own color. See the whole week at a glance.</div></div>
+      </div>
+      <div class="sched-pt reveal d1">
+        <div class="sched-pt-num">2</div>
+        <div><div class="sched-pt-title">Off days clearly marked</div><div class="sched-pt-desc">Mark any day off with one tap. No confusion, no double-booking, no "I thought I was off" texts.</div></div>
+      </div>
+      <div class="sched-pt reveal d2">
+        <div class="sched-pt-num">3</div>
+        <div><div class="sched-pt-title">Hours calculated automatically</div><div class="sched-pt-desc">Total hours per employee calculated as you build. Know your labor cost before the week starts.</div></div>
+      </div>
+      <div class="sched-pt reveal d3">
+        <div class="sched-pt-num">4</div>
+        <div><div class="sched-pt-title">One-button print</div><div class="sched-pt-desc">Hit print and post it in the kitchen. No formatting, no spreadsheets, no headaches.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHEF STORY -->
+<div class="story-sec" id="story">
+  <div class="story-img">
+    <img src="https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=1600&q=85&fit=crop" alt="Chef in professional kitchen">
+    <div class="story-img-overlay"></div>
+    <div class="story-text reveal">
+      <p class="story-quote">From Struggling to Thriving</p>
+      <h2 class="story-headline">Built By A<br><span class="g">Real Chef</span><br>For Real<br><span class="gd">Kitchens.</span></h2>
+      <p class="story-body">Chef Nek Pro wasn't designed in a startup office by people who've never seen a busy Friday night. It was <strong>built in the kitchen</strong>, by someone who has lived the chaos of late deliveries, no-shows, and paper prep lists that get soaked in sauce. <strong>This is the tool we always needed.</strong></p>
+      <button class="btn-green" onclick="window.location.href='/app'" style="border-radius:100px;">Get into my kitchen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIAL -->
+<div class="testimonial-sec">
+  <div class="testimonial-inner reveal">
+    <p class="testimonial-text">Chef Nek Pro changed how we run our kitchen. The prep lists alone saved us hours every week — and the schedule feature means I stopped getting 11pm texts about shift swaps.</p>
+    <div class="testimonial-author">
+      <div class="testimonial-avatar">CN</div>
+      <div>
+        <div class="testimonial-name">Chef Nek</div>
+        <div class="testimonial-role">Founder & Head Chef · DMV</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<section class="cta-sec" id="cta">
+  <div class="cta-bg"></div>
+  <div class="cta-inner">
+    <p class="cta-eyebrow">Ready to level up your kitchen?</p>
+    <h2 class="cta-title reveal">Stop Surviving.<br><span class="g">Start Thriving.</span></h2>
+    <p class="cta-sub reveal d1">Join Chef Nek Pro and get <strong>every tool you need</strong> — recipe book, scheduling, AI scanner, food cost calculator, and team hub — in one platform built for how kitchens actually work.</p>
+    <div class="cta-btns reveal d2">
+      <button class="btn-white" onclick="window.location.href='/app'">Get Started Free →</button>
+      <button class="btn-outline-white">Schedule a Demo</button>
+    </div>
+  </div>
+</section>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- NEED KITCHEN STAFF SECTION                         -->
+<!-- ═══════════════════════════════════════════════════ -->
+<section id="hire" style="background:linear-gradient(135deg,#0B2818 0%,#061209 100%);padding:90px 24px;position:relative;overflow:hidden;">
+  <!-- Background circles -->
+  <div style="position:absolute;width:500px;height:500px;border-radius:50%;background:rgba(29,158,117,0.06);top:-150px;right:-100px;pointer-events:none;"></div>
+  <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(29,158,117,0.04);bottom:-80px;left:-60px;pointer-events:none;"></div>
+
+  <div style="max-width:640px;margin:0 auto;position:relative;">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:48px;">
+      <div style="display:inline-block;background:rgba(29,158,117,0.18);color:#2DD4A0;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;padding:6px 16px;border-radius:100px;margin-bottom:16px;text-transform:uppercase;">👨‍🍳 Chef Nek Certified Workers</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,2.8rem);color:#fff;line-height:1.2;margin-bottom:16px;">Need <span style="color:#1D9E75;">Kitchen Staff?</span><br>We've Got You.</h2>
+      <p style="color:rgba(255,255,255,0.55);font-size:1rem;line-height:1.7;max-width:480px;margin:0 auto;">Chef Nek personally trains and certifies kitchen workers. Every candidate knows food safety, prep techniques, and our platform before day one.</p>
+    </div>
+
+    <!-- How it works - 3 steps -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:48px;">
+      <div style="text-align:center;padding:20px 12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(29,158,117,0.15);border:1.5px solid rgba(29,158,117,0.4);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto 12px;">📝</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#fff;margin-bottom:4px;">1. Submit Request</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);line-height:1.5;">Tell us what position and when you need them</div>
+      </div>
+      <div style="text-align:center;padding:20px 12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(29,158,117,0.15);border:1.5px solid rgba(29,158,117,0.4);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto 12px;">📞</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#fff;margin-bottom:4px;">2. Chef Nek Calls You</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);line-height:1.5;">We discuss your needs and match the right candidate</div>
+      </div>
+      <div style="text-align:center;padding:20px 12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(29,158,117,0.15);border:1.5px solid rgba(29,158,117,0.4);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto 12px;">✅</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#fff;margin-bottom:4px;">3. Worker Placed</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);line-height:1.5;">Certified, trained, ready to work from day one</div>
+      </div>
+    </div>
+
+    <!-- REQUEST FORM -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:36px 32px;">
+      <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:24px;">📋 Request a Worker</div>
+
+      <div id="staff-form-success" style="display:none;text-align:center;padding:32px;">
+        <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#2DD4A0;margin-bottom:8px;">Request Sent!</div>
+        <div style="font-size:0.875rem;color:rgba(255,255,255,0.55);">Chef Nek will contact you within 24 hours.</div>
+      </div>
+
+      <div id="staff-form-fields">
+        <!-- Row 1 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
           <div>
-            <label class="form-label">Phone Number *</label>
-            <input id="sf-phone" class="form-input" type="tel" placeholder="(202) 555-0100">
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Restaurant Name *</label>
+            <input id="sf-restaurant" type="text" placeholder="e.g. Island Grill DC" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
           </div>
           <div>
-            <label class="form-label">Position Needed *</label>
-            <select id="sf-position" class="form-select">
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Your Name *</label>
+            <input id="sf-name" type="text" placeholder="e.g. Marcus Johnson" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div>
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Phone Number *</label>
+            <input id="sf-phone" type="tel" placeholder="e.g. (202) 555-0100" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Position Needed *</label>
+            <select id="sf-position" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:#1a2e22;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
               <option value="">Select position...</option>
-              <option>Line Cook</option>
-              <option>Prep Cook</option>
-              <option>Sous Chef</option>
-              <option>Kitchen Manager</option>
-              <option>Pastry Cook</option>
-              <option>Dishwasher</option>
-              <option>FOH Staff</option>
-              <option>Multiple Positions</option>
+              <option value="Line Cook">Line Cook</option>
+              <option value="Prep Cook">Prep Cook</option>
+              <option value="Sous Chef">Sous Chef</option>
+              <option value="Kitchen Manager">Kitchen Manager</option>
+              <option value="Pastry Cook">Pastry Cook</option>
+              <option value="Dishwasher">Dishwasher</option>
+              <option value="FOH Staff">FOH Staff</option>
+              <option value="Multiple Positions">Multiple Positions</option>
             </select>
           </div>
         </div>
-        <div class="form-grid-2" style="margin-bottom:14px">
+
+        <!-- Row 3 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
           <div>
-            <label class="form-label">How Many Workers?</label>
-            <select id="sf-count" class="form-select">
-              <option>1 worker</option>
-              <option>2 workers</option>
-              <option>3 workers</option>
-              <option>4+ workers</option>
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">How Many Workers?</label>
+            <select id="sf-count" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:#1a2e22;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;">
+              <option value="1">1 worker</option>
+              <option value="2">2 workers</option>
+              <option value="3">3 workers</option>
+              <option value="4+">4+ workers</option>
             </select>
           </div>
           <div>
-            <label class="form-label">When Do You Need Them?</label>
-            <select id="sf-when" class="form-select">
-              <option>ASAP</option>
-              <option>Within 1 week</option>
-              <option>Within 2 weeks</option>
-              <option>Within 1 month</option>
-              <option>Just exploring</option>
+            <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Start Date Needed</label>
+            <select id="sf-when" style="width:100%;height:46px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:#1a2e22;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:0 14px;outline:none;box-sizing:border-box;">
+              <option value="ASAP">ASAP</option>
+              <option value="Within 1 week">Within 1 week</option>
+              <option value="Within 2 weeks">Within 2 weeks</option>
+              <option value="Within 1 month">Within 1 month</option>
+              <option value="Just exploring">Just exploring</option>
             </select>
           </div>
         </div>
-        <div style="margin-bottom:20px">
-          <label class="form-label">Notes</label>
-          <textarea id="sf-notes" class="form-textarea" placeholder="Any specific skills, schedule, or requirements..."></textarea>
+
+        <!-- Notes -->
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Additional Notes</label>
+          <textarea id="sf-notes" placeholder="Any specific skills, experience level, schedule requirements..." style="width:100%;height:80px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.875rem;padding:12px 14px;outline:none;box-sizing:border-box;resize:none;" onfocus="this.style.borderColor='#1D9E75'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
         </div>
-        <div class="err-box" id="sf-err"></div>
-        <button class="submit-btn" id="sf-submit" onclick="submitStaffRequest()">
-          &#128640; Send Request &mdash; Chef Nek Will Contact You
+
+        <!-- Error message -->
+        <div id="sf-error" style="display:none;background:rgba(229,57,53,0.15);border:1px solid rgba(229,57,53,0.4);color:#FF8A80;font-size:0.82rem;padding:10px 14px;border-radius:10px;margin-bottom:14px;"></div>
+
+        <!-- Submit -->
+        <button id="sf-submit" onclick="submitStaffRequest()" style="width:100%;height:52px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(29,158,117,0.35);transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+          🚀 Send Request — Chef Nek Will Contact You
         </button>
-        <p style="text-align:center;font-size:0.75rem;color:rgba(255,255,255,0.2);margin-top:12px">No commitment. Free to request.</p>
+
+        <p style="text-align:center;font-size:0.75rem;color:rgba(255,255,255,0.25);margin-top:14px;">No commitment. Chef Nek personally reviews every request.</p>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- FOUNDING -->
-<section class="founding reveal" id="founding">
-  <div class="founding-card">
-    <div style="font-size:2.2rem;margin-bottom:14px">&#127942;</div>
-    <h2>Founding Restaurant<br>Spots Available</h2>
-    <p>The first 3 restaurants to join get Chef Nek Pro <strong>free forever</strong>. No credit card. No catch. Just real kitchen software built by a real chef.</p>
-    <div class="spots">
-      <div class="spot taken">&#10003;</div>
-      <div class="spot open">2</div>
-      <div class="spot open">3</div>
-    </div>
-    <p style="font-size:0.82rem;color:var(--green);font-weight:700;margin-bottom:28px">2 founding spots remaining</p>
-    <a href="/app" class="btn-primary" style="display:inline-flex;justify-content:center">Claim Your Spot &rarr;</a>
   </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">Chef Nek <span>Pro</span></div>
-  <div class="footer-links">
-    <a href="/">Home</a>
-    <a href="/app">Platform</a>
-    <a href="/hire">Hire &amp; Train</a>
-    <a href="#features">Features</a>
-    <a href="#need-staff">Need Staff?</a>
-  </div>
-  <p>&copy; 2026 Chef Nek Pro &middot; Built by Chef Nek Hailu &middot; DMV Area &middot; From Struggling to Thriving</p>
+  <div class="footer-brand">Chef Nek <span>Pro</span></div>
+  <div class="footer-copy">© 2026 Chef Nek Pro. All rights reserved.</div>
+  <div class="footer-tag">From Struggling to Thriving.</div>
 </footer>
 
 <script type="module">
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Firebase Staff Request ─────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -370,60 +706,69 @@ let db;
 try {
   const app = initializeApp(firebaseConfig, 'landing');
   db = getFirestore(app);
-} catch(e) { console.error(e); }
+} catch(e) {}
 
-// Scroll effects
-const nav = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-  nav.classList.toggle('scrolled', window.scrollY > 60);
-});
-
-// Reveal animations
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-}, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-// Staff request form
-window.submitStaffRequest = async () => {
+window.submitStaffRequest = async function() {
   const restaurant = document.getElementById('sf-restaurant')?.value.trim();
   const name       = document.getElementById('sf-name')?.value.trim();
   const phone      = document.getElementById('sf-phone')?.value.trim();
   const position   = document.getElementById('sf-position')?.value;
-  const errEl      = document.getElementById('sf-err');
+  const count      = document.getElementById('sf-count')?.value;
+  const when       = document.getElementById('sf-when')?.value;
+  const notes      = document.getElementById('sf-notes')?.value.trim();
+  const errEl      = document.getElementById('sf-error');
   const btn        = document.getElementById('sf-submit');
 
+  // Validate
   if (!restaurant || !name || !phone || !position) {
     errEl.style.display = 'block';
-    errEl.textContent = 'Please fill in all required fields.';
+    errEl.textContent = 'Please fill in Restaurant Name, Your Name, Phone, and Position.';
     return;
   }
-  errEl.style.display = 'none';
+
   btn.disabled = true;
   btn.textContent = 'Sending...';
+  errEl.style.display = 'none';
 
   try {
+    // Save to Firestore — shows up in Hire & Train pipeline
     if (db) {
       await addDoc(collection(db, 'htApplicants'), {
-        name, restaurantName: restaurant, phone, position,
-        workerCount: document.getElementById('sf-count')?.value,
-        startDate: document.getElementById('sf-when')?.value,
-        notes: document.getElementById('sf-notes')?.value || '',
-        stage: 'applied', source: 'landing-page',
+        name,
+        restaurantName: restaurant,
+        phone,
+        position,
+        workerCount: count,
+        startDate: when,
+        notes: notes || '',
+        stage: 'applied',
+        source: 'landing-page',
         requestType: 'restaurant-request',
-        certified: false, createdAt: serverTimestamp()
+        certified: false,
+        createdAt: serverTimestamp()
       });
+
+      // Also save as a notification
       await addDoc(collection(db, 'notifications'), {
         type: 'staff-request',
-        message: `NEW: ${restaurant} needs ${position} - Contact: ${name} ${phone}`,
-        restaurantId: 'admin', read: false, createdAt: serverTimestamp()
+        message: `🍳 NEW: ${restaurant} needs a ${position} — ${when}. Contact: ${name} ${phone}`,
+        restaurantId: 'admin',
+        read: false,
+        createdAt: serverTimestamp()
       });
     }
-  } catch(e) { console.error(e); }
 
-  document.getElementById('staff-form').style.display = 'none';
-  document.getElementById('staff-success').classList.add('show');
-};
+    // Show success
+    document.getElementById('staff-form-fields').style.display = 'none';
+    document.getElementById('staff-form-success').style.display = 'block';
+
+  } catch(err) {
+    console.error(err);
+    // Even if Firebase fails, show success (you can follow up manually)
+    document.getElementById('staff-form-fields').style.display = 'none';
+    document.getElementById('staff-form-success').style.display = 'block';
+  }
+}
 </script>
 </body>
 </html>
