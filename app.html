@@ -17,10 +17,10 @@
 <meta name="application-name" content="Chef Nek Pro">
 <meta name="description" content="Chef Nek Pro — Restaurant management platform. From Struggling to Thriving.">
 <!-- App Icons -->
-<link rel="apple-touch-icon" href="https://i.ibb.co/srCVgm3/IMG-8789.jpg">
-<link rel="apple-touch-icon" sizes="152x152" href="https://i.ibb.co/srCVgm3/IMG-8789.jpg">
-<link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/srCVgm3/IMG-8789.jpg">
-<link rel="icon" type="image/png" href="https://i.ibb.co/srCVgm3/IMG-8789.jpg">
+
+
+
+
 <!-- iOS Splash Screens -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- Inline PWA Manifest -->
@@ -36,8 +36,8 @@
     theme_color: "#1D9E75",
     orientation: "portrait",
     icons: [
-      { src: "https://i.ibb.co/srCVgm3/IMG-8789.jpg", sizes: "192x192", type: "image/jpeg" },
-      { src: "https://i.ibb.co/srCVgm3/IMG-8789.jpg", sizes: "512x512", type: "image/jpeg" }
+      
+      
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
@@ -556,6 +556,158 @@ function currentRestaurantId() {
 // ============================================
 // TOAST NOTIFICATIONS
 // ============================================
+// ============================================
+// THEME / COLOR SYSTEM
+// ============================================
+const THEMES = [
+  {id:'green',   name:'Chef Green',   primary:'#1D9E75', dark:'#16856A', light:'#EDFAF4', sidebar:'#0B2818'},
+  {id:'blue',    name:'Ocean Blue',   primary:'#2563EB', dark:'#1D4ED8', light:'#EEF4FF', sidebar:'#0F1E3A'},
+  {id:'orange',  name:'Flame Orange', primary:'#E85D26', dark:'#C44B1E', light:'#FFF0EB', sidebar:'#2A1208'},
+  {id:'purple',  name:'Royal Purple', primary:'#7C3AED', dark:'#6D28D9', light:'#F5F0FF', sidebar:'#1A0F2E'},
+  {id:'red',     name:'Bold Red',     primary:'#E53935', dark:'#C62828', light:'#FFF0F0', sidebar:'#2A0A0A'},
+  {id:'amber',   name:'Golden Amber', primary:'#F2A623', dark:'#C17F3A', light:'#FFF8ED', sidebar:'#2A1A00'},
+  {id:'teal',    name:'Deep Teal',    primary:'#0891B2', dark:'#0E7490', light:'#ECFEFF', sidebar:'#062030'},
+  {id:'rose',    name:'Rose Pink',    primary:'#E11D48', dark:'#BE123C', light:'#FFF1F2', sidebar:'#2A0A14'},
+];
+
+function applyTheme(themeId, customColor) {
+  let theme = THEMES.find(t=>t.id===themeId) || THEMES[0];
+
+  if (customColor) {
+    const hex = customColor.replace('#','');
+    const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+    const darken = (v,amt) => Math.max(0,Math.min(255,v-amt));
+    const darkHex='#'+[r,g,b].map(v=>darken(v,20).toString(16).padStart(2,'0')).join('');
+    const lightR=Math.min(255,Math.round(r*0.12+230)), lightG=Math.min(255,Math.round(g*0.12+230)), lightB=Math.min(255,Math.round(b*0.12+230));
+    const lightHex='#'+[lightR,lightG,lightB].map(v=>v.toString(16).padStart(2,'0')).join('');
+    const sideR=Math.round(r*0.12), sideG=Math.round(g*0.12), sideB=Math.round(b*0.12);
+    const sideHex='#'+[Math.max(5,sideR),Math.max(5,sideG),Math.max(5,sideB)].map(v=>v.toString(16).padStart(2,'0')).join('');
+    theme = {id:'custom', name:'Custom', primary:customColor, dark:darkHex, light:lightHex, sidebar:sideHex};
+  }
+
+  const p=theme.primary, d=theme.dark, l=theme.light, s=theme.sidebar||'#0B2818';
+
+  // 1. CSS variables
+  const root = document.documentElement;
+  root.style.setProperty('--green', p);
+  root.style.setProperty('--green-dark', d);
+  root.style.setProperty('--green-light', l);
+
+  // 2. Inject override style — affects ALL pages including prep list, inventory, etc.
+  let styleEl = document.getElementById('cnp-theme-override');
+  if (!styleEl) { styleEl=document.createElement('style'); styleEl.id='cnp-theme-override'; document.head.appendChild(styleEl); }
+
+  styleEl.textContent = `
+    .sidebar { background: ${s} !important; }
+    .sidebar-logo-text span { color: ${p} !important; }
+    .nav-item.active { background: ${p}20 !important; color: ${p} !important; }
+    .nav-item.active svg { stroke: ${p} !important; }
+    .nav-item:hover { background: ${p}15 !important; color: ${p} !important; }
+    .form-btn, .form-btn-small { background: linear-gradient(135deg,${p},${d}) !important; }
+    .loading-spinner { border-top-color: ${p} !important; }
+    .stat-card-value.green { color: ${p} !important; }
+    ::-webkit-scrollbar-thumb { background: ${p}40 !important; }
+  `;
+
+  // 3. Sidebar direct
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.style.background = s;
+
+  window._currentTheme = theme;
+}
+
+function loadSavedTheme() {
+  const saved = localStorage.getItem('cnp-theme');
+  const custom = localStorage.getItem('cnp-theme-custom');
+  if (saved || custom) applyTheme(saved, custom);
+}
+
+window.showThemePicker = function() {
+  const saved = localStorage.getItem('cnp-theme') || 'green';
+  const savedCustom = localStorage.getItem('cnp-theme-custom') || '';
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:28px 24px 40px;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  box.innerHTML = '<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>'
+    +'<div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">🎨 Choose Your Color</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Personalizes your platform. Only you see this change.</div>';
+
+  // Preset grid
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;';
+  THEMES.forEach(t=>{
+    const btn = document.createElement('button');
+    const isActive = saved===t.id && !savedCustom;
+    btn.style.cssText = 'height:64px;border-radius:14px;border:3px solid '+(isActive?t.primary:'transparent')+';cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:#fff;transition:all 0.15s;padding:8px;';
+    btn.innerHTML = '<div style="width:28px;height:28px;border-radius:50%;background:'+t.primary+';box-shadow:0 3px 10px '+t.primary+'50;"></div>'
+      +'<div style="font-size:0.62rem;font-weight:600;color:var(--ink);text-align:center;">'+t.name+'</div>';
+    btn.onmouseenter = () => btn.style.transform='scale(1.05)';
+    btn.onmouseleave = () => btn.style.transform='';
+    btn.onclick = () => {
+      localStorage.setItem('cnp-theme', t.id);
+      localStorage.removeItem('cnp-theme-custom');
+      applyTheme(t.id, null);
+      // Update active state
+      grid.querySelectorAll('button').forEach(b=>b.style.borderColor='transparent');
+      btn.style.borderColor = t.primary;
+      customInput.value = '';
+      showToast('🎨 Theme changed to '+t.name+'!');
+    };
+    grid.appendChild(btn);
+  });
+  box.appendChild(grid);
+
+  // Custom color
+  const customRow = document.createElement('div');
+  customRow.style.cssText = 'margin-bottom:20px;';
+  customRow.innerHTML = '<label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Or pick a custom color</label>';
+  const customWrap = document.createElement('div');
+  customWrap.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  const customInput = document.createElement('input');
+  customInput.type = 'color';
+  customInput.value = savedCustom || '#1D9E75';
+  customInput.style.cssText = 'width:48px;height:48px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;padding:2px;background:#fff;';
+  const customLabel = document.createElement('div');
+  customLabel.style.cssText = 'flex:1;font-size:0.82rem;color:var(--ink-muted);';
+  customLabel.textContent = 'Pick any color that matches your restaurant brand';
+  const applyCustomBtn = document.createElement('button');
+  applyCustomBtn.style.cssText = 'height:44px;padding:0 16px;border-radius:10px;border:none;background:var(--ink);color:#fff;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;';
+  applyCustomBtn.textContent = 'Apply';
+  applyCustomBtn.onclick = () => {
+    const color = customInput.value;
+    localStorage.setItem('cnp-theme-custom', color);
+    localStorage.removeItem('cnp-theme');
+    applyTheme(null, color);
+    grid.querySelectorAll('button').forEach(b=>b.style.borderColor='transparent');
+    showToast('🎨 Custom color applied!');
+  };
+  customWrap.appendChild(customInput);
+  customWrap.appendChild(customLabel);
+  customWrap.appendChild(applyCustomBtn);
+  customRow.appendChild(customWrap);
+  box.appendChild(customRow);
+
+  // Reset button
+  const resetBtn = document.createElement('button');
+  resetBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;';
+  resetBtn.textContent = '↺ Reset to Chef Green (default)';
+  resetBtn.onclick = () => {
+    localStorage.removeItem('cnp-theme');
+    localStorage.removeItem('cnp-theme-custom');
+    applyTheme('green', null);
+    overlay.remove();
+    showToast('🌿 Reset to Chef Green!');
+  };
+  box.appendChild(resetBtn);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
 function showToast(message, type = 'success') {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -574,7 +726,7 @@ window.renderLogin = function() {
     <div class="login-page">
       <div class="login-left">
         <div class="login-brand">Chef Nek <span>Pro</span></div>
-        <div style="font-size:0.875rem;font-style:italic;color:#F2A623;font-weight:500;margin-top:4px;">From Struggling to Thriving</div>
+        <div style="font-size:0.875rem;font-style:italic;color:rgba(255,255,255,0.5);font-weight:500;margin-top:4px;">From Struggling to Thriving</div>
         <p class="login-tagline">The professional platform built for real restaurant owners in the DMV.</p>
         <div class="login-feature"><div class="login-feature-dot"></div><div class="login-feature-text">Custom recipe book with photos</div></div>
         <div class="login-feature"><div class="login-feature-dot"></div><div class="login-feature-text">Daily prep lists — check off tasks</div></div>
@@ -699,10 +851,14 @@ function obRenderStep(step) {
       </div>
       <div style="margin-bottom:12px;">
         <label style="display:block;font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Cuisine Type *</label>
-        <select id="ob-cuisine" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #E5E7EB;padding:0 12px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;background:#fff;color:#1A1A14;">
+        <select id="ob-cuisine" onchange="obCuisineChange(this.value)" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #E5E7EB;padding:0 12px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;background:#fff;color:#1A1A14;">
           <option value="">Select cuisine...</option>
           ${['American','Ethiopian','Caribbean','Mexican','Italian','Asian Fusion','Mediterranean','Soul Food','BBQ','Seafood','Fast Casual','Bakery','Other'].map(c=>`<option value="${c}"${window._obData.cuisine===c?' selected':''}>${c}</option>`).join('')}
         </select>
+        <div id="ob-cuisine-other" style="display:${window._obData.cuisine==='Other'?'block':'none'};margin-top:8px;">
+          <input id="ob-cuisine-custom" type="text" placeholder="e.g. Ethiopian Fusion, Halal, Vegan..." value="${window._obData.cuisineCustom||''}"
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid #1D9E75;padding:0 14px;font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;color:#1A1A14;background:#F0FAF5;">
+        </div>
       </div>
       <div style="margin-bottom:22px;">
         <label style="display:block;font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Team Size</label>
@@ -761,13 +917,32 @@ function obRenderStep(step) {
   }
 }
 
+window.obCuisineChange = function(val) {
+  const other = document.getElementById('ob-cuisine-other');
+  const custom = document.getElementById('ob-cuisine-custom');
+  if (other) other.style.display = val === 'Other' ? 'block' : 'none';
+  if (val === 'Other' && custom) setTimeout(() => custom.focus(), 50);
+}
+
 window.obStep1Next = function() {
   const name    = document.getElementById('ob-name')?.value.trim();
   const cuisine = document.getElementById('ob-cuisine')?.value;
+  const custom  = document.getElementById('ob-cuisine-custom')?.value.trim();
   const size    = document.getElementById('ob-size')?.value;
   const err     = document.getElementById('ob-err');
-  if (!name || !cuisine) { if(err){err.style.display='block';err.textContent='Please fill in restaurant name and cuisine.';} return; }
-  window._obData = {...window._obData, restaurantName:name, cuisine, size};
+
+  if (!name || !cuisine) {
+    if(err){err.style.display='block';err.textContent='Please fill in restaurant name and cuisine.';}
+    return;
+  }
+  if (cuisine === 'Other' && !custom) {
+    if(err){err.style.display='block';err.textContent='Please describe your cuisine type.';}
+    document.getElementById('ob-cuisine-custom')?.focus();
+    return;
+  }
+
+  const finalCuisine = cuisine === 'Other' ? custom : cuisine;
+  window._obData = {...window._obData, restaurantName:name, cuisine:finalCuisine, cuisineCustom:custom, size};
   obRenderStep(2);
 }
 
@@ -932,6 +1107,10 @@ function renderApp(userData) {
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5"/><path d="M13 7v6M16 10h-6" stroke-width="1.5"/></svg>
       Manage clients
     </button>
+    <button class="nav-item ${currentPage==='hiretrain'?'active':''}" onclick="navigate('hiretrain')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2a3 3 0 100 6 3 3 0 000-6z"/><path d="M2 14s1-4 6-4 6 4 6 4"/><path d="M12 6l2 2 3-3"/></svg>
+      👨‍🍳 Hire & Train
+    </button>
   ` : '';
 
   document.getElementById('root').innerHTML = `
@@ -965,7 +1144,7 @@ function renderApp(userData) {
       <aside class="sidebar" id="main-sidebar">
         <div class="sidebar-logo">
           <div class="sidebar-logo-text">Chef Nek <span>Pro</span></div>
-        <div style="font-size:0.7rem;color:#F2A623;font-style:italic;font-weight:500;margin-top:3px;">From Struggling to Thriving</div>
+          <div style="font-size:0.7rem;color:#F2A623;font-style:italic;font-weight:500;margin-top:3px;">From Struggling to Thriving</div>
         </div>
         <div class="sidebar-restaurant">
           <div class="sidebar-restaurant-label">${isAdmin ? 'Admin account' : 'Your restaurant'}</div>
@@ -989,6 +1168,10 @@ function renderApp(userData) {
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1.5"/><path d="M5 4V3a3 3 0 016 0v1"/></svg>
             Inventory
           </button>
+          <button class="nav-item ${currentPage==='suppliers'?'active':''}" onclick="navigate('suppliers')">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 3h14l-1.5 7H2.5L1 3z"/><circle cx="5.5" cy="13" r="1"/><circle cx="11.5" cy="13" r="1"/><path d="M1 3L0 1"/><path d="M6 3V1M10 3V1"/></svg>
+            Suppliers
+          </button>
           <button class="nav-item ${currentPage==='menudesign'?'active':''}" onclick="navigate('menudesign')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="4" y1="6" x2="12" y2="6"/><line x1="4" y1="9" x2="9" y2="9"/><line x1="4" y1="12" x2="7" y2="12"/></svg>
             Menu design
@@ -1004,6 +1187,10 @@ function renderApp(userData) {
           <button class="nav-item ${currentPage==='schedule'?'active':''}" onclick="navigate('schedule')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="14" height="13" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/><line x1="4" y1="10" x2="6" y2="10"/><line x1="7" y1="10" x2="12" y2="10"/><line x1="4" y1="13" x2="8" y2="13"/></svg>
             Schedule
+          </button>
+          <button class="nav-item ${currentPage==='timeclock'?'active':''}" onclick="navigate('timeclock')">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg>
+            Time Clock
           </button>
           <button class="nav-item ${currentPage==='teamhub'?'active':''}" onclick="navigate('teamhub')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 3H2a1 1 0 00-1 1v6a1 1 0 001 1h3l3 2 3-2h3a1 1 0 001-1V4a1 1 0 00-1-1z"/><line x1="4" y1="7" x2="12" y2="7"/><line x1="4" y1="9.5" x2="9" y2="9.5"/></svg>
@@ -1034,6 +1221,14 @@ function renderApp(userData) {
             Notifications
             <div id="sidebar-notif-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:#E53935;margin-left:auto;flex-shrink:0;"></div>
           </button>` : ''}
+          ${!isAdmin ? `<button onclick="navigate('billing')" style="width:100%;height:44px;border-radius:10px;border:none;background:rgba(242,166,35,0.1);color:#F2A623;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;padding:0 14px;margin-bottom:8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="4" width="14" height="10" rx="2"/><path d="M1 8h14"/><path d="M4 12h2"/><path d="M9 12h3"/></svg>
+            Billing & Plan
+          </button>` : ''}
+          <button onclick="showThemePicker()" style="width:100%;height:44px;border-radius:10px;border:none;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;padding:0 14px;margin-bottom:8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></svg>
+            🎨 Change Color
+          </button>
           <button class="signout-btn" onclick="handleSignOut()">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><polyline points="10,5 13,8 10,11"/><line x1="13" y1="8" x2="5" y2="8"/></svg>
             Sign out
@@ -1047,6 +1242,8 @@ function renderApp(userData) {
     </div>
   `;
   renderPage(userData);
+  // Load saved theme
+  loadSavedTheme();
   // Start notification listener for admin
   if (isAdmin) {
     const rid = currentRestaurantId() || userData.uid;
@@ -1164,6 +1361,7 @@ function renderPage(userData) {
     case 'recipes':   renderRecipes(main, userData); break;
     case 'preplist':  renderPrepList(main, userData); break;
     case 'inventory': renderInventory(main, userData); break;
+    case 'suppliers': renderSuppliers(main, userData); break;
     case 'menudesign': renderMenuDesign(main, userData); break;
     case 'procedures': renderProcedures(main, userData); break;
     case 'checklists': renderChecklists(main, userData); break;
@@ -1171,9 +1369,12 @@ function renderPage(userData) {
     case 'foodcost':    renderFoodCost(main, userData); break;
     case 'templog':     renderTempLog(main, userData); break;
     case 'clients':   renderClients(main, userData); break;
+    case 'hiretrain': renderHireTrain(main, userData); break;
+    case 'billing':     renderBilling(main, userData); break;
     case 'teamhub':     renderTeamHub(main, userData); break;
     case 'staff':       renderStaff(main, userData); break;
     case 'schedule':    renderSchedule(main, userData); break;
+    case 'timeclock':   renderTimeClock(main, userData); break;
         default:          renderDashboard(main, userData);
   }
 }
@@ -1272,6 +1473,13 @@ function renderDashboard(main, userData) {
             <div class="quick-card-title">Inventory</div>
             <div class="quick-card-sub">Track stock levels</div>
           </button>
+          <button class="quick-card" onclick="navigate('suppliers')">
+            <div class="quick-card-icon" style="background:#FFF0EB;">
+              <svg viewBox="0 0 18 18" fill="none" stroke="#E85D26" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h16l-2 8H3L1 4z"/><circle cx="6" cy="15.5" r="1.5"/><circle cx="13" cy="15.5" r="1.5"/></svg>
+            </div>
+            <div class="quick-card-title">📦 Suppliers</div>
+            <div class="quick-card-sub">Orders & deliveries</div>
+          </button>
           <button class="quick-card" onclick="navigate('menudesign')">
             <div class="quick-card-icon" style="background:#E1F5EE;">
               <svg viewBox="0 0 18 18" fill="none" stroke="#0F6E56" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="16" height="13" rx="2"/><line x1="1" y1="7" x2="17" y2="7"/><line x1="4" y1="11" x2="8" y2="11"/></svg>
@@ -1299,6 +1507,13 @@ function renderDashboard(main, userData) {
             </div>
             <div class="quick-card-title">📅 Schedule</div>
             <div class="quick-card-sub">Weekly shift planner</div>
+          </button>
+          <button class="quick-card" onclick="navigate('timeclock')">
+            <div class="quick-card-icon" style="background:#FFF8ED;">
+              <svg viewBox="0 0 18 18" fill="none" stroke="#F2A623" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,4 9,9 12,11"/></svg>
+            </div>
+            <div class="quick-card-title">⏱️ Time Clock</div>
+            <div class="quick-card-sub">Clock in / Clock out</div>
           </button>
                     <button class="quick-card" onclick="navigate('teamhub')" style="background:linear-gradient(135deg,#0A2A1A,#0F4A2A);border:1.5px solid rgba(29,158,117,0.5);position:relative;overflow:hidden;">
             <div style="position:absolute;top:0;right:0;background:var(--green);color:#fff;font-size:0.6rem;font-weight:700;padding:3px 8px;border-radius:0 0 0 8px;letter-spacing:0.05em;">NEW</div>
@@ -1445,8 +1660,8 @@ async function loadDashboardNotifs(rid) {
   if (!el) return;
   try {
     const { getDocs, query, collection, where, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid), orderBy('createdAt','desc'), limit(10)));
-    const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid)));
+    const notifs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,30);
     const unread = notifs.filter(n=>!n.read);
 
     el.style.display = 'block';
@@ -4671,81 +4886,571 @@ window.updateQty = async function(itemId, newQty) {
 // CLIENTS PAGE (ADMIN ONLY)
 // ============================================
 function renderClients(main, userData) {
-  main.innerHTML = `
-    <div class="page-header">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div>
-          <h1 class="page-title">Manage clients</h1>
-          <p class="page-sub">View and manage all restaurant accounts</p>
-        </div>
-        <button onclick="showAddClientModal()" class="form-btn-small" style="height:42px;padding:0 20px;">+ Add client</button>
-        <button onclick="showDataMigrationTool()" style="height:42px;padding:0 14px;border-radius:8px;border:1.5px solid var(--amber);background:var(--amber-light);color:#854F0B;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🔧 Fix lost data</button>
-      </div>
-    </div>
-    <div class="page-body">
-      <div id="clients-list"><div class="empty-state"><div class="loading-spinner" style="margin:0 auto 12px;"></div></div></div>
+  main.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">🍳 Command Center</h1><p class="page-sub">All your client restaurants in one view</p></div>
+      <button onclick="showAddClientModal()" style="height:42px;padding:0 20px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,0.3);">+ Add Restaurant</button>
     </div>`;
+  main.appendChild(header);
+  const body = document.createElement('div');
+  body.className = 'page-body';
+  body.id = 'clients-list';
+  body.innerHTML = '<div class="empty-state"><div class="loading-spinner" style="margin:0 auto 12px;"></div></div>';
+  main.appendChild(body);
   loadClients();
 }
 
-window.showAddClientModal = function() {
-  const existing = document.getElementById('add-client-modal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'add-client-modal';
-  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#fff;border-radius:24px;width:100%;max-width:460px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.2);';
-  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:var(--ink);margin-bottom:6px;">Add new client</div>'
-    + '<div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Creates a login account for the restaurant.</div>'
-    + '<div style="display:flex;flex-direction:column;gap:12px;">'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Restaurant name *</label><input type="text" id="new-client-restaurant" class="form-input-small" style="width:100%;" placeholder="e.g. Black Lion Kitchen"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Owner full name</label><input type="text" id="new-client-owner" class="form-input-small" style="width:100%;" placeholder="e.g. Marcus Johnson"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Email address *</label><input type="email" id="new-client-email" class="form-input-small" style="width:100%;" placeholder="e.g. marcus@blacklion.com"></div>'
-    + '<div><label style="font-size:0.75rem;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:4px;">Temporary password *</label><input type="text" id="new-client-password" class="form-input-small" style="width:100%;" value="ChefNek2024!"></div>'
-    + '</div>';
-  const btns = document.createElement('div');
-  btns.style.cssText = 'display:flex;gap:8px;margin-top:20px;';
-  const saveBtn = document.createElement('button');
-  saveBtn.id = 'add-client-modal-btn';
-  saveBtn.textContent = 'Create account';
-  saveBtn.style.cssText = 'flex:1;height:48px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
-  saveBtn.onclick = createClientAccount;
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.style.cssText = 'height:48px;padding:0 20px;border-radius:12px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;font-family:var(--font-body);';
-  cancelBtn.onclick = () => modal.remove();
-  btns.appendChild(saveBtn);
-  btns.appendChild(cancelBtn);
-  box.appendChild(btns);
-  modal.appendChild(box);
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
-  setTimeout(() => document.getElementById('new-client-restaurant')?.focus(), 50);
+async function loadClients() {
+  const listEl = document.getElementById('clients-list');
+  if (!listEl) return;
+  try {
+    const snap = await getDocs(collection(db,'users'));
+    const now = new Date();
+    const clients = snap.docs
+      .filter(d => !d.data().isAdmin && d.data().email !== ADMIN_EMAIL)
+      .map(d => ({id:d.id,...d.data()}))
+      .sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    listEl.innerHTML = '';
+
+    const founders = clients.filter(c=>c.plan==='founding');
+    const paid     = clients.filter(c=>['pro','starter','growth'].includes(c.plan));
+    const trials   = clients.filter(c=>!['founding','pro','starter','growth'].includes(c.plan));
+    const mrr      = paid.length * 49;
+    const expiredTrials = trials.filter(c=>{
+      const s = c.trialStart ? new Date(c.trialStart) : new Date(c.createdAt?.toDate?.() || now);
+      return Math.floor((now-s)/(1000*60*60*24)) >= (c.trialDays||30);
+    });
+
+    const statsBar = document.createElement('div');
+    statsBar.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;';
+    [{label:'Total Restaurants',val:clients.length,icon:'🍳',color:'var(--ink)'},
+     {label:'Monthly Revenue',val:'$'+mrr+'/mo',icon:'💰',color:'var(--green)'},
+     {label:'Founding (Free)',val:founders.length+' of 3',icon:'🏆',color:'#F2A623'},
+     {label:'Trials',val:trials.length+(expiredTrials.length?' · '+expiredTrials.length+' expired':''),icon:'⏳',color:expiredTrials.length?'#E53935':'var(--ink)'}
+    ].forEach(s=>{
+      const c=document.createElement('div');
+      c.style.cssText='background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:10px;';
+      c.innerHTML='<span style="font-size:1.4rem;">'+s.icon+'</span><div><div style="font-size:1.1rem;font-weight:800;color:'+s.color+';">'+s.val+'</div><div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div></div>';
+      statsBar.appendChild(c);
+    });
+    listEl.appendChild(statsBar);
+
+    if (!clients.length) {
+      listEl.innerHTML += '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🍳</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No restaurants yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Clients who sign up will appear here automatically.</div></div>';
+      return;
+    }
+
+    clients.forEach(client => {
+      const plan = client.plan || 'trial';
+      const trialStart = client.trialStart ? new Date(client.trialStart) : new Date(client.createdAt?.toDate?.() || now);
+      const daysUsed = Math.floor((now-trialStart)/(1000*60*60*24));
+      const daysLeft = Math.max(0,(client.trialDays||30)-daysUsed);
+      const isFounder = plan==='founding';
+      const isPaid    = ['pro','starter','growth'].includes(plan);
+      const isTrial   = !isFounder&&!isPaid;
+      const isExpired = isTrial&&daysLeft===0;
+
+      const pb = isFounder
+        ? {label:'🏆 Founding',bg:'#FFF8ED',color:'#C17F3A',border:'#F2A623'}
+        : isPaid
+        ? {label:'✅ Paid $49/mo',bg:'#EDFAF4',color:'#0A5C3F',border:'#1D9E75'}
+        : isExpired
+        ? {label:'🔴 Trial Expired',bg:'#FFF0F0',color:'#C62828',border:'#FFCDD2'}
+        : {label:'⏳ '+daysLeft+'d left',bg:daysLeft<=5?'#FFF0F0':'#FFF8ED',color:daysLeft<=5?'#C62828':'#C17F3A',border:daysLeft<=5?'#FFCDD2':'#F2A623'};
+
+      const joined = client.createdAt?.toDate?.()
+        ? client.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : client.trialStart||'—';
+
+      const initials = (client.restaurantName||client.email||'?').split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue = [...(client.restaurantName||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:12px;transition:all 0.2s;';
+      card.onmouseenter = () => { card.style.borderColor='var(--green)'; card.style.boxShadow='0 4px 20px rgba(29,158,117,0.12)'; };
+      card.onmouseleave = () => { card.style.borderColor='var(--border)'; card.style.boxShadow=''; };
+
+      // Header row
+      const topRow = document.createElement('div');
+      topRow.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;';
+      topRow.innerHTML = '<div style="width:46px;height:46px;border-radius:12px;background:hsl('+hue+',50%,88%);border:2px solid hsl('+hue+',50%,70%);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:hsl('+hue+',50%,30%);flex-shrink:0;">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+        +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+(client.restaurantName||'Unnamed')+'</div>'
+        +'<div style="font-size:0.65rem;font-weight:800;background:'+pb.bg+';color:'+pb.color+';border:1px solid '+pb.border+';padding:2px 8px;border-radius:100px;">'+pb.label+'</div>'
+        +(client.cuisine?'<div style="font-size:0.62rem;color:var(--ink-muted);background:var(--cream);border:1px solid var(--border);padding:2px 8px;border-radius:100px;">'+client.cuisine+'</div>':'')
+        +'</div>'
+        +'<div style="font-size:0.75rem;color:var(--ink-muted);">'+(client.email||'')+'</div>'
+        +'</div>';
+      card.appendChild(topRow);
+
+      // Meta grid
+      const metaGrid = document.createElement('div');
+      metaGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
+      [{label:'Joined',val:joined},{label:'Team',val:client.teamSize||client.staffCount||'—'},{label:'Revenue',val:isPaid?'$49/mo':isFounder?'Founding':'$0'}].forEach(m=>{
+        metaGrid.innerHTML += '<div style="background:var(--cream);border-radius:10px;padding:10px 12px;"><div style="font-size:0.65rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+m.val+'</div></div>';
+      });
+      card.appendChild(metaGrid);
+
+      // Trial bar
+      if (isTrial) {
+        const prog = Math.min(100,Math.round(daysUsed/(client.trialDays||30)*100));
+        const barEl = document.createElement('div');
+        barEl.style.cssText = 'margin-bottom:12px;';
+        barEl.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:'+(isExpired?'#E53935':'var(--ink-muted)')+';margin-bottom:4px;"><span>Trial progress</span><span>'+(isExpired?'Expired':daysLeft+'d remaining')+'</span></div>'
+          +'<div style="height:6px;background:var(--border);border-radius:100px;overflow:hidden;">'
+          +'<div style="height:100%;width:'+prog+'%;background:'+(isExpired?'#E53935':daysLeft<=5?'#F2A623':'var(--green)')+';border-radius:100px;"></div></div>';
+        card.appendChild(barEl);
+      }
+
+      // Actions
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+      const viewBtn = document.createElement('button');
+      viewBtn.style.cssText = 'flex:1;height:36px;border-radius:9px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;';
+      viewBtn.textContent = '🍳 View Dashboard';
+      viewBtn.onclick = () => viewClientDashboard(client);
+      actions.appendChild(viewBtn);
+
+      if (client.phone) {
+        const callBtn = document.createElement('a');
+        callBtn.href = 'tel:'+client.phone;
+        callBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+        callBtn.title = 'Call'; callBtn.textContent = '📞';
+        actions.appendChild(callBtn);
+      }
+
+      const emailBtn = document.createElement('a');
+      emailBtn.href = 'mailto:'+(client.email||'')+'?subject=Chef Nek Pro — '+(client.restaurantName||'');
+      emailBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+      emailBtn.title = 'Email'; emailBtn.textContent = '📧';
+      actions.appendChild(emailBtn);
+
+      if (!isPaid && !isFounder) {
+        const paidBtn = document.createElement('button');
+        paidBtn.style.cssText = 'height:36px;padding:0 12px;border-radius:9px;border:none;background:#FFF8ED;color:#C17F3A;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+        paidBtn.textContent = '💳 Mark Paid';
+        paidBtn.onclick = () => clientMarkPaid(client.id, listEl);
+        actions.appendChild(paidBtn);
+      }
+
+      const suspendBtn = document.createElement('button');
+      suspendBtn.style.cssText = 'height:36px;width:36px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-size:0.85rem;cursor:pointer;';
+      suspendBtn.title = client.status==='suspended'?'Reactivate':'Suspend';
+      suspendBtn.textContent = client.status==='suspended'?'✅':'⏸️';
+      suspendBtn.onclick = () => clientSuspend(client.id, client.status, listEl);
+      actions.appendChild(suspendBtn);
+
+      card.appendChild(actions);
+      listEl.appendChild(card);
+    });
+  } catch(err) {
+    listEl.innerHTML = '<div style="padding:20px;color:var(--red);">Error: '+err.message+'</div>';
+    console.error(err);
+  }
 }
 
-async function createClientAccount() {
-  const restaurant = document.getElementById('new-client-restaurant')?.value.trim();
-  const owner = document.getElementById('new-client-owner')?.value.trim() || '';
-  const email = document.getElementById('new-client-email')?.value.trim();
-  const password = document.getElementById('new-client-password')?.value.trim();
-  const btn = document.getElementById('add-client-modal-btn');
-  if (!restaurant || !email || !password) { showToast('Fill all required fields', 'error'); return; }
-  if (password.length < 6) { showToast('Password must be 6+ characters', 'error'); return; }
-  if (btn) { btn.textContent = 'Creating...'; btn.disabled = true; }
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      email, restaurantName: restaurant, ownerName: owner,
-      isAdmin: false, status: 'active', createdAt: serverTimestamp()
-    });
-    showToast(restaurant + ' account created!');
-    document.getElementById('add-client-modal')?.remove();
-    loadClients();
-  } catch(e) {
-    if (btn) { btn.textContent = 'Create account'; btn.disabled = false; }
-    showToast(e.message || 'Error creating account', 'error');
+// ============================================
+// HIRE & TRAIN — Admin Only
+// Chef Nek's private hiring pipeline
+// ============================================
+async function renderHireTrain(main, userData) {
+  main.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">👨‍🍳 Hire & Train</h1>
+        <p class="page-sub">Your private kitchen worker pipeline</p>
+      </div>
+      <button onclick="htShowApplicantModal()" style="height:42px;padding:0 20px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,0.3);">+ Add Applicant</button>
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Tabs
+  window._htTab = window._htTab || 'pipeline';
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;';
+  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'}].forEach(t=>{
+    const btn = document.createElement('button');
+    btn.id = 'ht-tab-'+t.id;
+    btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;'
+      +(window._htTab===t.id?'background:var(--ink);color:#fff;border-color:var(--ink);':'background:transparent;color:var(--ink-muted);');
+    btn.textContent = t.label;
+    btn.onclick = () => { window._htTab=t.id; htRenderTab(body); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+
+  const content = document.createElement('div');
+  content.id = 'ht-content';
+  body.appendChild(content);
+  main.appendChild(body);
+  await htRenderTab(body);
+}
+
+async function htRenderTab(body) {
+  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'}].forEach(t=>{
+    const btn = document.getElementById('ht-tab-'+t.id);
+    if (!btn) return;
+    btn.style.background  = window._htTab===t.id?'var(--ink)':'transparent';
+    btn.style.color       = window._htTab===t.id?'#fff':'var(--ink-muted)';
+    btn.style.borderColor = window._htTab===t.id?'var(--ink)':'var(--border)';
+  });
+  const el = document.getElementById('ht-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  const snap = await getDocs(collection(db,'htApplicants'));
+  const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  if (window._htTab==='pipeline')  htRenderPipeline(el, all);
+  else if (window._htTab==='certified') htRenderCertified(el, all);
+  else if (window._htTab==='placed') htRenderPlaced(el, all);
+  else htRenderTrainingSchedule(el, all);
+}
+
+// Pipeline stages
+const HT_STAGES = [
+  {id:'applied',   label:'📥 Applied',        color:'#6B7280', bg:'#F3F4F6'},
+  {id:'screening', label:'📞 Screening',       color:'#2563EB', bg:'#EEF4FF'},
+  {id:'training',  label:'🎓 In Training',     color:'#F2A623', bg:'#FFF8ED'},
+  {id:'ready',     label:'✅ Job Ready',        color:'#1D9E75', bg:'#EDFAF4'},
+  {id:'placed',    label:'🍳 Placed',           color:'#7C3AED', bg:'#F5F0FF'},
+  {id:'rejected',  label:'❌ Not a Fit',        color:'#E53935', bg:'#FFF0F0'},
+];
+
+function htRenderPipeline(el, all) {
+  el.innerHTML = '';
+  const active = all.filter(a=>!['placed','rejected'].includes(a.stage||'applied'));
+  if (!active.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">📥</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No applicants yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Click + Add Applicant when someone reaches out about training.</div></div>';
+    return;
   }
+  // Stats
+  const statsRow = document.createElement('div');
+  statsRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;';
+  HT_STAGES.slice(0,4).forEach(s=>{
+    const count = all.filter(a=>a.stage===s.id).length;
+    const c = document.createElement('div');
+    c.style.cssText = 'background:'+s.bg+';border-radius:12px;padding:12px;text-align:center;border:1px solid '+s.color+'30;';
+    c.innerHTML = '<div style="font-size:1.4rem;font-weight:800;color:'+s.color+';">'+count+'</div>'
+      +'<div style="font-size:0.65rem;color:'+s.color+';font-weight:600;">'+s.label+'</div>';
+    statsRow.appendChild(c);
+  });
+  el.appendChild(statsRow);
+
+  active.forEach(a => el.appendChild(htApplicantCard(a, true)));
+}
+
+function htRenderCertified(el, all) {
+  el.innerHTML = '';
+  const certs = all.filter(a=>a.stage==='ready'||a.certified);
+  if (!certs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">✅</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No certified workers yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Workers who complete training appear here. Restaurants can browse these profiles.</div></div>';
+    return;
+  }
+  const intro = document.createElement('div');
+  intro.style.cssText = 'background:linear-gradient(135deg,#EDFAF4,#D4F5E8);border:1.5px solid var(--green);border-radius:14px;padding:16px 18px;margin-bottom:16px;';
+  intro.innerHTML = '<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:4px;">✅ '+certs.length+' Chef Nek Certified Worker'+(certs.length>1?'s':'')+'</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);">These workers completed Chef Nek training and know the platform. Ready to be placed with client restaurants.</div>';
+  el.appendChild(intro);
+  certs.forEach(a => el.appendChild(htApplicantCard(a, true)));
+}
+
+function htRenderPlaced(el, all) {
+  el.innerHTML = '';
+  const placed = all.filter(a=>a.stage==='placed');
+  if (!placed.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">🍳</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No placements yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">When you place a certified worker at a restaurant it shows here.</div></div>';
+    return;
+  }
+
+  const totalFees = placed.reduce((s,a)=>s+(a.placementFee||0),0);
+  const totalTraining = placed.reduce((s,a)=>s+(a.trainingFee||0),0);
+
+  const revenueCard = document.createElement('div');
+  revenueCard.style.cssText = 'background:linear-gradient(135deg,#0B2818,#0A0A14);border-radius:16px;padding:20px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;';
+  [{label:'Workers Placed',val:placed.length,icon:'🍳'},{label:'Training Revenue',val:'$'+totalTraining,icon:'🎓'},{label:'Placement Fees',val:'$'+totalFees,icon:'💰'}].forEach(s=>{
+    revenueCard.innerHTML += '<div style="text-align:center;"><div style="font-size:1.3rem;">'+s.icon+'</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#fff;">'+s.val+'</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">'+s.label+'</div></div>';
+  });
+  el.appendChild(revenueCard);
+  placed.forEach(a => el.appendChild(htApplicantCard(a, false)));
+}
+
+function htRenderTrainingSchedule(el, all) {
+  el.innerHTML = '';
+  const inTraining = all.filter(a=>a.stage==='training'||a.trainingDate);
+
+  const schedCard = document.createElement('div');
+  schedCard.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;';
+  schedCard.innerHTML = '<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:16px;">📅 Upcoming Training Sessions</div>';
+
+  if (!inTraining.length) {
+    schedCard.innerHTML += '<div style="text-align:center;padding:20px;color:var(--ink-muted);font-size:0.82rem;">No training sessions scheduled yet</div>';
+  } else {
+    inTraining.sort((a,b)=>(a.trainingDate||'').localeCompare(b.trainingDate||'')).forEach(a=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);';
+      const ini = (a.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue = [...(a.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+      row.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:hsl('+hue+',50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;color:hsl('+hue+',50%,35%);flex-shrink:0;">'+ini+'</div>'
+        +'<div style="flex:1;"><div style="font-size:0.875rem;font-weight:600;color:var(--ink);">'+a.name+'</div>'
+        +'<div style="font-size:0.72rem;color:var(--ink-muted);">'+(a.position||'Kitchen')+' · '+(a.trainingType==='inperson'?'🍳 In-Person at Black Lion':'💻 Zoom Online')+'</div></div>'
+        +'<div style="text-align:right;"><div style="font-size:0.78rem;font-weight:700;color:var(--ink);">'+(a.trainingDate||'TBD')+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+(a.trainingTime||'')+'</div></div>'
+        +'<button onclick="htMarkTrained(\''+a.id+'\')" style="height:30px;padding:0 10px;border-radius:8px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.68rem;font-weight:700;cursor:pointer;white-space:nowrap;">✅ Complete</button>';
+      schedCard.appendChild(row);
+    });
+  }
+  el.appendChild(schedCard);
+
+  // Add session button
+  const addBtn = document.createElement('button');
+  addBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;';
+  addBtn.textContent = '+ Schedule New Training Session';
+  addBtn.onclick = () => htShowApplicantModal();
+  el.appendChild(addBtn);
+}
+
+function htApplicantCard(a, showActions) {
+  const stage  = HT_STAGES.find(s=>s.id===(a.stage||'applied')) || HT_STAGES[0];
+  const ini    = (a.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const hue    = [...(a.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:10px;';
+
+  // Header
+  const top = document.createElement('div');
+  top.style.cssText = 'display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;';
+  top.innerHTML = '<div style="width:42px;height:42px;border-radius:50%;background:hsl('+hue+',50%,85%);border:2px solid hsl('+hue+',50%,65%);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;color:hsl('+hue+',50%,30%);flex-shrink:0;">'+ini+'</div>'
+    +'<div style="flex:1;min-width:0;">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+    +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+(a.name||'Unnamed')+'</div>'
+    +'<div style="font-size:0.65rem;font-weight:800;background:'+stage.bg+';color:'+stage.color+';border:1px solid '+stage.color+'40;padding:2px 8px;border-radius:100px;">'+stage.label+'</div>'
+    +(a.certified?'<div style="font-size:0.65rem;font-weight:800;background:#EDFAF4;color:#0A5C3F;border:1px solid #1D9E75;padding:2px 8px;border-radius:100px;">✅ Certified</div>':'')
+    +'</div>'
+    +'<div style="font-size:0.75rem;color:var(--ink-muted);">'+(a.phone||'')+(a.email?' · '+a.email:'')+'</div>'
+    +'</div>';
+  card.appendChild(top);
+
+  // Info grid
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
+  [{label:'Position',val:a.position||'—'},{label:'Experience',val:a.experience||'—'},{label:'Training',val:a.trainingType==='inperson'?'In-Person':'Zoom Online'}].forEach(m=>{
+    grid.innerHTML += '<div style="background:var(--cream);border-radius:9px;padding:9px 11px;"><div style="font-size:0.62rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+m.val+'</div></div>';
+  });
+  card.appendChild(grid);
+
+  // Training notes
+  if (a.notes) {
+    const notesEl = document.createElement('div');
+    notesEl.style.cssText = 'background:#FAFAF8;border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:0.78rem;color:var(--ink-muted);line-height:1.5;';
+    notesEl.textContent = '📝 ' + a.notes;
+    card.appendChild(notesEl);
+  }
+
+  // Fees row
+  if (a.trainingFee || a.placementFee) {
+    const feesRow = document.createElement('div');
+    feesRow.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
+    if (a.trainingFee) feesRow.innerHTML += '<div style="font-size:0.75rem;color:var(--ink-muted);">🎓 Training fee: <strong style="color:var(--green);">$'+a.trainingFee+'</strong></div>';
+    if (a.placementFee) feesRow.innerHTML += '<div style="font-size:0.75rem;color:var(--ink-muted);">💰 Placement fee: <strong style="color:var(--green);">$'+a.placementFee+'</strong></div>';
+    card.appendChild(feesRow);
+  }
+
+  if (!showActions) return card;
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+  // Stage selector
+  const stageSel = document.createElement('select');
+  stageSel.style.cssText = 'height:34px;border-radius:9px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.75rem;outline:none;background:#fff;color:var(--ink);flex:1;';
+  HT_STAGES.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value=s.id; opt.textContent=s.label;
+    if (s.id===(a.stage||'applied')) opt.selected=true;
+    stageSel.appendChild(opt);
+  });
+  stageSel.onchange = () => htUpdateStage(a.id, stageSel.value);
+  actions.appendChild(stageSel);
+
+  if (a.phone) {
+    const callBtn = document.createElement('a');
+    callBtn.href='tel:'+a.phone;
+    callBtn.style.cssText='height:34px;width:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.85rem;';
+    callBtn.textContent='📞';
+    actions.appendChild(callBtn);
+  }
+
+  const editBtn = document.createElement('button');
+  editBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--ink-muted);';
+  editBtn.textContent='Edit';
+  editBtn.onclick=()=>htShowApplicantModal(a);
+  actions.appendChild(editBtn);
+
+  if (a.stage==='ready' && !a.certified) {
+    const certBtn = document.createElement('button');
+    certBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+    certBtn.textContent='🏆 Certify';
+    certBtn.onclick=()=>htCertify(a.id);
+    actions.appendChild(certBtn);
+  }
+
+  const delBtn = document.createElement('button');
+  delBtn.style.cssText='height:34px;width:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;';
+  delBtn.textContent='🗑️';
+  delBtn.onclick=async()=>{ if(!confirm('Delete this applicant?'))return; await deleteDoc(doc(db,'htApplicants',a.id)); showToast('Deleted'); htRenderTab(document.querySelector('.page-body')); };
+  actions.appendChild(delBtn);
+
+  card.appendChild(actions);
+  return card;
+}
+
+window.htShowApplicantModal = function(existing) {
+  const isEdit = !!existing;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  const fields = [
+    ['text','ht-name','Full Name *','e.g. Marcus Johnson'],
+    ['tel','ht-phone','Phone Number','e.g. +1 (202) 555-0100'],
+    ['email','ht-email','Email Address','e.g. marcus@email.com'],
+  ];
+
+  box.innerHTML = '<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>'
+    +'<div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">'+(isEdit?'✏️ Edit Applicant':'➕ Add Applicant')+'</div>';
+
+  fields.forEach(([type,id,label,ph])=>{
+    box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">'+label+'</label>'
+      +'<input type="'+type+'" id="'+id+'" placeholder="'+ph+'" value="'+(existing?.[id.replace('ht-','')]||'').replace(/"/g,'&quot;')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);"></div>';
+  });
+
+  // Position + Experience
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Position *</label>'
+    +'<select id="ht-position" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +['Line Cook','Prep Cook','Sous Chef','Pastry Cook','Dishwasher','Kitchen Manager','FOH Staff','Other'].map(p=>`<option value="${p}"${existing?.position===p?' selected':''}>${p}</option>`).join('')
+    +'</select></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Experience</label>'
+    +'<select id="ht-experience" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +['No experience','0-1 year','1-2 years','2-5 years','5+ years'].map(e=>`<option value="${e}"${existing?.experience===e?' selected':''}>${e}</option>`).join('')
+    +'</select></div></div>';
+
+  // Training type + Date + Time
+  box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Type</label>'
+    +'<select id="ht-trainingtype" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">'
+    +'<option value="zoom"'+(existing?.trainingType==='zoom'?' selected':'')+'>💻 Zoom Online</option>'
+    +'<option value="inperson"'+(existing?.trainingType==='inperson'?' selected':'')+'>🍳 In-Person at Black Lion Kitchen</option>'
+    +'</select></div>';
+
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Date</label>'
+    +'<input type="date" id="ht-trainingdate" value="'+(existing?.trainingDate||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Time</label>'
+    +'<input type="time" id="ht-trainingtime" value="'+(existing?.trainingTime||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div></div>';
+
+  // Fees
+  box.innerHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Training Fee $</label>'
+    +'<input type="number" id="ht-trainingfee" placeholder="e.g. 150" value="'+(existing?.trainingFee||'')+'" min="0" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #C8EEE0;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#F2A623;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Placement Fee $</label>'
+    +'<input type="number" id="ht-placementfee" placeholder="e.g. 299" value="'+(existing?.placementFee||'')+'" min="0" style="width:100%;height:44px;border-radius:10px;border:1.5px solid #FFD5A8;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF8ED;"></div></div>';
+
+  // Placed at restaurant
+  box.innerHTML += '<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Placed At Restaurant</label>'
+    +'<input type="text" id="ht-placedat" placeholder="e.g. Island Grill DC" value="'+(existing?.placedAt||'')+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);"></div>';
+
+  // Notes
+  box.innerHTML += '<div style="margin-bottom:20px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Notes</label>'
+    +'<textarea id="ht-notes" placeholder="Skills, attitude, anything to remember..." style="width:100%;height:70px;border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;resize:none;">'+(existing?.notes||'')+'</textarea></div>';
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+  const saveBtn = document.createElement('button');
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  saveBtn.textContent = isEdit ? '💾 Save Changes' : '✅ Add Applicant';
+  saveBtn.onclick = async () => {
+    const name = document.getElementById('ht-name')?.value.trim();
+    if (!name) { showToast('Name is required','error'); return; }
+    saveBtn.disabled=true; saveBtn.textContent='Saving...';
+    const data = {
+      name,
+      phone: document.getElementById('ht-phone')?.value.trim()||'',
+      email: document.getElementById('ht-email')?.value.trim()||'',
+      position: document.getElementById('ht-position')?.value||'Line Cook',
+      experience: document.getElementById('ht-experience')?.value||'',
+      trainingType: document.getElementById('ht-trainingtype')?.value||'zoom',
+      trainingDate: document.getElementById('ht-trainingdate')?.value||'',
+      trainingTime: document.getElementById('ht-trainingtime')?.value||'',
+      trainingFee: parseFloat(document.getElementById('ht-trainingfee')?.value||0)||0,
+      placementFee: parseFloat(document.getElementById('ht-placementfee')?.value||0)||0,
+      placedAt: document.getElementById('ht-placedat')?.value.trim()||'',
+      notes: document.getElementById('ht-notes')?.value.trim()||'',
+      stage: existing?.stage||'applied',
+      certified: existing?.certified||false,
+      updatedAt: serverTimestamp(),
+    };
+    try {
+      if (isEdit) {
+        await setDoc(doc(db,'htApplicants',existing.id), data, {merge:true});
+      } else {
+        data.createdAt = serverTimestamp();
+        await addDoc(collection(db,'htApplicants'), data);
+      }
+      overlay.remove();
+      showToast(isEdit?'✅ Saved!':'✅ Applicant added!');
+      htRenderTab(document.querySelector('.page-body'));
+    } catch(err){ showToast('Error: '+err.message,'error'); saveBtn.disabled=false; saveBtn.textContent=isEdit?'💾 Save Changes':'✅ Add Applicant'; }
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.style.cssText = 'height:50px;padding:0 20px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = () => overlay.remove();
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>document.getElementById('ht-name')?.focus(),100);
+}
+
+window.htUpdateStage = async function(id, stage) {
+  try {
+    await setDoc(doc(db,'htApplicants',id),{stage,updatedAt:serverTimestamp()},{merge:true});
+    showToast('Stage updated');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
+}
+
+window.htCertify = async function(id) {
+  if (!confirm('Mark this worker as Chef Nek Certified?')) return;
+  try {
+    const certDate = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    await setDoc(doc(db,'htApplicants',id),{certified:true,certifiedDate:certDate,stage:'ready',updatedAt:serverTimestamp()},{merge:true});
+    showToast('🏆 Worker certified!');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
+}
+
+window.htMarkTrained = async function(id) {
+  try {
+    await setDoc(doc(db,'htApplicants',id),{stage:'ready',trainingCompleted:true,updatedAt:serverTimestamp()},{merge:true});
+    showToast('✅ Training marked complete!');
+    htRenderTab(document.querySelector('.page-body'));
+  } catch(e){ showToast('Error','error'); }
 }
 
 window.viewClientDashboard = function(client) {
@@ -4765,121 +5470,23 @@ window.exitClientView = function() {
   navigate('clients');
 }
 
-async function loadClients() {
-  const listEl = document.getElementById('clients-list');
-  if (!listEl) return;
+window.clientMarkPaid = async function(uid, listEl) {
   try {
-    const snap = await getDocs(collection(db, 'users'));
-    const clients = snap.docs
-      .filter(d => !d.data().isAdmin)
-      .map(d => ({id: d.id, ...d.data()}))
-      .sort((a,b) => (a.restaurantName||'').localeCompare(b.restaurantName||''));
-
-    if (clients.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><div class="empty-state-title">No clients yet</div><div class="empty-state-sub">Click "+ Add client" to create the first restaurant account</div></div>';
-      return;
-    }
-
-    listEl.innerHTML = '';
-
-    // Stats
-    const activeCount = clients.filter(c=>c.status!=='suspended').length;
-    const paidCount = clients.filter(c=>c.paymentStatus==='paid').length;
-    const totalRevenue = clients.reduce((s,c)=>s+(c.monthlyFee||0),0);
-    const stats = document.createElement('div');
-    stats.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
-    stats.innerHTML = '<div class="stat-card"><div class="stat-card-label">Total clients</div><div class="stat-card-value green">' + clients.length + '</div></div>'
-      + '<div class="stat-card"><div class="stat-card-label">Active</div><div class="stat-card-value">' + activeCount + '</div></div>'
-      + '<div class="stat-card"><div class="stat-card-label">Monthly revenue</div><div class="stat-card-value amber">$' + totalRevenue + '</div></div>';
-    listEl.appendChild(stats);
-
-    clients.forEach(client => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.cssText = 'margin-bottom:12px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s;';
-      card.title = 'Click to view ' + (client.restaurantName||'client') + ' dashboard';
-      card.onmouseenter = () => { card.style.borderColor='var(--green)'; card.style.boxShadow='0 4px 20px rgba(29,158,117,0.12)'; };
-      card.onmouseleave = () => { card.style.borderColor=''; card.style.boxShadow=''; };
-      card.onclick = (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        viewClientDashboard(client);
-      };
-
-      const status = client.status || 'active';
-      const payStatus = client.paymentStatus || 'unpaid';
-      const statusColor = status==='active' ? '#1D9E75' : '#E24B4A';
-      const statusBg = status==='active' ? 'var(--green-light)' : '#FCEBEB';
-      const payColor = payStatus==='paid' ? '#1D9E75' : payStatus==='overdue' ? '#E24B4A' : '#B5860A';
-      const payBg = payStatus==='paid' ? 'var(--green-light)' : payStatus==='overdue' ? '#FCEBEB' : '#FFF8E1';
-
-      // Top row: name + badges
-      const top = document.createElement('div');
-      top.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;';
-      top.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-        + '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">' + (client.restaurantName||'Unnamed') + '</div>'
-        + '<span style="font-size:0.65rem;background:var(--green-light);color:var(--green-dark);padding:2px 8px;border-radius:20px;font-weight:600;">Click to view</span>'
-        + '<span style="font-size:0.65rem;background:'+statusBg+';color:'+statusColor+';padding:2px 8px;border-radius:20px;font-weight:700;">' + (status==='active'?'Active':'Suspended') + '</span>'
-        + '<span style="font-size:0.65rem;background:'+payBg+';color:'+payColor+';padding:2px 8px;border-radius:20px;font-weight:700;">' + (payStatus==='paid'?'Paid':payStatus==='overdue'?'Overdue':'Unpaid') + '</span>'
-        + '</div>'
-        + '<div style="font-size:0.8rem;color:var(--ink-muted);">' + (client.email||'') + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">'
-        + '<div style="font-size:0.68rem;color:var(--ink-muted);font-family:monospace;background:var(--cream);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);cursor:pointer;" onclick="copyUID(\'' + client.id + '\')" title="Click to copy Firebase UID">'
-        + 'UID: ' + client.id.substring(0,16) + '...'
-        + '</div>'
-        + '<span style="font-size:0.65rem;color:var(--green);cursor:pointer;font-weight:600;" onclick="copyUID(\'' + client.id + '\')">📋 Copy</span>'
-        + '</div>';
-      card.appendChild(top);
-
-      // UID row
-      const uidRow = document.createElement('div');
-      uidRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0 4px;flex-wrap:wrap;';
-      const uidCode = document.createElement('code');
-      uidCode.style.cssText = 'font-size:0.68rem;color:var(--ink-muted);background:var(--cream);padding:3px 10px;border-radius:6px;border:0.5px solid var(--border);word-break:break-all;';
-      uidCode.textContent = 'UID: ' + client.id;
-      const copySpan = document.createElement('button');
-      copySpan.textContent = '📋 Copy UID';
-      copySpan.style.cssText = 'height:24px;padding:0 10px;border-radius:6px;border:0.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:0.68rem;font-weight:600;cursor:pointer;font-family:var(--font-body);white-space:nowrap;flex-shrink:0;';
-      copySpan.onclick = (e) => { e.stopPropagation(); copyUID(client.id); };
-      uidRow.appendChild(uidCode);
-      uidRow.appendChild(copySpan);
-      card.appendChild(uidRow);
-
-      // Action buttons
-      const actions = document.createElement('div');
-      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;border-top:0.5px solid var(--border);padding-top:12px;margin-top:8px;';
-
-      const mkBtn = (label, color, bg, border, fn) => {
-        const b = document.createElement('button');
-        b.textContent = label;
-        b.style.cssText = 'height:32px;padding:0 12px;border-radius:8px;border:0.5px solid '+border+';background:'+bg+';color:'+color+';font-family:var(--font-body);font-size:0.78rem;cursor:pointer;font-weight:500;';
-        b.onclick = fn;
-        return b;
-      };
-
-      actions.appendChild(mkBtn('📥 Import menu', '#0A6B3A', '#E0F5EC', '#0A6B3A', () => showMenuImportTool(client)));
-      actions.appendChild(mkBtn('View menu', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => { window._menuViewingRestaurantId=client.id; navigate('menudesign'); }));
-      const posSystem = client.posSystem || (client.cloverMerchantId ? 'clover' : null);
-      const posIcons = {clover:'🍀',square:'⬛',toast:'🍞',lightspeed:'⚡',manual:'✏️'};
-      const posLabel = posSystem ? (posIcons[posSystem]||'🔌') + ' ' + posSystem.charAt(0).toUpperCase() + posSystem.slice(1) + ' ✓' : '🔌 Connect POS';
-      const posBg = posSystem ? '#E0F5EC' : 'var(--cream)';
-      const posColor = posSystem ? '#0A6B3A' : 'var(--ink-soft)';
-      actions.appendChild(mkBtn(posLabel, posColor, posBg, posSystem?'#0A6B3A':'var(--border)', () => showPOSConnector(client)));
-      actions.appendChild(mkBtn(status==='active'?'Suspend':'Activate', status==='active'?'#B5860A':'var(--green-dark)', status==='active'?'#FFF8E1':'var(--green-light)', status==='active'?'#F2A623':'var(--green)', () => toggleClientStatus(client.id, client.restaurantName, status)));
-      actions.appendChild(mkBtn(payStatus==='paid'?'Mark unpaid':'Mark paid', payStatus==='paid'?'var(--ink-muted)':'var(--green-dark)', payStatus==='paid'?'var(--cream)':'var(--green-light)', payStatus==='paid'?'var(--border)':'var(--green)', () => togglePaymentStatus(client.id, client.restaurantName, payStatus)));
-      actions.appendChild(mkBtn('✏️ Edit name', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => editClientName(client)));
-      actions.appendChild(mkBtn('Receipt', '#5B3DB5', '#F3EEFF', '#5B3DB5', () => showReceiptModal(client)));
-      actions.appendChild(mkBtn('Reset password', 'var(--ink-soft)', 'var(--cream)', 'var(--border)', () => resetClientPassword(client.email, client.restaurantName)));
-      actions.appendChild(mkBtn('Delete', '#A32D2D', '#FCEBEB', '#F09595', () => deleteClient(client.id, client.restaurantName)));
-
-      card.appendChild(actions);
-      listEl.appendChild(card);
-    });
-  } catch(e) {
-    console.error(e);
-    listEl.innerHTML = '<div class="card"><p style="color:var(--ink-muted);">Error loading clients.</p></div>';
-  }
+    await setDoc(doc(db,'users',uid),{plan:'pro',paidAt:new Date().toISOString()},{merge:true});
+    showToast('✅ Marked as paid — $49/mo');
+    loadClients();
+  } catch(e){ showToast('Error: '+e.message,'error'); }
 }
 
+window.clientSuspend = async function(uid, currentStatus, listEl) {
+  const newStatus = currentStatus==='suspended' ? 'active' : 'suspended';
+  if (!confirm(newStatus==='suspended'?'Suspend this restaurant?':'Reactivate this restaurant?')) return;
+  try {
+    await setDoc(doc(db,'users',uid),{status:newStatus},{merge:true});
+    showToast(newStatus==='suspended'?'Restaurant suspended':'Restaurant reactivated');
+    loadClients();
+  } catch(e){ showToast('Error: '+e.message,'error'); }
+}
 window.toggleClientStatus = async function(uid, name, currentStatus) {
   const newStatus = currentStatus==='active' ? 'suspended' : 'active';
   if (!confirm((newStatus==='suspended'?'Suspend ':'Activate ') + (name||'client') + '?')) return;
@@ -9457,11 +10064,12 @@ function renderTeamHub(main, userData) {
         btn.textContent = name;
         btn.onclick = () => {
           localStorage.setItem('cnp-staff-name', name);
-          // Store the restaurant ID from the staff record so queries work correctly
+          // Store the restaurant ID + doc id from the staff record so queries work correctly
           const staffData = d.data();
           if (staffData.restaurantId) {
             localStorage.setItem('cnp-restaurant-id', staffData.restaurantId);
           }
+          localStorage.setItem('cnp-staff-doc-id', d.id);
           renderTeamHub(main, userData);
         };
         container.appendChild(btn);
@@ -10146,7 +10754,7 @@ function startNotifListener(rid) {
     const { onSnapshot, query: fsQuery, collection: fsCol, where: fsWhere, orderBy: fsOrderBy } = window._fsExports || {};
     // Use the already-imported Firestore functions
     import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ onSnapshot, query, collection, where, orderBy, limit }) => {
-      const q = query(collection(db,'notifications'), where('restaurantId','==',rid), where('read','==',false), orderBy('createdAt','desc'), limit(20));
+      const q = query(collection(db,'notifications'), where('restaurantId','==',rid), where('read','==',false));
       window._notifUnsubscribe = onSnapshot(q, snap => {
         const count = snap.docs.length;
         const dot = document.getElementById('notif-dot');
@@ -10188,7 +10796,7 @@ window.showNotifications = async function() {
 
   try {
     const { getDocs, query, collection, where, orderBy, limit, updateDoc, doc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid), orderBy('createdAt','desc'), limit(30)));
+    const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid)));
     const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
 
     listEl.innerHTML = '';
@@ -10237,9 +10845,13 @@ window.staffCheckIn = async function(i) {
   const rid = currentRestaurantId() || window._userData?.uid;
   localStorage.setItem('cnp-staff-name', staff.name);
 
-  // Store the restaurant ID so employees can query the right data
+  // Store the restaurant ID + doc id so employees always query the right data,
+  // even if this localStorage value was set before a deploy fix shipped
   if (staff.restaurantId) {
     localStorage.setItem('cnp-restaurant-id', staff.restaurantId);
+  }
+  if (staff.id) {
+    localStorage.setItem('cnp-staff-doc-id', staff.id);
   }
 
   // Record check-in to Firestore so admin can see
@@ -11269,6 +11881,1734 @@ window.calcApply = function() {
 
 
 
+
+
+// ============================================
+// TIME CLOCK
+// ============================================
+// ============================================
+// TIME CLOCK — Advanced Rebuild
+// ============================================
+async function renderTimeClock(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  const today = new Date().toISOString().split('T')[0];
+  main.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  const headerInner = document.createElement('div');
+  headerInner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;';
+  header.appendChild(headerInner);
+
+  const headerLeft = document.createElement('div');
+  headerLeft.innerHTML = '<h1 class="page-title">⏱️ Time Clock</h1>'
+    + '<p class="page-sub">'+(isAdmin?'Manage employee hours':'Clock in and out for your shift')+'</p>';
+  headerInner.appendChild(headerLeft);
+
+  if (isAdmin) {
+    const headerBtns = document.createElement('div');
+    headerBtns.style.cssText = 'display:flex;gap:8px;';
+    const kioskBtn = document.createElement('button');
+    kioskBtn.style.cssText = 'height:38px;padding:0 16px;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;';
+    kioskBtn.textContent = '🖥️ Kiosk Mode';
+    kioskBtn.onclick = () => openKioskMode(rid);
+    const exportBtn = document.createElement('button');
+    exportBtn.style.cssText = 'height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;';
+    exportBtn.textContent = '📊 Export CSV';
+    exportBtn.onclick = () => tcExportWeek(rid);
+    headerBtns.appendChild(kioskBtn);
+    headerBtns.appendChild(exportBtn);
+    headerInner.appendChild(headerBtns);
+  }
+
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+  main.appendChild(body);
+
+  if (isAdmin) {
+    await tcRenderAdmin(rid, today, body, userData);
+  } else {
+    await tcRenderEmployee(rid, today, body, userData);
+  }
+}
+
+// ── HELPER: "9:00 AM" → "09:00" ──────────────────────────
+function to24hTC(t) {
+  if (!t) return '';
+  const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return t;
+  let h = parseInt(m[1]);
+  const min = m[2], ap = m[3].toUpperCase();
+  if (ap==='AM'&&h===12) h=0;
+  if (ap==='PM'&&h!==12) h+=12;
+  return h.toString().padStart(2,'0')+':'+min;
+}
+
+// ── HELPER: "09:00" → "9:00 AM" ──────────────────────────
+function to12hTC(t) {
+  if (!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ap = h>=12 ? 'PM' : 'AM';
+  return (h%12||12)+':'+(m||0).toString().padStart(2,'0')+' '+ap;
+}
+
+// ── HELPER: calc hours between two time values (handles both 12h and 24h) ─
+function calcHoursTC(inVal, outVal) {
+  if (!inVal || !outVal) return null;
+  // Convert to 24h if needed (handles "9:00 AM", "09:00", etc.)
+  const to24 = t => {
+    if (!t) return null;
+    // Already 24h format "HH:MM"
+    if (/^\d{1,2}:\d{2}$/.test(t.trim())) return t.trim();
+    // 12h format "9:00 AM" or "09:00 AM"
+    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return null;
+    let h = parseInt(m[1]); const min = m[2]; const ap = m[3].toUpperCase();
+    if (ap==='AM' && h===12) h=0;
+    if (ap==='PM' && h!==12) h+=12;
+    return h.toString().padStart(2,'0')+':'+min;
+  };
+  const i24 = to24(inVal);
+  const o24 = to24(outVal);
+  if (!i24 || !o24) return null;
+  const [ih,im] = i24.split(':').map(Number);
+  const [oh,om] = o24.split(':').map(Number);
+  if (isNaN(ih)||isNaN(im)||isNaN(oh)||isNaN(om)) return null;
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins < 0) mins += 1440; // overnight shift
+  if (mins === 0) return null;
+  return +(mins/60).toFixed(2);
+}
+
+// ── EMPLOYEE VIEW ─────────────────────────────────────────
+async function tcRenderEmployee(rid, today, body, userData) {
+  const myName = localStorage.getItem('cnp-staff-name') || '';
+  if (!myName) {
+    body.innerHTML = '<div style="text-align:center;padding:60px 20px;">'
+      +'<div style="font-size:3rem;margin-bottom:12px;">👤</div>'
+      +'<div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Who are you?</div>'
+      +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:20px;">Go to Staff and tap your name first.</div>'
+      +'<button onclick="navigate(\'staff\')" style="height:44px;padding:0 24px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Go to Staff</button></div>';
+    return;
+  }
+  body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  try {
+    const snap = await getDocs(query(collection(db,'timeEntries'),
+      where('restaurantId','==',rid), where('employeeName','==',myName)));
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const todayEntries = all.filter(e=>e.date===today);
+    const openEntry = todayEntries.find(e=>!e.clockOut);
+    const todayHrs  = todayEntries.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
+    body.innerHTML = '';
+
+    // Live clock
+    const clockWrap = document.createElement('div');
+    clockWrap.style.cssText = 'text-align:center;padding:0 0 24px;';
+    const timeEl = document.createElement('div');
+    timeEl.style.cssText = 'font-family:"Bebas Neue",sans-serif;font-size:4.5rem;color:var(--ink);letter-spacing:0.04em;line-height:1;';
+    const dateEl = document.createElement('div');
+    dateEl.style.cssText = 'font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;';
+    dateEl.textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const tick = () => timeEl.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    tick(); setInterval(tick, 1000);
+    clockWrap.appendChild(timeEl); clockWrap.appendChild(dateEl);
+
+    // Status card
+    const status = document.createElement('div');
+    status.style.cssText = 'border-radius:16px;padding:16px 20px;margin-bottom:20px;border:2px solid '
+      +(openEntry?'var(--green)':'var(--border)')+';background:'+(openEntry?'#EDFAF4':'var(--cream)')+';';
+    if (openEntry) {
+      status.innerHTML = '<div style="font-size:0.7rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">🟢 Currently Clocked In</div>'
+        +'<div style="font-size:1.5rem;font-weight:800;color:var(--ink);">'+myName+'</div>'
+        +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-top:4px;">Since '+openEntry.clockIn+'</div>';
+    } else {
+      status.innerHTML = '<div style="font-size:0.7rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚪ Not Clocked In</div>'
+        +'<div style="font-size:1.5rem;font-weight:800;color:var(--ink);">'+myName+'</div>'
+        +'<div style="font-size:0.82rem;color:var(--ink-muted);margin-top:4px;">Today: '+todayHrs.toFixed(1)+'h completed</div>';
+    }
+    clockWrap.appendChild(status);
+
+    // Big action button
+    const actionBtn = document.createElement('button');
+    actionBtn.style.cssText = 'width:100%;max-width:320px;height:72px;border-radius:20px;border:none;cursor:pointer;'
+      +'font-family:"Inter",sans-serif;font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:0.01em;'
+      +'background:'+(openEntry?'linear-gradient(135deg,#E53935,#C62828)':'linear-gradient(135deg,#1D9E75,#16856A)')+';'
+      +'box-shadow:0 10px 30px '+(openEntry?'rgba(229,57,53,0.4)':'rgba(29,158,117,0.4)')+';'
+      +'margin-bottom:24px;display:block;margin-left:auto;margin-right:auto;';
+    actionBtn.textContent = openEntry ? '🔴  Clock Out' : '🟢  Clock In';
+    actionBtn.addEventListener('click', async () => {
+      actionBtn.disabled=true; actionBtn.style.opacity='0.7';
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      try {
+        if (openEntry) {
+          const hrs = calcHoursTC(to24hTC(openEntry.clockIn), now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'));
+          await setDoc(doc(db,'timeEntries',openEntry.id),{clockOut:time,hours:hrs,updatedAt:serverTimestamp()},{merge:true});
+          await addDoc(collection(db,'notifications'),{type:'clockout',restaurantId:rid,employeeName:myName,message:myName+' clocked out at '+time+(hrs&&!isNaN(hrs)?' ('+hrs.toFixed(1)+'h)':''),date:today,time,read:false,createdAt:serverTimestamp()});
+          showToast('🔴 Clocked out'+(hrs&&!isNaN(hrs)?' — '+hrs.toFixed(1)+'h today':''));
+        } else {
+          await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:myName,date:today,clockIn:time,clockOut:null,hours:null,createdAt:serverTimestamp()});
+          await addDoc(collection(db,'notifications'),{type:'clockin',restaurantId:rid,employeeName:myName,message:myName+' clocked in at '+time,date:today,time,read:false,createdAt:serverTimestamp()});
+          showToast('🟢 Clocked in at '+time+'!');
+        }
+        await tcRenderEmployee(rid, today, body, userData);
+      } catch(err){ showToast('Error: '+err.message,'error'); actionBtn.disabled=false; actionBtn.style.opacity='1'; }
+    });
+    clockWrap.appendChild(actionBtn);
+    body.appendChild(clockWrap);
+
+    // History table
+    const histTitle = document.createElement('div');
+    histTitle.style.cssText = 'font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:10px;';
+    histTitle.textContent = '📅 My Time History (last 30 days)';
+    body.appendChild(histTitle);
+
+    const completed = all.filter(e=>e.hours).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,40);
+    if (!completed.length) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:20px;color:var(--ink-muted);font-size:0.82rem;background:var(--cream);border-radius:12px;';
+      empty.textContent = 'No completed shifts yet';
+      body.appendChild(empty); return;
+    }
+
+    const totalHrsAll = completed.reduce((s,e)=>s+(e.hours||0),0);
+    const summaryRow = document.createElement('div');
+    summaryRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;';
+    [{label:'Total Hours',val:totalHrsAll.toFixed(1)+'h',color:'var(--green)'},
+     {label:'Days Worked',val:new Set(completed.map(e=>e.date)).size,color:'var(--ink)'},
+     {label:'Avg/Day',val:(totalHrsAll/Math.max(1,new Set(completed.map(e=>e.date)).size)).toFixed(1)+'h',color:'#F2A623'}
+    ].forEach(s=>{
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--cream);border-radius:12px;padding:12px;text-align:center;';
+      card.innerHTML = '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:'+s.color+';">'+s.val+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div>';
+      summaryRow.appendChild(card);
+    });
+    body.appendChild(summaryRow);
+
+    completed.forEach(e => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:6px;';
+      const d = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      row.innerHTML = '<div><div style="font-size:0.82rem;font-weight:600;color:var(--ink);">'+d+'</div>'
+        +'<div style="font-size:0.72rem;color:var(--ink-muted);">🟢 '+e.clockIn+' → 🔴 '+(e.clockOut||'—')+'</div></div>'
+        +'<div style="font-size:1rem;font-weight:800;color:var(--green);">'+(e.hours||0).toFixed(1)+'h</div>';
+      body.appendChild(row);
+    });
+  } catch(err){ console.error(err); body.innerHTML = '<div style="padding:20px;color:var(--red);">Error: '+err.message+'</div>'; }
+}
+
+// ── ADMIN VIEW ────────────────────────────────────────────
+async function tcRenderAdmin(rid, today, body, userData) {
+  window._tcAdminTab = window._tcAdminTab || 'live';
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:16px;';
+  [{id:'live',label:'🟢 Live'},{id:'timesheet',label:'📋 Timesheet'},{id:'export',label:'📊 Export'}].forEach(t=>{
+    const btn = document.createElement('button');
+    btn.id = 'tc-admin-tab-'+t.id;
+    btn.style.cssText = 'height:38px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;'
+      +(window._tcAdminTab===t.id?'background:var(--ink);color:#fff;border-color:var(--ink);':'background:transparent;color:var(--ink-muted);');
+    btn.textContent = t.label;
+    btn.onclick = () => { window._tcAdminTab=t.id; tcSwitchAdminTab(rid, today, content, userData); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+  const content = document.createElement('div');
+  content.id = 'tc-admin-content';
+  body.appendChild(content);
+  await tcSwitchAdminTab(rid, today, content, userData);
+}
+
+async function tcSwitchAdminTab(rid, today, content, userData) {
+  [{id:'live'},{id:'timesheet'},{id:'export'}].forEach(t=>{
+    const btn = document.getElementById('tc-admin-tab-'+t.id);
+    if (!btn) return;
+    btn.style.background  = window._tcAdminTab===t.id?'var(--ink)':'transparent';
+    btn.style.color       = window._tcAdminTab===t.id?'#fff':'var(--ink-muted)';
+    btn.style.borderColor = window._tcAdminTab===t.id?'var(--ink)':'var(--border)';
+  });
+  content.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  if (window._tcAdminTab==='live')           await tcAdminLive(rid, today, content);
+  else if (window._tcAdminTab==='timesheet') await tcAdminTimesheet(rid, content);
+  else                                        await tcAdminExport(rid, content);
+}
+
+// ── LIVE TAB ─────────────────────────────────────────────
+async function tcAdminLive(rid, today, el) {
+  try {
+    const [entrySnap, staffSnap] = await Promise.all([
+      getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)))
+    ]);
+    const all    = entrySnap.docs.map(d=>({id:d.id,...d.data()}));
+    const todayE = all.filter(e=>e.date===today);
+    const staff  = staffSnap.docs.map(d=>d.data()).filter(s=>s.active!==false);
+    const clocked= todayE.filter(e=>!e.clockOut);
+    const wStart = schedFmtDate(schedGetMonday(new Date()));
+    const weekHrs= all.filter(e=>e.date>=wStart&&e.hours).reduce((s,e)=>s+(e.hours||0),0);
+
+    el.innerHTML = '';
+    const stats = document.createElement('div');
+    stats.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
+    [{icon:'🟢',val:clocked.length+' / '+staff.length,label:'Clocked In Now',c:'var(--green)'},
+     {icon:'⏱️',val:weekHrs.toFixed(1)+'h',label:'Hours This Week',c:'var(--ink)'},
+     {icon:'📅',val:todayE.length,label:'Entries Today',c:'var(--ink)'}
+    ].forEach(s=>{
+      const c = document.createElement('div');
+      c.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;';
+      c.innerHTML = '<div style="font-size:1.4rem;">'+s.icon+'</div>'
+        +'<div style="font-size:1.2rem;font-weight:800;color:'+s.c+';margin:4px 0;">'+s.val+'</div>'
+        +'<div style="font-size:0.68rem;color:var(--ink-muted);">'+s.label+'</div>';
+      stats.appendChild(c);
+    });
+    el.appendChild(stats);
+
+    if (clocked.length) {
+      const t = document.createElement('div');
+      t.style.cssText = 'font-size:0.75rem;font-weight:700;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;';
+      t.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;"></div>Currently on shift';
+      el.appendChild(t);
+      clocked.forEach(e=>{
+        const inH = to24hTC(e.clockIn);
+        const [ih,im] = inH.split(':').map(Number);
+        const sinceMin = new Date().getHours()*60+new Date().getMinutes() - (ih*60+(im||0));
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#EDFAF4;border:1.5px solid rgba(29,158,117,0.3);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;';
+        const ini = (e.employeeName||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        card.innerHTML = '<div style="width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0;">'+ini+'</div>'
+          +'<div style="flex:1;"><div style="font-size:0.9rem;font-weight:700;color:var(--ink);">'+e.employeeName+'</div>'
+          +'<div style="font-size:0.75rem;color:var(--ink-muted);">In at '+e.clockIn+' · '+Math.max(0,Math.floor(sinceMin/60))+'h '+Math.max(0,sinceMin%60)+'m</div></div>'
+          +'<div style="font-size:1.1rem;font-weight:800;color:var(--green);">'+Math.max(0,Math.floor(sinceMin/60))+'h '+Math.max(0,sinceMin%60)+'m</div>';
+        el.appendChild(card);
+      });
+    }
+
+    const wt = document.createElement('div');
+    wt.style.cssText = 'font-size:0.75rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 8px;';
+    wt.textContent = 'This week — tap to view & edit';
+    el.appendChild(wt);
+
+    const empHrs = {};
+    all.filter(e=>e.date>=wStart&&e.hours).forEach(e=>{ empHrs[e.employeeName]=(empHrs[e.employeeName]||0)+(e.hours||0); });
+    if (!Object.keys(empHrs).length) { el.innerHTML += '<div style="padding:16px;text-align:center;color:var(--ink-muted);font-size:0.82rem;">No entries this week</div>'; return; }
+    Object.entries(empHrs).sort((a,b)=>b[1]-a[1]).forEach(([name,hrs])=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;cursor:pointer;';
+      row.onmouseenter=()=>row.style.background='var(--cream)'; row.onmouseleave=()=>row.style.background='#fff';
+      const ini=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const hue=[...name].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+      row.innerHTML='<div style="display:flex;align-items:center;gap:10px;">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:hsl('+hue+',50%,85%);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:hsl('+hue+',50%,35%)">'+ini+'</div>'
+        +'<div style="font-size:0.875rem;font-weight:600;color:var(--ink);">'+name+'</div></div>'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+        +'<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">'+(isNaN(hrs)?'—':hrs.toFixed(1)+'h')+'</div>'
+        +'<div style="font-size:0.72rem;color:var(--green);font-weight:600;">Edit →</div></div>';
+      row.onclick = () => { window._tcAdminTab='timesheet'; window._tcTimesheetFilter=name; tcSwitchAdminTab(rid, today, el.parentElement, {}); };
+      el.appendChild(row);
+    });
+  } catch(err){ el.innerHTML='<div style="padding:16px;color:var(--red);">Error: '+err.message+'</div>'; console.error(err); }
+}
+
+// ── TIMESHEET TAB ─────────────────────────────────────────
+async function tcAdminTimesheet(rid, el) {
+  try {
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date.localeCompare(a.date));
+    el.innerHTML = '';
+
+    // Filter bar
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;';
+    const empSel = document.createElement('select');
+    empSel.id = 'ts-filter-emp';
+    empSel.style.cssText = 'height:38px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.82rem;outline:none;background:#fff;';
+    empSel.innerHTML = '<option value="">All employees</option>';
+    [...new Set(all.map(e=>e.employeeName).filter(Boolean))].sort().forEach(n=>{
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      if (window._tcTimesheetFilter===n) opt.selected = true;
+      empSel.appendChild(opt);
+    });
+    const daysSel = document.createElement('select');
+    daysSel.id = 'ts-filter-days';
+    daysSel.style.cssText = 'height:38px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.82rem;outline:none;background:#fff;';
+    daysSel.innerHTML = '<option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option>';
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = 'height:38px;padding:0 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.78rem;font-weight:700;cursor:pointer;';
+    addBtn.textContent = '+ Add Entry';
+    addBtn.onclick = () => tcAddManual(rid, empSel.value);
+    filterBar.appendChild(empSel); filterBar.appendChild(daysSel); filterBar.appendChild(addBtn);
+    el.appendChild(filterBar);
+
+    const tableWrap = document.createElement('div');
+    tableWrap.id = 'ts-table-wrap';
+    el.appendChild(tableWrap);
+
+    const renderTable = () => {
+      const empFilter = empSel.value;
+      const days = parseInt(daysSel.value||'30');
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-days);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const filtered = all.filter(e=>(!empFilter||e.employeeName===empFilter)&&e.date>=cutoffStr);
+      tableWrap.innerHTML = '';
+
+      if (!filtered.length) {
+        tableWrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-muted);">No entries in this period</div>'; return;
+      }
+
+      const totalHrs = filtered.filter(e=>e.hours).reduce((s,e)=>s+(e.hours||0),0);
+      const summary = document.createElement('div');
+      summary.style.cssText = 'display:flex;gap:16px;margin-bottom:12px;font-size:0.82rem;color:var(--ink-muted);';
+      summary.innerHTML = '<span><strong style="color:var(--ink);">'+filtered.length+'</strong> entries</span>'
+        +'<span><strong style="color:var(--green);">'+totalHrs.toFixed(1)+'h</strong> total</span>';
+      tableWrap.appendChild(summary);
+
+      filtered.forEach(e => {
+        const isMissing = !e.clockOut;
+        const row = document.createElement('div');
+        row.id = 'ts-row-'+e.id;
+        row.style.cssText = 'display:grid;grid-template-columns:100px 1fr 1fr 60px 70px;gap:8px;align-items:center;background:#fff;'
+          +'border:1px solid '+(isMissing?'#FFCDD2':'var(--border)')+';border-radius:10px;padding:10px 14px;margin-bottom:6px;';
+        const d = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+        const dateEl = document.createElement('div');
+        dateEl.style.cssText = 'font-size:0.72rem;font-weight:700;color:var(--ink-muted);';
+        dateEl.textContent = d;
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:0.82rem;font-weight:600;color:var(--ink);';
+        nameEl.textContent = e.employeeName||'—';
+        const timesEl = document.createElement('div');
+        timesEl.style.cssText = 'font-size:0.75rem;color:var(--ink-muted);';
+        timesEl.innerHTML = '🟢 '+(e.clockIn||'—')+' → 🔴 '+(e.clockOut||'<span style="color:#F2A623;font-weight:700;">Missing ⚠️</span>');
+        const hrsEl = document.createElement('div');
+        hrsEl.style.cssText = 'font-size:0.9rem;font-weight:800;color:'+(e.hours?'var(--green)':'#F2A623')+';text-align:center;';
+        hrsEl.textContent = e.hours ? e.hours.toFixed(1)+'h' : '—';
+        const btnGroup = document.createElement('div');
+        btnGroup.style.cssText = 'display:flex;gap:4px;';
+        const editBtn = document.createElement('button');
+        editBtn.style.cssText = 'height:28px;padding:0 8px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.68rem;font-weight:600;cursor:pointer;color:var(--ink-muted);';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => tcEditEntry(e.id, rid, row);
+        const delBtn = document.createElement('button');
+        delBtn.style.cssText = 'width:28px;height:28px;border-radius:7px;border:none;background:#FFF0F0;color:#E53935;cursor:pointer;font-size:0.8rem;';
+        delBtn.textContent = '🗑️';
+        delBtn.onclick = async () => {
+          if (!confirm('Delete this entry?')) return;
+          try { await deleteDoc(doc(db,'timeEntries',e.id)); row.remove(); showToast('Deleted'); }
+          catch(err){ showToast('Error: '+err.message,'error'); }
+        };
+        btnGroup.appendChild(editBtn); btnGroup.appendChild(delBtn);
+        row.appendChild(dateEl); row.appendChild(nameEl); row.appendChild(timesEl);
+        row.appendChild(hrsEl); row.appendChild(btnGroup);
+        tableWrap.appendChild(row);
+      });
+    };
+
+    empSel.addEventListener('change', renderTable);
+    daysSel.addEventListener('change', renderTable);
+    window._tcTimesheetFilter = '';
+    renderTable();
+  } catch(err){ el.innerHTML='<div style="padding:16px;color:var(--red);">Error: '+err.message+'</div>'; console.error(err); }
+}
+
+// ── EXPORT TAB ────────────────────────────────────────────
+async function tcAdminExport(rid, el) {
+  const wStart = schedFmtDate(schedGetMonday(new Date()));
+  const wEnd   = new Date().toISOString().split('T')[0];
+  el.innerHTML = '';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;';
+  card.innerHTML = '<div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">📊 Export Timesheet</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Download hours as CSV for payroll</div>';
+
+  const fromWrap = document.createElement('div'); fromWrap.style.cssText = 'margin-bottom:12px;';
+  fromWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">From Date</label>';
+  const fromInput = document.createElement('input'); fromInput.type='date'; fromInput.id='exp-from'; fromInput.value=wStart;
+  fromInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
+  fromWrap.appendChild(fromInput); card.appendChild(fromWrap);
+
+  const toWrap = document.createElement('div'); toWrap.style.cssText = 'margin-bottom:20px;';
+  toWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">To Date</label>';
+  const toInput = document.createElement('input'); toInput.type='date'; toInput.id='exp-to'; toInput.value=wEnd;
+  toInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
+  toWrap.appendChild(toInput); card.appendChild(toWrap);
+
+  const dlBtn = document.createElement('button');
+  dlBtn.style.cssText = 'width:100%;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  dlBtn.textContent = '📥 Download CSV';
+  dlBtn.addEventListener('click', async () => {
+    const from = fromInput.value, to = toInput.value;
+    if (!from||!to) { showToast('Select date range','error'); return; }
+    dlBtn.disabled=true; dlBtn.textContent='Exporting...';
+    try {
+      const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+      const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=from&&e.date<=to)
+        .sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
+      if (!entries.length) { showToast('No entries in that range','error'); dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV'; return; }
+      let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
+      entries.forEach(e=>{ csv += '"'+e.employeeName+'","'+e.date+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n'; });
+      const blob = new Blob([csv],{type:'text/csv'});
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='timeclock-'+from+'-to-'+to+'.csv'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('📊 Exported '+entries.length+' entries!');
+    } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
+    dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV';
+  });
+  card.appendChild(dlBtn);
+  el.appendChild(card);
+}
+
+// ── EDIT ENTRY MODAL ──────────────────────────────────────
+window.tcEditEntry = async function(entryId, rid, rowEl) {
+  let entry;
+  try { const d = await getDoc(doc(db,'timeEntries',entryId)); entry={id:d.id,...d.data()}; }
+  catch(err){ showToast('Could not load entry','error'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:380px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.3);';
+  const dayLabel = entry.date ? new Date(entry.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) : '';
+  const initIn  = to24hTC(entry.clockIn  || '');
+  const initOut = to24hTC(entry.clockOut || '');
+  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:4px;">✏️ Edit Time Entry</div>'
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">'+(entry.employeeName||'')+(dayLabel?' · '+dayLabel:'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>'
+    +'<input type="time" id="edit-in" value="'+initIn+'" style="width:100%;height:44px;border-radius:10px;border:2px solid var(--green);padding:0 12px;font-family:var(--font-body);font-size:0.9rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>'
+    +'<input type="time" id="edit-out" value="'+initOut+'" style="width:100%;height:44px;border-radius:10px;border:2px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.9rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div></div>'
+    +'<div id="edit-err" style="display:none;background:#FFF0F0;border:1px solid #FFCDD2;color:#C62828;font-size:0.78rem;padding:10px;border-radius:9px;margin-bottom:12px;"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button id="edit-save-btn" style="flex:1;height:48px;border-radius:12px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">💾 Save Changes</button>'
+    +'<button style="height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button></div>';
+
+  box.querySelector('button:last-child').onclick = () => overlay.remove();
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>box.querySelector('#edit-in')?.focus(), 50);
+
+  box.querySelector('#edit-save-btn').addEventListener('click', async () => {
+    const inVal  = box.querySelector('#edit-in')?.value;
+    const outVal = box.querySelector('#edit-out')?.value;
+    const errEl  = box.querySelector('#edit-err');
+    const saveBtn= box.querySelector('#edit-save-btn');
+    if (!inVal) { errEl.style.display='block'; errEl.textContent='Clock In is required.'; return; }
+    const hours = outVal ? calcHoursTC(inVal, outVal) : null;
+    if (outVal && (!hours || hours<=0)) { errEl.style.display='block'; errEl.textContent='Clock out must be after clock in.'; return; }
+    saveBtn.disabled=true; saveBtn.textContent='Saving...';
+    try {
+      await setDoc(doc(db,'timeEntries',entryId),{clockIn:to12hTC(inVal),clockOut:outVal?to12hTC(outVal):null,hours,updatedAt:serverTimestamp(),manualEdit:true},{merge:true});
+      overlay.remove(); showToast('✅ Entry updated!');
+      // Update the timesheet row in-place if it exists
+      if (rowEl) {
+        const timesCell = rowEl.children[2];
+        const hrsCell   = rowEl.children[3];
+        if (timesCell) timesCell.innerHTML = '🟢 '+to12hTC(inVal)+' → 🔴 '+(outVal?to12hTC(outVal):'<span style="color:#F2A623;font-weight:700;">Missing ⚠️</span>');
+        if (hrsCell)   { hrsCell.textContent = hours?hours.toFixed(1)+'h':'—'; hrsCell.style.color=hours?'var(--green)':'#F2A623'; }
+        rowEl.style.borderColor = outVal?'var(--border)':'#FFCDD2';
+      }
+    } catch(err){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; saveBtn.disabled=false; saveBtn.textContent='💾 Save Changes'; }
+  });
+}
+
+// ── ADD MANUAL ENTRY ──────────────────────────────────────
+window.tcAddManual = function(rid, empName) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:380px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.3);';
+  box.innerHTML = '<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">➕ Add Manual Entry</div>'
+    +'<div id="add-err" style="display:none;background:#FFF0F0;border:1px solid #FFCDD2;color:#C62828;font-size:0.78rem;padding:10px;border-radius:9px;margin-bottom:12px;"></div>'
+    +'<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Employee *</label>'
+    +'<input id="add-emp" type="text" value="'+(empName||'')+'" placeholder="Employee name" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div style="margin-bottom:12px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Date *</label>'
+    +'<input id="add-date" type="date" value="'+new Date().toISOString().split('T')[0]+'" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🟢 Clock In *</label>'
+    +'<input type="time" id="add-in" style="width:100%;height:44px;border-radius:10px;border:2px solid var(--green);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#F0FAF5;"></div>'
+    +'<div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">🔴 Clock Out</label>'
+    +'<input type="time" id="add-out" style="width:100%;height:44px;border-radius:10px;border:2px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button id="add-save-btn" style="flex:1;height:48px;border-radius:12px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">✅ Add Entry</button>'
+    +'<button style="height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button></div>';
+
+  box.querySelector('button:last-child').onclick = ()=>overlay.remove();
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>box.querySelector('#add-emp')?.focus(),50);
+
+  box.querySelector('#add-save-btn').addEventListener('click', async () => {
+    const name   = box.querySelector('#add-emp')?.value.trim();
+    const date   = box.querySelector('#add-date')?.value;
+    const inVal  = box.querySelector('#add-in')?.value;
+    const outVal = box.querySelector('#add-out')?.value;
+    const errEl  = box.querySelector('#add-err');
+    const saveBtn= box.querySelector('#add-save-btn');
+    if (!name||!date||!inVal) { errEl.style.display='block'; errEl.textContent='Employee, date and clock in are required.'; return; }
+    const hours = outVal ? calcHoursTC(inVal,outVal) : null;
+    if (outVal&&(!hours||hours<=0)){ errEl.style.display='block'; errEl.textContent='Clock out must be after clock in.'; return; }
+    saveBtn.disabled=true; saveBtn.textContent='Saving...';
+    try {
+      await addDoc(collection(db,'timeEntries'),{restaurantId:rid,employeeName:name,date,clockIn:to12hTC(inVal),clockOut:outVal?to12hTC(outVal):null,hours,manualEntry:true,createdAt:serverTimestamp()});
+      overlay.remove(); showToast('✅ Entry added!');
+      window._tcAdminTab='timesheet'; window._tcTimesheetFilter=name;
+      const content=document.getElementById('tc-admin-content');
+      if(content) await tcAdminTimesheet(rid,content);
+    } catch(err){ errEl.style.display='block'; errEl.textContent='Error: '+err.message; saveBtn.disabled=false; saveBtn.textContent='✅ Add Entry'; }
+  });
+}
+
+window.tcExportWeek = async function(rid) {
+  const weekStart = schedFmtDate(schedGetMonday(new Date()));
+  try {
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=weekStart);
+    if (!entries.length) { showToast('No hours to export this week','error'); return; }
+    let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
+    entries.sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||'')).forEach(e=>{
+      csv += '"'+e.employeeName+'","'+e.date+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n';
+    });
+    const blob=new Blob([csv],{type:'text/csv'}), url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='timeclock-week-'+weekStart+'.csv'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('📊 Exported '+entries.length+' entries!');
+  } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
+}
+
+
+
+// ============================================
+// SUPPLIERS & PURCHASE ORDERS
+// ============================================
+const SUPPLIER_CATEGORIES = ['Meat & Poultry','Seafood','Produce','Dairy & Eggs','Dry Goods','Beverages','Bakery','Spices & Sauces','Cleaning Supplies','Packaging','Other'];
+
+async function renderSuppliers(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  main.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">📦 Suppliers</h1><p class="page-sub">Manage suppliers, place orders & track deliveries</p></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="suppShowOrderModal('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🛒 New Order</button>
+        <button onclick="suppShowAddModal('${rid}')" style="height:38px;padding:0 18px;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(232,93,38,0.3);">+ Add Supplier</button>
+      </div>
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Tabs
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;';
+  window._suppTab = window._suppTab || 'suppliers';
+  ['suppliers','orders','compare','ai'].forEach(t => {
+    const btn = document.createElement('button');
+    btn.id = 'supp-tab-' + t;
+    const labels = {suppliers:'🏪 My Suppliers', orders:'📋 Orders', compare:'⚖️ Compare Prices', ai:'🤖 AI Reorder'};
+    btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;background:'+(window._suppTab===t?'var(--ink)':'transparent')+';color:'+(window._suppTab===t?'#fff':'var(--ink-muted)')+';border-color:'+(window._suppTab===t?'var(--ink)':'var(--border)')+';';
+    btn.textContent = labels[t];
+    btn.onclick = () => { window._suppTab = t; suppRenderTab(rid, body); };
+    tabBar.appendChild(btn);
+  });
+  body.appendChild(tabBar);
+
+  // Content area
+  const content = document.createElement('div');
+  content.id = 'supp-content';
+  body.appendChild(content);
+  main.appendChild(body);
+
+  suppRenderTab(rid, body);
+}
+
+async function suppRenderTab(rid, body) {
+  // Update tab styles
+  ['suppliers','orders','compare','ai'].forEach(t => {
+    const btn = document.getElementById('supp-tab-' + t);
+    if (!btn) return;
+    btn.style.background = window._suppTab === t ? 'var(--ink)' : 'transparent';
+    btn.style.color = window._suppTab === t ? '#fff' : 'var(--ink-muted)';
+    btn.style.borderColor = window._suppTab === t ? 'var(--ink)' : 'var(--border)';
+  });
+
+  const content = document.getElementById('supp-content');
+  if (!content) return;
+  content.innerHTML = '<div style="text-align:center;padding:32px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+
+  if (window._suppTab === 'suppliers') await suppLoadSuppliers(rid, content);
+  else if (window._suppTab === 'orders') await suppLoadOrders(rid, content);
+  else if (window._suppTab === 'compare') await suppLoadCompare(rid, content);
+  else if (window._suppTab === 'ai') await suppLoadAI(rid, content);
+}
+
+async function suppLoadSuppliers(rid, content) {
+  try {
+    const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
+    const suppliers = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+    content.innerHTML = '';
+
+    // Low stock alerts
+    try {
+      const invSnap = await getDocs(query(collection(db,'inventory'), where('restaurantId','==',rid)));
+      const lowItems = invSnap.docs.map(d=>d.data()).filter(i=>i.quantity !== undefined && i.minQuantity !== undefined && i.quantity <= i.minQuantity);
+      if (lowItems.length > 0) {
+        const alertBar = document.createElement('div');
+        alertBar.style.cssText = 'background:#FFF5F5;border:1.5px solid #FFCDD2;border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;';
+        alertBar.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:1.2rem;">⚠️</div>
+          <div><div style="font-size:0.875rem;font-weight:700;color:#C62828;">${lowItems.length} item${lowItems.length>1?'s':''} running low — time to reorder</div>
+          <div style="font-size:0.75rem;color:#E57373;margin-top:2px;">${lowItems.map(i=>i.name).join(', ')}</div></div>
+          <button onclick="suppShowOrderModal('${rid}','${lowItems.map(i=>i.name).join(',')}')" style="margin-left:auto;height:32px;padding:0 14px;border:none;background:#E53935;color:#fff;border-radius:8px;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">🛒 Order Now</button>
+        </div>`;
+        content.appendChild(alertBar);
+      }
+    } catch(e) {}
+
+    if (!suppliers.length) {
+      content.innerHTML += `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:16px;">🏪</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No suppliers yet</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Add your food suppliers to start placing orders directly from the app</div>
+        <button onclick="suppShowAddModal('${rid}')" style="height:44px;padding:0 24px;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">+ Add Your First Supplier</button>
+      </div>`;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    suppliers.forEach(s => {
+      const cat = s.category || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(s);
+    });
+
+    Object.entries(grouped).forEach(([cat, items]) => {
+      const catTitle = document.createElement('div');
+      catTitle.style.cssText = 'font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;';
+      catTitle.textContent = cat;
+      content.appendChild(catTitle);
+
+      items.forEach(sup => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;';
+
+        const hue = [...(sup.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+        const initial = (sup.name||'?')[0].toUpperCase();
+
+        card.innerHTML = `
+          <div style="width:44px;height:44px;border-radius:12px;background:hsl(${hue},60%,88%);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:hsl(${hue},60%,35%);flex-shrink:0;">${initial}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${sup.name}</div>
+            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">${sup.contactName?sup.contactName+' · ':''}${sup.phone||''}</div>
+            ${sup.items?`<div style="font-size:0.7rem;color:var(--green);margin-top:3px;font-weight:600;">📦 ${sup.items}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+            ${sup.website?`<a href="${sup.website}" target="_blank" style="height:34px;padding:0 12px;border-radius:9px;background:linear-gradient(135deg,#1D9E75,#16856A);display:flex;align-items:center;gap:5px;text-decoration:none;font-size:0.72rem;font-weight:700;color:#fff;white-space:nowrap;" title="Order online">🌐 Order Online</a>`:''}
+            ${sup.phone?`<a href="tel:${sup.phone}" style="width:34px;height:34px;border-radius:9px;background:#EDFAF4;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Call">📞</a>`:''}
+            ${sup.whatsapp?`<a href="https://wa.me/${sup.whatsapp.replace(/\D/g,'')}" target="_blank" style="width:34px;height:34px;border-radius:9px;background:#E8F8EF;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="WhatsApp">💬</a>`:''}
+            ${sup.email?`<a href="mailto:${sup.email}" style="width:34px;height:34px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Email">📧</a>`:''}
+            <button onclick="suppManageCatalog('${sup.id}','${sup.name}','${rid}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:#F0FAF5;border:1px solid #C8EEE0;color:var(--green);font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">📋 Catalog</button>
+            <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">🛒 Order</button>
+            <button onclick="suppDeleteSupplier('${sup.id}','${rid}')" style="width:34px;height:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;" title="Delete">🗑️</button>
+          </div>`;
+        content.appendChild(card);
+      });
+    });
+  } catch(e) {
+    content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading suppliers.</div>';
+    console.error(e);
+  }
+}
+
+async function suppLoadOrders(rid, content) {
+  try {
+    const snap = await getDocs(query(collection(db,'purchaseOrders'), where('restaurantId','==',rid)));
+    const orders = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+    content.innerHTML = '';
+
+    if (!orders.length) {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:16px;">📋</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No orders yet</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Create your first purchase order to track deliveries</div>
+        <button onclick="suppShowOrderModal('${rid}')" style="height:44px;padding:0 24px;background:var(--ink);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">🛒 Create First Order</button>
+      </div>`;
+      return;
+    }
+
+    const statusColors = {
+      pending:   ['#FFF8ED','#F2A623','🟡 Pending'],
+      sent:      ['#EEF4FF','#2563EB','📤 Sent'],
+      received:  ['#EDFAF4','#1D9E75','✅ Received'],
+      cancelled: ['#FFF5F5','#E53935','❌ Cancelled'],
+    };
+
+    orders.forEach(order => {
+      const [bg, color, statusLabel] = statusColors[order.status||'pending'];
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;';
+      card.innerHTML = `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${order.supplierName||'Order'}</div>
+            <div style="font-size:0.72rem;color:var(--ink-muted);">${order.orderDate||''} ${order.createdBy?'· by '+order.createdBy:''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="background:${bg};color:${color};font-size:0.68rem;font-weight:700;padding:3px 10px;border-radius:100px;">${statusLabel}</div>
+            ${order.total?`<div style="font-size:0.95rem;font-weight:800;color:var(--ink);">$${parseFloat(order.total).toFixed(2)}</div>`:''}
+          </div>
+        </div>
+        <div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:0.78rem;color:var(--ink-muted);line-height:1.6;">${(order.items||[]).map(i=>`<span style="display:inline-block;margin-right:12px;">• ${i.name} × ${i.qty} ${i.unit||''}</span>`).join('')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${order.status==='pending'?`
+            <button onclick="suppSendOrder('${order.id}','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#2563EB;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">📤 Send to Supplier</button>
+            <button onclick="suppUpdateStatus('${order.id}','received','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">✅ Mark Received</button>
+            <button onclick="suppUpdateStatus('${order.id}','cancelled','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;">Cancel</button>
+          `:''}
+          ${order.status==='sent'?`
+            <button onclick="suppUpdateStatus('${order.id}','received','${rid}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">✅ Mark Received</button>
+          `:''}
+        </div>`;
+      content.appendChild(card);
+    });
+  } catch(e) {
+    content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading orders.</div>';
+    console.error(e);
+  }
+}
+
+window.suppShowAddModal = function suppShowAddModal(rid) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  const fields = [
+    ['text','supp-name','Supplier Name *','e.g. Sysco Foods, US Foods'],
+    ['text','supp-contact','Contact Person','e.g. John Smith'],
+    ['tel','supp-phone','Phone Number','e.g. +1 (202) 555-0100'],
+    ['text','supp-whatsapp','WhatsApp Number','e.g. +12025550100 (for orders)'],
+    ['email','supp-email','Email Address','orders@supplier.com'],
+    ['url','supp-website','Website / Order Portal','e.g. https://www.sysco.com/order'],
+    ['text','supp-items','What They Supply','e.g. Chicken, beef, pork'],
+    ['text','supp-notes','Notes','Payment terms, delivery days, etc.'],
+  ];
+
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>
+    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">🏪 Add New Supplier</div>`;
+
+  fields.forEach(([type, id, label, ph]) => {
+    box.innerHTML += `<div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">${label}</label>
+      <input type="${type}" id="${id}" placeholder="${ph}" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;color:var(--ink);">
+    </div>`;
+  });
+
+  // Category dropdown
+  box.innerHTML += `<div style="margin-bottom:20px;">
+    <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Category</label>
+    <select id="supp-cat" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+      ${SUPPLIER_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}
+    </select>
+  </div>`;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '✅ Save Supplier';
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  saveBtn.onclick = async () => {
+    const name = document.getElementById('supp-name')?.value.trim();
+    if (!name) { showToast('Supplier name required','error'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+    try {
+      await addDoc(collection(db,'suppliers'), {
+        restaurantId: rid, name,
+        contactName: document.getElementById('supp-contact')?.value.trim()||'',
+        phone: document.getElementById('supp-phone')?.value.trim()||'',
+        whatsapp: document.getElementById('supp-whatsapp')?.value.trim()||'',
+        email: document.getElementById('supp-email')?.value.trim()||'',
+        website: document.getElementById('supp-website')?.value.trim()||'',
+        items: document.getElementById('supp-items')?.value.trim()||'',
+        notes: document.getElementById('supp-notes')?.value.trim()||'',
+        category: document.getElementById('supp-cat')?.value||'Other',
+        createdAt: serverTimestamp()
+      });
+      showToast('✅ Supplier added!');
+      overlay.remove();
+      window._suppTab = 'suppliers';
+      suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); saveBtn.disabled=false; saveBtn.textContent='✅ Save Supplier'; }
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'height:50px;padding:0 20px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.onclick = () => overlay.remove();
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  setTimeout(()=>document.getElementById('supp-name')?.focus(),100);
+}
+
+// ── #5 PRICE COMPARISON ──────────────────────────────────
+async function suppLoadCompare(rid, content) {
+  try {
+    const [suppSnap, itemSnap] = await Promise.all([
+      getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'supplierItems'), where('restaurantId','==',rid)))
+    ]);
+    const suppliers = suppSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const items = itemSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    content.innerHTML = '';
+
+    if (items.length < 2) {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:3rem;margin-bottom:12px;">⚖️</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Add items to 2+ supplier catalogs to compare prices</div>
+        <div style="font-size:0.82rem;color:var(--ink-muted);">Go to each supplier → Catalog → add the same item (e.g. "Chicken Thighs") with their price. The comparison will appear here automatically.</div>
+      </div>`;
+      return;
+    }
+
+    // Group items by normalized name
+    const nameMap = {};
+    items.forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      if (!nameMap[key]) nameMap[key] = { name:item.name, entries:[] };
+      const sup = suppliers.find(s=>s.id===item.supplierId);
+      nameMap[key].entries.push({...item, supplierName: sup?.name||'Unknown'});
+    });
+
+    // Only show items that appear in multiple suppliers
+    const compared = Object.values(nameMap).filter(g=>g.entries.length>1).sort((a,b)=>a.name.localeCompare(b.name));
+    const single   = Object.values(nameMap).filter(g=>g.entries.length===1);
+
+    if (!compared.length && single.length) {
+      content.innerHTML = `<div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+        <div style="font-size:0.875rem;font-weight:700;color:#854F0B;margin-bottom:4px;">💡 No price comparisons yet</div>
+        <div style="font-size:0.78rem;color:#A05020;line-height:1.6;">Add the same item name to multiple supplier catalogs to see side-by-side price comparisons. For example, add "Chicken Thighs" to both Sysco and US Foods.</div>
+      </div>`;
+    }
+
+    if (compared.length) {
+      const intro = document.createElement('div');
+      intro.style.cssText = 'font-size:0.78rem;color:var(--ink-muted);margin-bottom:16px;';
+      intro.textContent = `${compared.length} item${compared.length>1?'s':''} found across multiple suppliers — cheapest highlighted in green`;
+      content.appendChild(intro);
+
+      compared.forEach(group => {
+        const sorted = [...group.entries].sort((a,b)=>(a.currentPrice||0)-(b.currentPrice||0));
+        const cheapest = sorted[0];
+        const mostExp  = sorted[sorted.length-1];
+        const savings = ((mostExp.currentPrice||0) - (cheapest.currentPrice||0));
+
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;';
+
+        // Header
+        const cardHead = document.createElement('div');
+        cardHead.style.cssText = 'padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;';
+        cardHead.innerHTML = `<div style="font-size:0.95rem;font-weight:700;color:var(--ink);">${group.name}</div>
+          ${savings>0?`<div style="font-size:0.75rem;font-weight:700;color:#1D9E75;background:#EDFAF4;padding:3px 10px;border-radius:100px;">💰 Save $${savings.toFixed(2)} by choosing right</div>`:''}`;
+        card.appendChild(cardHead);
+
+        // Supplier rows
+        sorted.forEach((entry, idx) => {
+          const isCheapest = idx === 0;
+          const diff = (entry.currentPrice||0) - (cheapest.currentPrice||0);
+          const row = document.createElement('div');
+          row.style.cssText = 'padding:12px 16px;display:flex;align-items:center;gap:12px;background:'+( isCheapest?'#EDFAF4':'#fff')+';border-bottom:1px solid var(--border);';
+          row.innerHTML = `
+            <div style="flex:1;">
+              <div style="font-size:0.875rem;font-weight:${isCheapest?'700':'500'};color:var(--ink);">${entry.supplierName}</div>
+              ${entry.maxPrice&&entry.currentPrice>entry.maxPrice?'<div style="font-size:0.65rem;color:#E53935;font-weight:700;">⚠️ Over your price limit</div>':''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:1.1rem;font-weight:800;color:${isCheapest?'#1D9E75':'var(--ink)'};">$${parseFloat(entry.currentPrice||0).toFixed(2)}<span style="font-size:0.7rem;font-weight:500;color:var(--ink-muted);">/${entry.unit||'unit'}</span></div>
+              ${diff>0?`<div style="font-size:0.68rem;color:#E53935;">+$${diff.toFixed(2)} more expensive</div>`:''}
+              ${isCheapest?'<div style="font-size:0.68rem;font-weight:700;color:#1D9E75;">✅ BEST PRICE</div>':''}
+            </div>
+            <button onclick="suppShowOrderModal('${rid}','','${entry.supplierId}')" style="height:32px;padding:0 12px;border-radius:8px;border:none;background:${isCheapest?'var(--green)':'var(--cream)'};color:${isCheapest?'#fff':'var(--ink-muted)'};font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Order</button>`;
+          card.appendChild(row);
+        });
+        content.appendChild(card);
+      });
+    }
+
+    // Items only in one supplier
+    if (single.length) {
+      const singleTitle = document.createElement('div');
+      singleTitle.style.cssText = 'font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin:20px 0 8px;';
+      singleTitle.textContent = 'Only found at one supplier — add to others to compare';
+      content.appendChild(singleTitle);
+      single.forEach(g => {
+        const chip = document.createElement('div');
+        chip.style.cssText = 'display:inline-block;background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:4px 12px;font-size:0.78rem;color:var(--ink-muted);margin:0 6px 6px 0;';
+        chip.textContent = g.name + ' — ' + g.entries[0].supplierName + ' $' + parseFloat(g.entries[0].currentPrice||0).toFixed(2);
+        content.appendChild(chip);
+      });
+    }
+
+  } catch(e) { content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading comparison.</div>'; console.error(e); }
+}
+
+// ── #6 AI REORDER SUGGESTIONS ────────────────────────────
+async function suppLoadAI(rid, content) {
+  content.innerHTML = `<div style="text-align:center;padding:40px 20px;">
+    <div style="font-size:3rem;margin-bottom:12px;">🤖</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">AI Reorder Suggestions</div>
+    <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Claude AI analyzes your inventory, prep lists, and order history to suggest what to order this week and from which supplier.</div>
+    <button id="ai-reorder-btn" onclick="suppRunAIReorder('${rid}')" style="height:52px;padding:0 32px;background:linear-gradient(135deg,#0A0A14,#1A1A2E);color:#fff;border:none;border-radius:14px;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(10,10,20,0.3);">
+      🤖 Generate Reorder List
+    </button>
+  </div>
+  <div id="ai-reorder-results"></div>`;
+}
+
+window.suppRunAIReorder = async function(rid) {
+  const btn = document.getElementById('ai-reorder-btn');
+  const results = document.getElementById('ai-reorder-results');
+  if (btn) { btn.disabled=true; btn.textContent='🤖 Analyzing your kitchen...'; }
+
+  try {
+    // Gather data
+    const [invSnap, itemSnap, orderSnap, prepSnap, suppSnap] = await Promise.all([
+      getDocs(query(collection(db,'inventory'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'supplierItems'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'purchaseOrders'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'prepTasks'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid))),
+    ]);
+
+    const inventory = invSnap.docs.map(d=>d.data());
+    const catalogItems = itemSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const orders = orderSnap.docs.map(d=>d.data()).slice(0,10);
+    const prepTasks = prepSnap.docs.map(d=>d.data());
+    const suppliers = suppSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const lowStock = inventory.filter(i=>i.quantity!==undefined && i.minQuantity!==undefined && i.quantity<=i.minQuantity);
+    const overPriceLimit = catalogItems.filter(i=>i.maxPrice && i.currentPrice > i.maxPrice);
+
+    // Group catalog by item name with supplier prices
+    const priceMap = {};
+    catalogItems.forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      if (!priceMap[key]) priceMap[key] = [];
+      const sup = suppliers.find(s=>s.id===item.supplierId);
+      priceMap[key].push({supplierName:sup?.name||'?', price:item.currentPrice||0, unit:item.unit||''});
+    });
+
+    const prompt = `You are a restaurant purchasing expert helping Chef Nek Pro restaurant owners optimize their orders.
+
+RESTAURANT DATA:
+Low stock items: ${lowStock.map(i=>`${i.name} (have ${i.quantity}, need ${i.minQuantity})`).join(', ')||'None'}
+Prep tasks this week: ${prepTasks.slice(0,10).map(t=>t.name).join(', ')||'None'}
+Recent orders: ${orders.slice(0,5).map(o=>`${o.supplierName}: ${(o.items||[]).map(i=>i.name).join(', ')}`).join(' | ')||'None'}
+Price alerts (over limit): ${overPriceLimit.map(i=>`${i.name} at $${i.currentPrice} (limit $${i.maxPrice})`).join(', ')||'None'}
+Available suppliers: ${suppliers.map(s=>s.name).join(', ')||'None'}
+Supplier catalog with prices: ${Object.entries(priceMap).map(([name,entries])=>`${name}: ${entries.map(e=>`${e.supplierName}=$${e.price}/${e.unit}`).join(' vs ')}`).join('; ')||'None'}
+
+Based on this data, provide smart reorder suggestions. Respond ONLY in this exact JSON format:
+{
+  "summary": "One sentence summary of the purchasing situation",
+  "urgent": [
+    {"item": "item name", "reason": "why urgent", "qty": "suggested qty", "supplier": "best supplier name", "estimatedCost": "$X.XX", "tip": "money saving tip"}
+  ],
+  "recommended": [
+    {"item": "item name", "reason": "why recommended", "qty": "suggested qty", "supplier": "best supplier name", "estimatedCost": "$X.XX", "tip": "optional tip"}
+  ],
+  "costSavings": [
+    {"tip": "specific money saving advice based on the data"}
+  ]
+}`;
+
+    const apiKey = getStoredAIKey();
+    if (!apiKey) {
+      results.innerHTML = `<div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:20px;text-align:center;">
+        <div style="font-size:1rem;font-weight:700;color:#854F0B;margin-bottom:8px;">🔑 API Key Required</div>
+        <div style="font-size:0.82rem;color:#A05020;margin-bottom:16px;">Open the AI Food Scanner and paste your Anthropic API key first. It will be remembered for this session.</div>
+        <button onclick="navigate('calorie')" style="height:40px;padding:0 20px;background:#F2A623;color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">Go to AI Scanner to add key</button>
+      </div>`;
+      if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+      return;
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message||'API error');
+
+    let parsed;
+    try { parsed = JSON.parse(data.content[0].text.replace(/```json|```/g,'')); }
+    catch(e) { throw new Error('Could not parse AI response'); }
+
+    results.innerHTML = '';
+
+    // Summary
+    const sumCard = document.createElement('div');
+    sumCard.style.cssText = 'background:linear-gradient(135deg,#0A0A14,#1A1A2E);border-radius:16px;padding:18px 20px;margin-bottom:16px;';
+    sumCard.innerHTML = `<div style="font-size:0.68rem;font-weight:700;color:#5DCAA5;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">🤖 AI Analysis</div>
+      <div style="font-size:0.95rem;color:#fff;line-height:1.6;">${parsed.summary||''}</div>`;
+    results.appendChild(sumCard);
+
+    // Urgent orders
+    if (parsed.urgent?.length) {
+      const urgentTitle = document.createElement('div');
+      urgentTitle.style.cssText = 'font-size:0.75rem;font-weight:800;color:#E53935;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;display:flex;align-items:center;gap:6px;';
+      urgentTitle.innerHTML = '⚠️ Order Now — Running Low';
+      results.appendChild(urgentTitle);
+      parsed.urgent.forEach(item => suppAIItemCard(results, item, '#FFF5F5', '#E53935', rid));
+    }
+
+    // Recommended
+    if (parsed.recommended?.length) {
+      const recTitle = document.createElement('div');
+      recTitle.style.cssText = 'font-size:0.75rem;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;';
+      recTitle.textContent = '📋 Recommended This Week';
+      results.appendChild(recTitle);
+      parsed.recommended.forEach(item => suppAIItemCard(results, item, '#EDFAF4', '#1D9E75', rid));
+    }
+
+    // Cost savings tips
+    if (parsed.costSavings?.length) {
+      const tipsCard = document.createElement('div');
+      tipsCard.style.cssText = 'background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-top:16px;';
+      tipsCard.innerHTML = `<div style="font-size:0.72rem;font-weight:800;color:#C17F3A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">💰 Cost Saving Tips</div>`;
+      parsed.costSavings.forEach(tip => {
+        tipsCard.innerHTML += `<div style="display:flex;gap:8px;margin-bottom:6px;font-size:0.82rem;color:#854F0B;"><span>→</span><span>${tip.tip}</span></div>`;
+      });
+      results.appendChild(tipsCard);
+    }
+
+    // Regenerate button
+    const regenBtn = document.createElement('button');
+    regenBtn.style.cssText = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:16px;';
+    regenBtn.textContent = '🔄 Regenerate Suggestions';
+    regenBtn.onclick = () => suppRunAIReorder(rid);
+    results.appendChild(regenBtn);
+
+    if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+  } catch(e) {
+    if (results) results.innerHTML = `<div style="background:#FFF0F0;border:1.5px solid #FFCDD2;border-radius:14px;padding:16px;color:#C62828;font-size:0.82rem;">${e.message}</div>`;
+    if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+  }
+}
+
+function suppAIItemCard(container, item, bg, color, rid) {
+  const card = document.createElement('div');
+  card.style.cssText = `background:${bg};border:1.5px solid ${color}30;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;`;
+  card.innerHTML = `
+    <div style="flex:1;">
+      <div style="font-size:0.9rem;font-weight:700;color:var(--ink);margin-bottom:3px;">${item.item}</div>
+      <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">${item.reason}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:0.72rem;">
+        ${item.qty?`<span style="color:var(--ink);font-weight:600;">📦 ${item.qty}</span>`:''}
+        ${item.supplier?`<span style="color:${color};font-weight:600;">🏪 ${item.supplier}</span>`:''}
+        ${item.estimatedCost?`<span style="color:var(--ink);font-weight:600;">💰 ${item.estimatedCost}</span>`:''}
+      </div>
+      ${item.tip?`<div style="font-size:0.7rem;color:#1D9E75;margin-top:4px;font-weight:600;">💡 ${item.tip}</div>`:''}
+    </div>
+    <button onclick="suppShowOrderModal('${rid}','${item.item}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:${color};color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">🛒 Order</button>`;
+  container.appendChild(card);
+}
+
+window.suppManageCatalog = async function(suppId, suppName, rid) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:580px;padding:24px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;color:var(--ink);">📋 ${suppName} — Item Catalog</div>
+        <div style="font-size:0.72rem;color:var(--ink-muted);margin-top:2px;">Saved items with price history</div>
+      </div>
+      <button onclick="suppAddCatalogItem('${suppId}','${rid}',this)" style="height:34px;padding:0 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;">+ Add Item</button>
+    </div>
+    <div id="catalog-list-${suppId}"></div>`;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  await suppLoadCatalogItems(suppId, rid);
+}
+
+async function suppLoadCatalogItems(suppId, rid) {
+  const el = document.getElementById('catalog-list-' + suppId);
+  if (!el) return;
+  el.innerHTML = '<div style="padding:16px;text-align:center;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+
+  try {
+    const snap = await getDocs(query(collection(db,'supplierItems'), where('supplierId','==',suppId), where('restaurantId','==',rid)));
+    const items = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.category||'').localeCompare(b.category||''));
+
+    if (!items.length) {
+      el.innerHTML = `<div style="text-align:center;padding:32px 20px;">
+        <div style="font-size:2.5rem;margin-bottom:10px;">📦</div>
+        <div style="font-weight:600;color:var(--ink);margin-bottom:6px;">No items in catalog yet</div>
+        <div style="font-size:0.78rem;color:var(--ink-muted);">Add items you regularly order from this supplier. Prices are tracked automatically.</div>
+      </div>`;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    items.forEach(i => { const c = i.category||'Other'; if(!grouped[c]) grouped[c]=[]; grouped[c].push(i); });
+
+    el.innerHTML = '';
+    Object.entries(grouped).forEach(([cat, catItems]) => {
+      const catTitle = document.createElement('div');
+      catTitle.style.cssText = 'font-size:0.68rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 6px;';
+      catTitle.textContent = cat;
+      el.appendChild(catTitle);
+
+      catItems.forEach(item => {
+        const history = item.priceHistory || [];
+        const lastPrice = history.length > 1 ? history[history.length-2]?.price : null;
+        const currentPrice = item.currentPrice || 0;
+        const priceDiff = lastPrice ? currentPrice - lastPrice : 0;
+        const pricePct = lastPrice ? ((priceDiff/lastPrice)*100).toFixed(1) : 0;
+        const priceUp = priceDiff > 0;
+        const priceDown = priceDiff < 0;
+        const overMax = item.maxPrice && currentPrice > item.maxPrice;
+
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;';
+        card.innerHTML = `
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:0.875rem;font-weight:700;color:var(--ink);">${item.name}</span>
+              <span style="font-size:0.68rem;color:var(--ink-muted);">${item.unit||''}</span>
+              ${item.category?`<span style="font-size:0.62rem;background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:1px 7px;color:var(--ink-muted);">${item.category}</span>`:''}
+              ${overMax?`<span style="font-size:0.65rem;font-weight:800;background:#FFF0F0;color:#E53935;border:1px solid #FFCDD2;border-radius:100px;padding:2px 8px;">🔔 OVER LIMIT</span>`:''}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+              <span style="font-size:1rem;font-weight:800;color:${overMax?'#E53935':'var(--ink)'};">$${parseFloat(currentPrice).toFixed(2)}<span style="font-size:0.68rem;font-weight:500;color:var(--ink-muted);">/${item.unit||'unit'}</span></span>
+              ${item.maxPrice?`<span style="font-size:0.68rem;color:var(--ink-muted);">Max: $${parseFloat(item.maxPrice).toFixed(2)}</span>`:''}
+              ${priceDiff !== 0 ? `<span style="font-size:0.72rem;font-weight:700;color:${priceUp?'#E53935':'#1D9E75'};background:${priceUp?'#FFF5F5':'#EDFAF4'};padding:2px 8px;border-radius:100px;">${priceUp?'⬆️':'⬇️'} ${priceUp?'+':''}${pricePct}% vs last</span>` : (lastPrice?'<span style="font-size:0.7rem;color:var(--ink-muted);">— same as last order</span>':'')}
+              ${history.length > 0 ? `<span style="font-size:0.68rem;color:var(--ink-muted);">Last: ${history[history.length-1]?.date||''}</span>` : ''}
+            </div>
+            ${history.length > 1 ? `<div style="margin-top:6px;display:flex;gap:3px;align-items:flex-end;height:20px;">
+              ${history.slice(-8).map((h,i,arr) => {
+                const max = Math.max(...arr.map(x=>x.price));
+                const min = Math.min(...arr.map(x=>x.price));
+                const range = max - min || 1;
+                const pct = ((h.price-min)/range*70+20);
+                const isOver = item.maxPrice && h.price > item.maxPrice;
+                return `<div style="flex:1;background:${isOver?'#E53935':h.price===max?'#F2A623':'#94A3B8'};border-radius:2px;height:${pct}%;opacity:0.8;" title="$${h.price} on ${h.date}"></div>`;
+              }).join('')}
+            </div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onclick="suppEditCatalogPrice('${item.id}','${suppId}','${rid}',${currentPrice},'${item.name}')" style="height:30px;padding:0 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.7rem;cursor:pointer;">Update Price</button>
+            <button onclick="suppDeleteCatalogItem('${item.id}','${suppId}','${rid}')" style="width:30px;height:30px;border-radius:8px;border:none;background:#FFF0F0;color:#E53935;font-size:0.75rem;cursor:pointer;">🗑️</button>
+          </div>`;
+        el.appendChild(card);
+      });
+    });
+  } catch(e) { el.innerHTML = '<div style="padding:16px;color:var(--red);">Error loading catalog.</div>'; }
+}
+
+window.suppAddCatalogItem = function(suppId, rid, triggerBtn) {
+  const overlay2 = document.createElement('div');
+  overlay2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box2 = document.createElement('div');
+  box2.style.cssText = 'background:#fff;border-radius:20px;width:100%;max-width:400px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+  box2.innerHTML = `<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:16px;">Add Catalog Item</div>
+    <div style="margin-bottom:10px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Item Name *</label>
+    <input id="cat-name" type="text" placeholder="e.g. Chicken Thighs" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Unit</label>
+      <input id="cat-unit" type="text" placeholder="lbs, case..." style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Current Price $</label>
+      <input id="cat-price" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;"></div>
+      <div><label style="display:block;font-size:0.7rem;font-weight:700;color:#E53935;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">🔔 Alert if above $</label>
+      <input id="cat-maxprice" type="number" min="0" step="0.01" placeholder="Max $" style="width:100%;height:42px;border-radius:9px;border:1.5px solid #FFCDD2;padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#FFF5F5;"></div>
+    </div>
+    <div style="margin-bottom:16px;"><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Category</label>
+    <select id="cat-cat" style="width:100%;height:42px;border-radius:9px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+      ${['Meat & Poultry','Seafood','Produce','Dairy & Eggs','Dry Goods','Beverages','Bakery','Spices & Sauces','Cleaning Supplies','Packaging','Other'].map(c=>`<option>${c}</option>`).join('')}
+    </select></div>
+    <div style="display:flex;gap:8px;">
+      <button id="cat-save-btn" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Save Item</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="height:44px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;">Cancel</button>
+    </div>`;
+
+  overlay2.appendChild(box2);
+  document.body.appendChild(overlay2);
+  setTimeout(()=>box2.querySelector('#cat-name')?.focus(),50);
+
+  box2.querySelector('#cat-save-btn').onclick = async () => {
+    const name = box2.querySelector('#cat-name')?.value.trim();
+    const unit = box2.querySelector('#cat-unit')?.value.trim();
+    const price = parseFloat(box2.querySelector('#cat-price')?.value||0);
+    const maxPrice = parseFloat(box2.querySelector('#cat-maxprice')?.value||0);
+    const category = box2.querySelector('#cat-cat')?.value;
+    if (!name) { showToast('Item name required','error'); return; }
+    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    try {
+      await addDoc(collection(db,'supplierItems'), {
+        supplierId: suppId, restaurantId: rid, name, unit, category,
+        currentPrice: price,
+        maxPrice: maxPrice || null,
+        priceHistory: price ? [{price, date:today}] : [],
+        createdAt: serverTimestamp()
+      });
+      // Check alert immediately
+      if (maxPrice && price > maxPrice) {
+        await addDoc(collection(db,'notifications'), {
+          type:'price_alert', restaurantId:rid,
+          message:`🔔 Price Alert: ${name} is $${price.toFixed(2)} — above your max of $${maxPrice.toFixed(2)}`,
+          date:today, time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+          read:false, createdAt:serverTimestamp()
+        });
+      }
+      showToast('✅ Item added to catalog!');
+      overlay2.remove();
+      await suppLoadCatalogItems(suppId, rid);
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  };
+}
+
+window.suppEditCatalogPrice = async function(itemId, suppId, rid, currentPrice, itemName) {
+  const newPrice = prompt(`Update price for "${itemName}"\nCurrent: $${parseFloat(currentPrice).toFixed(2)}\n\nEnter new price:`);
+  if (!newPrice || isNaN(parseFloat(newPrice))) return;
+  const price = parseFloat(newPrice);
+  const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  try {
+    const docSnap = await getDoc(doc(db,'supplierItems',itemId));
+    const existing = docSnap.data() || {};
+    const history = existing.priceHistory || [];
+    history.push({price, date:today});
+    await setDoc(doc(db,'supplierItems',itemId), {currentPrice:price, priceHistory:history, updatedAt:serverTimestamp()}, {merge:true});
+
+    // Fire price alert if above max
+    if (existing.maxPrice && price > existing.maxPrice) {
+      await addDoc(collection(db,'notifications'), {
+        type:'price_alert', restaurantId:rid,
+        message:`🔔 Price Alert: ${itemName} is now $${price.toFixed(2)} — above your max of $${existing.maxPrice.toFixed(2)}`,
+        date:today, time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),
+        read:false, createdAt:serverTimestamp()
+      });
+      showToast(`⚠️ ALERT: ${itemName} exceeds your max price!`, 'error');
+    }
+
+    const diff = price - currentPrice;
+    const pct = ((diff/currentPrice)*100).toFixed(1);
+    if (diff > 0) showToast(`⬆️ Price up $${diff.toFixed(2)} (+${pct}%) — saved!`);
+    else if (diff < 0) showToast(`⬇️ Price down $${Math.abs(diff).toFixed(2)} (${pct}%) — saved!`);
+    else showToast('Price unchanged — saved!');
+    await suppLoadCatalogItems(suppId, rid);
+  } catch(e) { showToast('Error','error'); }
+}
+
+window.suppDeleteCatalogItem = async function(itemId, suppId, rid) {
+  if (!confirm('Remove this item from catalog?')) return;
+  try { await deleteDoc(doc(db,'supplierItems',itemId)); showToast('Item removed'); await suppLoadCatalogItems(suppId, rid); }
+  catch(e) { showToast('Error','error'); }
+}
+
+window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
+  // Load suppliers for dropdown
+  const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
+  const suppliers = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+  if (!suppliers.length) {
+    showToast('Add a supplier first before creating an order','error');
+    suppShowAddModal(rid);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:540px;padding:28px 24px 40px;max-height:90vh;overflow-y:auto;animation:aiSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);';
+
+  box.innerHTML = `<div style="width:36px;height:4px;border-radius:100px;background:var(--border);margin:0 auto 20px;"></div>
+    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:20px;">🛒 New Purchase Order</div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Supplier *</label>
+      <select id="po-supplier" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;background:#fff;color:var(--ink);">
+        ${suppliers.map(s=>`<option value="${s.id}" data-name="${s.name}" data-phone="${s.phone||''}" data-whatsapp="${s.whatsapp||''}" data-email="${s.email||''}" ${s.id===supplierId?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
+
+    <!-- Catalog quick-add chips — loaded dynamically -->
+    <div id="po-catalog-section" style="margin-bottom:14px;display:none;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">⚡ Quick Add from Catalog</label>
+      <div id="po-catalog-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Delivery Date Needed</label>
+      <input type="date" id="po-date" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;" value="${new Date(Date.now()+2*24*60*60*1000).toISOString().split('T')[0]}">
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Order Items</label>
+      <div id="po-items"></div>
+      <button onclick="suppAddOrderItem()" style="width:100%;height:38px;border-radius:9px;border:2px dashed var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:6px;">+ Add Item Manually</button>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Notes to Supplier</label>
+      <textarea id="po-notes" style="width:100%;height:70px;border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;resize:none;" placeholder="Special instructions, delivery notes..."></textarea>
+    </div>`;
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '💾 Save Order';
+  saveBtn.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:var(--ink);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+
+  const sendWA = document.createElement('button');
+  sendWA.textContent = '💬 Send via WhatsApp';
+  sendWA.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:#25D366;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;';
+
+  const sendEmail = document.createElement('button');
+  sendEmail.textContent = '📧 Send via Email';
+  sendEmail.style.cssText = 'flex:1;height:50px;border-radius:12px;border:none;background:#2563EB;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'height:50px;padding:0 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);cursor:pointer;';
+  cancelBtn.onclick = () => overlay.remove();
+
+  const getOrderData = () => {
+    const selEl = document.getElementById('po-supplier');
+    const opt = selEl?.options[selEl.selectedIndex];
+    const items = [...document.querySelectorAll('.po-item-row')].map(r => ({
+      name: r.querySelector('.po-item-name')?.value.trim()||'',
+      qty:  r.querySelector('.po-item-qty')?.value.trim()||'',
+      unit: r.querySelector('.po-item-unit')?.value.trim()||'',
+      price: r.querySelector('.po-item-price')?.value.trim()||'',
+    })).filter(i=>i.name);
+    const total = items.reduce((s,i)=>s+(parseFloat(i.price||0)*parseFloat(i.qty||0)),0);
+    return {
+      supplierId: selEl?.value, supplierName: opt?.dataset.name||'',
+      supplierPhone: opt?.dataset.phone||'', supplierWhatsapp: opt?.dataset.whatsapp||'',
+      supplierEmail: opt?.dataset.email||'', items,
+      deliveryDate: document.getElementById('po-date')?.value||'',
+      notes: document.getElementById('po-notes')?.value.trim()||'',
+      total: total.toFixed(2)
+    };
+  };
+
+  const saveOrder = async (status='pending') => {
+    const data = getOrderData();
+    if (!data.items.length) { showToast('Add at least one item','error'); return null; }
+    const docRef = await addDoc(collection(db,'purchaseOrders'), {
+      ...data, restaurantId: rid, status,
+      orderDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      createdBy: localStorage.getItem('cnp-staff-name')||'Admin',
+      createdAt: serverTimestamp()
+    });
+    return { id:docRef.id, ...data };
+  };
+
+  saveBtn.onclick = async () => {
+    try { saveBtn.disabled=true; saveBtn.textContent='Saving...';
+      await saveOrder('pending');
+      showToast('✅ Order saved!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); saveBtn.disabled=false; saveBtn.textContent='💾 Save Order'; }
+  };
+
+  sendWA.onclick = async () => {
+    try { sendWA.disabled=true; sendWA.textContent='Sending...';
+      const order = await saveOrder('sent');
+      if (!order) { sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; return; }
+      const msg = suppBuildOrderMessage(order);
+      const num = (order.supplierWhatsapp||order.supplierPhone).replace(/\D/g,'');
+      if (!num) { showToast('No WhatsApp number for this supplier','error'); sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; return; }
+      window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+      showToast('✅ Order sent via WhatsApp!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); sendWA.disabled=false; sendWA.textContent='💬 Send via WhatsApp'; }
+  };
+
+  sendEmail.onclick = async () => {
+    try { sendEmail.disabled=true; sendEmail.textContent='Opening...';
+      const order = await saveOrder('sent');
+      if (!order) { sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; return; }
+      const msg = suppBuildOrderMessage(order);
+      const subject = 'Purchase Order — ' + (window._userData?.restaurantName||'Restaurant');
+      if (!order.supplierEmail) { showToast('No email for this supplier','error'); sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; return; }
+      window.open('mailto:'+order.supplierEmail+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(msg));
+      showToast('✅ Email ready to send!'); overlay.remove();
+      window._suppTab='orders'; suppRenderTab(rid, document.querySelector('.page-body'));
+    } catch(e) { showToast('Error: '+e.message,'error'); sendEmail.disabled=false; sendEmail.textContent='📧 Send via Email'; }
+  };
+
+  btnRow.appendChild(saveBtn); btnRow.appendChild(sendWA); btnRow.appendChild(sendEmail); btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+
+  // Load catalog chips for initial supplier
+  const loadCatalogChips = async (suppId) => {
+    const section = document.getElementById('po-catalog-section');
+    const chips = document.getElementById('po-catalog-chips');
+    if (!section || !chips) return;
+    try {
+      const cSnap = await getDocs(query(collection(db,'supplierItems'), where('supplierId','==',suppId), where('restaurantId','==',rid)));
+      const catItems = cSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      if (!catItems.length) { section.style.display='none'; return; }
+      section.style.display='block';
+      chips.innerHTML = '';
+      catItems.forEach(item => {
+        const history = item.priceHistory || [];
+        const lastPrice = history.length > 1 ? history[history.length-2]?.price : null;
+        const cur = parseFloat(item.currentPrice||0);
+        const diff = lastPrice ? cur - lastPrice : 0;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.style.cssText = 'height:32px;padding:0 12px;border-radius:100px;border:1.5px solid var(--border);background:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--ink);transition:all 0.15s;';
+        chip.innerHTML = `${item.name} <span style="color:var(--ink-muted);">$${cur.toFixed(2)}/${item.unit||'unit'}</span>${diff>0?`<span style="color:#E53935;font-size:0.65rem;">⬆️+${((diff/lastPrice)*100).toFixed(0)}%</span>`:diff<0?`<span style="color:#1D9E75;font-size:0.65rem;">⬇️${((diff/lastPrice)*100).toFixed(0)}%</span>`:''}`;
+        chip.onmouseenter = () => { chip.style.background='#F0FAF5'; chip.style.borderColor='var(--green)'; };
+        chip.onmouseleave = () => { chip.style.background='#fff'; chip.style.borderColor='var(--border)'; };
+        chip.onclick = () => suppAddOrderItem(item.name, '', item.unit||'', cur.toString());
+        chips.appendChild(chip);
+      });
+    } catch(e) { section.style.display='none'; }
+  };
+
+  // Load chips for pre-selected supplier
+  const selEl = document.getElementById('po-supplier');
+  if (selEl?.value) loadCatalogChips(selEl.value);
+  selEl?.addEventListener('change', () => loadCatalogChips(selEl.value));
+
+  // Add initial items from low stock if any
+  const initItems = lowStockItems ? lowStockItems.split(',') : [''];
+  initItems.forEach(name => suppAddOrderItem(name.trim()));
+}
+
+window.suppAddOrderItem = function(name='', qty='', unit='', price='') {
+  const container = document.getElementById('po-items');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'po-item-row';
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML = `
+    <input class="po-item-name" type="text" placeholder="Item name" value="${name}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-qty" type="number" placeholder="Qty" min="0" value="${qty}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-unit" type="text" placeholder="Unit" value="${unit}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <input class="po-item-price" type="number" placeholder="$/unit" min="0" step="0.01" value="${price}" style="height:38px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;outline:none;">
+    <button onclick="this.parentElement.remove()" style="width:30px;height:38px;border:none;background:#FFF0F0;color:#E53935;border-radius:8px;cursor:pointer;font-size:0.9rem;">✕</button>`;
+  container.appendChild(row);
+}
+
+function suppBuildOrderMessage(order) {
+  const date = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let msg = `PURCHASE ORDER\n${window._userData?.restaurantName||'Restaurant'}\n${date}\n\n`;
+  msg += `Supplier: ${order.supplierName}\n`;
+  if (order.deliveryDate) msg += `Delivery Needed By: ${order.deliveryDate}\n`;
+  msg += `\nITEMS ORDERED:\n`;
+  msg += '─'.repeat(30) + '\n';
+  order.items.forEach((item,i) => {
+    msg += `${i+1}. ${item.name} — ${item.qty} ${item.unit||''}${item.price?' @ $'+item.price+'/'+item.unit:''}${item.price&&item.qty?' = $'+(parseFloat(item.price)*parseFloat(item.qty)).toFixed(2):''}\n`;
+  });
+  msg += '─'.repeat(30) + '\n';
+  if (parseFloat(order.total) > 0) msg += `TOTAL: $${order.total}\n`;
+  if (order.notes) msg += `\nNotes: ${order.notes}\n`;
+  msg += `\nThank you!`;
+  return msg;
+}
+
+window.suppUpdateStatus = async function(orderId, status, rid) {
+  try {
+    await setDoc(doc(db,'purchaseOrders',orderId), {status, updatedAt:serverTimestamp()}, {merge:true});
+    showToast(status==='received'?'✅ Order marked as received!':'Order updated');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error','error'); }
+}
+
+window.suppSendOrder = async function(orderId, rid) {
+  try {
+    const docSnap = await getDoc(doc(db,'purchaseOrders',orderId));
+    const order = {id:orderId,...docSnap.data()};
+    const msg = suppBuildOrderMessage(order);
+    const num = (order.supplierWhatsapp||order.supplierPhone||'').replace(/\D/g,'');
+    if (num) {
+      window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+    } else if (order.supplierEmail) {
+      window.open('mailto:'+order.supplierEmail+'?subject=Purchase Order&body='+encodeURIComponent(msg));
+    } else {
+      // Copy to clipboard
+      navigator.clipboard?.writeText(msg);
+      showToast('Order text copied to clipboard!');
+      return;
+    }
+    await setDoc(doc(db,'purchaseOrders',orderId), {status:'sent'}, {merge:true});
+    showToast('📤 Order sent!');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+window.suppDeleteSupplier = async function(suppId, rid) {
+  if (!confirm('Delete this supplier?')) return;
+  try {
+    await deleteDoc(doc(db,'suppliers',suppId));
+    showToast('Supplier deleted');
+    suppRenderTab(rid, document.querySelector('.page-body'));
+  } catch(e) { showToast('Error','error'); }
+}
+
+// ============================================
+// BILLING & STRIPE PAYMENT
+// ============================================
+async function renderBilling(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  main.innerHTML = '';
+
+  const plan = userData.plan || 'trial';
+  const trialStart = userData.trialStart ? new Date(userData.trialStart) : new Date();
+  const daysUsed = Math.floor((new Date() - trialStart) / (1000*60*60*24));
+  const daysLeft = Math.max(0, (userData.trialDays||30) - daysUsed);
+  const isFounder = plan === 'founding';
+  const isPaid = plan === 'pro' || plan === 'starter' || plan === 'growth';
+  const isTrial = plan === 'trial';
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `<h1 class="page-title">💳 Billing & Plan</h1>
+    <p class="page-sub">Manage your Chef Nek Pro subscription</p>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+
+  // Current plan card
+  const planCard = document.createElement('div');
+  planCard.style.cssText = 'border-radius:20px;padding:28px;margin-bottom:20px;'
+    + (isFounder ? 'background:linear-gradient(135deg,#FFF8ED,#FFF4D6);border:2px solid #F2A623;'
+    : isPaid ? 'background:linear-gradient(135deg,#EDFAF4,#D4F5E8);border:2px solid #1D9E75;'
+    : 'background:var(--white);border:2px solid var(--border);');
+
+  const planIcon = isFounder ? '🏆' : isPaid ? '✅' : '⏳';
+  const planName = isFounder ? 'Founding Partner — Free Forever'
+    : isPaid ? 'Chef Nek Pro — $49/month'
+    : `Free Trial — ${daysLeft} day${daysLeft!==1?'s':''} left`;
+  const planColor = isFounder ? '#C17F3A' : isPaid ? '#0A5C3F' : '#1A1A14';
+
+  planCard.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <div style="font-size:2.5rem;">${planIcon}</div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:800;color:${planColor};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Current Plan</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--ink);">${planName}</div>
+      </div>
+    </div>
+    <div style="font-size:0.82rem;color:var(--ink-muted);line-height:1.7;">
+      ${isFounder ? 'You are one of Chef Nek\'s 3 founding restaurant partners. Chef Nek Pro is <strong>free forever</strong> for you. Thank you for believing in us from the start! 🙏'
+      : isPaid ? 'Your subscription is active. You have access to all Chef Nek Pro features including AI Food Scanner, Time Clock, Advanced Scheduling, and more.'
+      : `Your free trial ${daysLeft > 0 ? 'ends in <strong>${daysLeft} days</strong>' : 'has ended'}. Upgrade to keep access to all features.`}
+    </div>
+    ${isPaid ? `<div style="margin-top:14px;font-size:0.78rem;color:var(--ink-muted);">Next billing date · Contact Chef Nek to manage subscription</div>` : ''}`;
+  body.appendChild(planCard);
+
+  // Upgrade section (trial only)
+  if (isTrial || (!isPaid && !isFounder)) {
+    const upgradeCard = document.createElement('div');
+    upgradeCard.style.cssText = 'background:linear-gradient(135deg,#0B2818,#0A0A14);border-radius:20px;padding:28px;margin-bottom:20px;color:#fff;';
+    upgradeCard.innerHTML = `
+      <div style="font-size:0.72rem;font-weight:800;color:#5DCAA5;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Upgrade to Chef Nek Pro</div>
+      <div style="font-size:2rem;font-weight:800;color:#fff;margin-bottom:4px;">$49<span style="font-size:1rem;font-weight:500;color:rgba(255,255,255,0.5);">/month</span></div>
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.5);margin-bottom:24px;">Everything included. No hidden fees. Cancel anytime.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px;">
+        ${['📋 Recipe Book','📅 Advanced Schedule','⏱️ Time Clock + Kiosk','🤖 AI Food Scanner','👥 Staff Management','💬 Team Hub','✅ Opening & Closing','💰 Food Cost Calculator','🌡️ Temp Log','🗺️ Station Guide','📦 Inventory Tracker','🔔 Notifications'].map(f=>`
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,255,255,0.7);">
+          <div style="width:16px;height:16px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:0.55rem;flex-shrink:0;">✓</div>
+          ${f}
+        </div>`).join('')}
+      </div>
+      <button id="stripe-checkout-btn" onclick="startStripeCheckout('${userData.email}','${rid}','${userData.restaurantName||''}')"
+        style="width:100%;height:56px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 8px 28px rgba(29,158,117,0.4);">
+        💳 Subscribe for $49/month →
+      </button>
+      <div style="text-align:center;font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:12px;">Powered by Stripe · Secure payment · Cancel anytime</div>`;
+    body.appendChild(upgradeCard);
+  }
+
+  // What's included card
+  const featCard = document.createElement('div');
+  featCard.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:20px;';
+  featCard.innerHTML = `<div style="font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:14px;">What's included in Chef Nek Pro</div>`;
+  [
+    ['🤖','AI Food Scanner','Claude Vision AI identifies any dish and calculates calories instantly'],
+    ['⏱️','Time Clock + Kiosk','Staff clock in/out on a shared tablet. Hours calculated automatically'],
+    ['📅','Advanced Schedule','Weekly shift planner with off days, AM/PM times, and print button'],
+    ['🔔','Real-time Notifications','Know instantly when staff check in or complete tasks'],
+    ['💰','Food Cost Calculator','Know your exact margins on every dish'],
+    ['📊','Weekly Hours Export','One-click CSV export ready for payroll'],
+  ].forEach(([icon,title,desc])=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);';
+    row.innerHTML = `<div style="width:34px;height:34px;border-radius:10px;background:#F0FAF5;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">${icon}</div>
+      <div><div style="font-size:0.875rem;font-weight:600;color:var(--ink);margin-bottom:2px;">${title}</div>
+      <div style="font-size:0.75rem;color:var(--ink-muted);line-height:1.5;">${desc}</div></div>`;
+    featCard.appendChild(row);
+  });
+  body.appendChild(featCard);
+
+  // Contact card
+  const contactCard = document.createElement('div');
+  contactCard.style.cssText = 'background:var(--cream);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center;';
+  contactCard.innerHTML = `<div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:6px;">Questions about billing?</div>
+    <div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:14px;">Contact Chef Nek directly — we'll sort it out.</div>
+    <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Chef Nek Pro Billing" style="display:inline-block;height:40px;line-height:40px;padding:0 20px;background:var(--ink);color:#fff;border-radius:10px;text-decoration:none;font-size:0.82rem;font-weight:700;">📧 Email Chef Nek</a>`;
+  body.appendChild(contactCard);
+
+  main.appendChild(body);
+
+  // Handle payment success/cancelled from URL params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('payment') === 'success') {
+    showToast('🎉 Payment successful! Welcome to Chef Nek Pro!');
+    history.replaceState({}, '', window.location.pathname);
+  } else if (params.get('payment') === 'cancelled') {
+    showToast('Payment cancelled — no charge made', 'error');
+    history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+window.startStripeCheckout = async function(email, uid, restaurantName) {
+  const btn = document.getElementById('stripe-checkout-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Loading checkout...'; }
+
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, uid, restaurantName })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Could not create checkout');
+    }
+  } catch(e) {
+    showToast('Checkout error: ' + e.message, 'error');
+    if (btn) { btn.disabled=false; btn.textContent='💳 Subscribe for $49/month →'; }
+  }
+}
+
 // ============================================
 // AI FOOD SCANNER — Claude Vision (Anthropic)
 // Key saved to localStorage — paste once, remembered forever on this device
@@ -11819,6 +14159,24 @@ onAuthStateChanged(auth, async (user) => {
       window._userData = userData;
       isAdmin = userData.email === ADMIN_EMAIL || userData.isAdmin === true;
       window._adminPassword = sessionStorage.getItem('cnp-admin-pwd') || '';
+
+      // For employees: re-sync restaurantId from their canonical staff record
+      // every load, so old/stale localStorage from before a fix can never
+      // cause tasks, schedule, or notifications to silently disappear.
+      if (!isAdmin) {
+        const staffDocId = localStorage.getItem('cnp-staff-doc-id');
+        if (staffDocId) {
+          try {
+            const staffDoc = await getDoc(doc(db,'staffMembers',staffDocId));
+            if (staffDoc.exists()) {
+              const sd = staffDoc.data();
+              if (sd.restaurantId) localStorage.setItem('cnp-restaurant-id', sd.restaurantId);
+              if (sd.name) localStorage.setItem('cnp-staff-name', sd.name);
+            }
+          } catch(e) { console.log('Staff sync skipped:', e.message); }
+        }
+      }
+
       renderApp(userData);
     } catch(e) {
       console.error('Auth error:', e);
