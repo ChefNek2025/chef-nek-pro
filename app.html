@@ -531,6 +531,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+window.__appDb = db; // expose for kiosk mode
 
 // ============================================
 // CHEF NEK ADMIN EMAIL — change this to your email
@@ -11937,9 +11938,10 @@ async function openKioskMode(rid) {
 
   // Load staff from Firestore
   try {
-    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const db = window._db;
-    const snap = await getDocs(collection(db, `restaurants/${rid}/staff`));
+    const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const db = window._db || (await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(()=>null));
+    // Use the global db from app scope
+    const snap = await getDocs(query(collection(window.__appDb, 'staffMembers'), where('restaurantId','==',rid), where('active','==',true)));
     const staffList = document.getElementById('kiosk-staff-list');
     if (!staffList) return;
 
@@ -11989,26 +11991,27 @@ window.kioskAction = async (type, rid) => {
   }
 
   try {
-    const { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, orderBy, limit }
-      = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-
-    const db = window._db;
+    const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const db = window.__appDb;
     if (!db) throw new Error('No DB');
 
     const now = new Date();
 
     if (type === 'in') {
-      await addDoc(collection(db, `restaurants/${rid}/timeclock`), {
-        employeeName: name, type: 'in',
-        timestamp: serverTimestamp(),
-        date: now.toISOString().split('T')[0]
+      await addDoc(collection(db, 'timeEntries'), {
+        restaurantId: rid, employeeName: name,
+        date: now.toISOString().split('T')[0],
+        clockIn: now.toTimeString().slice(0,5),
+        clockOut: null, hours: null,
+        createdAt: serverTimestamp()
       });
       if (msgEl) { msgEl.style.color = '#2DD4A0'; msgEl.textContent = `✅ ${name} clocked IN at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
     } else {
-      await addDoc(collection(db, `restaurants/${rid}/timeclock`), {
-        employeeName: name, type: 'out',
-        timestamp: serverTimestamp(),
-        date: now.toISOString().split('T')[0]
+      await addDoc(collection(db, 'timeEntries'), {
+        restaurantId: rid, employeeName: name,
+        date: now.toISOString().split('T')[0],
+        clockOut: now.toTimeString().slice(0,5),
+        createdAt: serverTimestamp()
       });
       if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = `👋 ${name} clocked OUT at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
     }
