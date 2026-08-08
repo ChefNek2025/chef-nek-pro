@@ -731,7 +731,7 @@ window.submitStaffRequest = async function() {
   errEl.style.display = 'none';
 
   try {
-    // Save to Firestore — shows up in Hire & Train pipeline
+    // Save to Firestore — shows up in Born to Kitchen pipeline
     if (db) {
       await addDoc(collection(db, 'htApplicants'), {
         name,
