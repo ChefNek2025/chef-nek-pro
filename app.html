@@ -11925,6 +11925,7 @@ async function openKioskMode(rid) {
       </div>
 
       <button onclick="document.getElementById('kiosk-overlay').remove()" style="height:40px;padding:0 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:0.82rem;cursor:pointer;font-family:var(--font-body)">✕ Exit Kiosk Mode</button>
+      <button onclick="minimizeKiosk()" style="height:40px;padding:0 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:0.82rem;cursor:pointer;font-family:var(--font-body);margin-left:8px">⬇ Minimize</button>
     </div>`;
 
   document.body.appendChild(overlay);
@@ -11981,6 +11982,58 @@ async function openKioskMode(rid) {
   }
 }
 
+window.minimizeKiosk = () => {
+  const overlay = document.getElementById('kiosk-overlay');
+  if (!overlay) return;
+
+  // Hide full overlay
+  overlay.style.display = 'none';
+
+  // Create minimized widget if not already there
+  if (document.getElementById('kiosk-mini')) return;
+
+  const mini = document.createElement('div');
+  mini.id = 'kiosk-mini';
+  mini.style.cssText = `
+    position:fixed;bottom:20px;right:20px;z-index:9998;
+    background:linear-gradient(135deg,#0B2818,#0D3520);
+    border:1.5px solid rgba(29,158,117,0.4);
+    border-radius:16px;padding:12px 16px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    display:flex;align-items:center;gap:12px;
+    cursor:pointer;font-family:var(--font-body);
+    transition:all 0.2s;min-width:180px;
+  `;
+  mini.onclick = expandKiosk;
+  mini.onmouseover = () => mini.style.borderColor = '#1D9E75';
+  mini.onmouseout  = () => mini.style.borderColor = 'rgba(29,158,117,0.4)';
+
+  mini.innerHTML = `
+    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1D9E75,#16856A);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;">⏱️</div>
+    <div>
+      <div id="kiosk-mini-clock" style="font-size:1rem;font-weight:800;color:#fff;line-height:1.2">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-top:1px">Tap to open kiosk</div>
+    </div>
+    <div style="margin-left:auto;font-size:0.7rem;color:rgba(255,255,255,0.25)">↑</div>
+  `;
+
+  document.body.appendChild(mini);
+
+  // Keep mini clock ticking
+  const miniInterval = setInterval(() => {
+    const el = document.getElementById('kiosk-mini-clock');
+    if (!el) { clearInterval(miniInterval); return; }
+    el.textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }, 1000);
+};
+
+window.expandKiosk = () => {
+  const overlay = document.getElementById('kiosk-overlay');
+  const mini    = document.getElementById('kiosk-mini');
+  if (overlay) overlay.style.display = 'flex';
+  if (mini)    mini.remove();
+};
+
 window.kioskAction = async (type, rid) => {
   const msgEl = document.getElementById('kiosk-msg');
   const name  = window._kioskSelected;
@@ -12016,7 +12069,7 @@ window.kioskAction = async (type, rid) => {
       if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = `👋 ${name} clocked OUT at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
     }
 
-    // Reset selection
+    // Reset selection and auto-minimize after 2 seconds
     window._kioskSelected = null;
     const wrap = document.getElementById('kiosk-selected-wrap');
     if (wrap) wrap.style.display = 'none';
@@ -12024,7 +12077,19 @@ window.kioskAction = async (type, rid) => {
       b.style.background = 'rgba(255,255,255,0.04)';
       b.style.borderColor = 'rgba(255,255,255,0.1)';
     });
-    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+    // Countdown then minimize
+    let count = 3;
+    const countdown = setInterval(() => {
+      count--;
+      if (msgEl) {
+        const action = type === 'in' ? `✅ ${name} clocked IN` : `👋 ${name} clocked OUT`;
+        msgEl.textContent = count > 0 ? `${action} — minimizing in ${count}s...` : '';
+      }
+      if (count <= 0) {
+        clearInterval(countdown);
+        minimizeKiosk();
+      }
+    }, 1000);
   } catch(e) {
     if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = 'Error saving. Please try again.'; }
     console.error(e);
