@@ -11889,6 +11889,89 @@ window.calcApply = function() {
 // ============================================
 // TIME CLOCK — Advanced Rebuild
 // ============================================
+function openKioskMode(rid) {
+  // Full-screen kiosk overlay for staff to clock in/out
+  const overlay = document.createElement('div');
+  overlay.id = 'kiosk-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0B2818,#061209);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font-body)';
+
+  const now = new Date();
+  overlay.innerHTML = `
+    <div style="text-align:center;padding:32px;max-width:480px;width:100%">
+      <div style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Chef Nek Pro</div>
+      <div id="kiosk-clock" style="font-size:clamp(3rem,10vw,5rem);font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:48px">${now.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</div>
+
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px;margin-bottom:20px">
+        <div style="font-size:0.82rem;color:rgba(255,255,255,0.45);margin-bottom:16px">Enter your name to clock in or out</div>
+        <input id="kiosk-name" type="text" placeholder="Your name..." style="width:100%;height:52px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:1.1rem;font-family:var(--font-body);padding:0 18px;outline:none;box-sizing:border-box;text-align:center;margin-bottom:16px" oninput="this.style.borderColor='#1D9E75'">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <button onclick="kioskAction('in','${rid}')" style="height:54px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">&#9654; Clock In</button>
+          <button onclick="kioskAction('out','${rid}')" style="height:54px;border-radius:14px;border:none;background:rgba(229,57,53,0.15);border:1.5px solid rgba(229,57,53,0.4);color:#FF8A80;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">&#9646;&#9646; Clock Out</button>
+        </div>
+        <div id="kiosk-msg" style="margin-top:16px;font-size:0.875rem;color:#2DD4A0;min-height:24px;text-align:center"></div>
+      </div>
+
+      <button onclick="document.getElementById('kiosk-overlay').remove()" style="height:40px;padding:0 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.35);font-size:0.82rem;cursor:pointer;font-family:var(--font-body)">&#10005; Exit Kiosk Mode</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Update clock every second
+  const clockInterval = setInterval(() => {
+    const el = document.getElementById('kiosk-clock');
+    if (!el) { clearInterval(clockInterval); return; }
+    el.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }, 1000);
+
+  // Focus name input
+  setTimeout(() => document.getElementById('kiosk-name')?.focus(), 100);
+}
+
+window.kioskAction = async (type, rid) => {
+  const nameEl = document.getElementById('kiosk-name');
+  const msgEl  = document.getElementById('kiosk-msg');
+  const name   = nameEl?.value.trim();
+
+  if (!name) {
+    if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = 'Please enter your name first.'; }
+    nameEl?.focus();
+    return;
+  }
+
+  try {
+    const { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, orderBy, limit }
+      = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
+    const db = window._db;
+    if (!db) throw new Error('No DB');
+
+    const now = new Date();
+
+    if (type === 'in') {
+      await addDoc(collection(db, `restaurants/${rid}/timeclock`), {
+        employeeName: name, type: 'in',
+        timestamp: serverTimestamp(),
+        date: now.toISOString().split('T')[0]
+      });
+      if (msgEl) { msgEl.style.color = '#2DD4A0'; msgEl.textContent = `✅ ${name} clocked IN at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
+    } else {
+      await addDoc(collection(db, `restaurants/${rid}/timeclock`), {
+        employeeName: name, type: 'out',
+        timestamp: serverTimestamp(),
+        date: now.toISOString().split('T')[0]
+      });
+      if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = `👋 ${name} clocked OUT at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
+    }
+
+    if (nameEl) nameEl.value = '';
+    setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+  } catch(e) {
+    if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = 'Error saving. Please try again.'; }
+    console.error(e);
+  }
+};
+
 async function renderTimeClock(main, userData) {
   const rid = currentRestaurantId() || userData.uid;
   const today = new Date().toISOString().split('T')[0];
