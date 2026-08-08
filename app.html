@@ -11889,53 +11889,102 @@ window.calcApply = function() {
 // ============================================
 // TIME CLOCK — Advanced Rebuild
 // ============================================
-function openKioskMode(rid) {
-  // Full-screen kiosk overlay for staff to clock in/out
+async function openKioskMode(rid) {
   const overlay = document.createElement('div');
   overlay.id = 'kiosk-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0B2818,#061209);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font-body)';
 
   const now = new Date();
   overlay.innerHTML = `
-    <div style="text-align:center;padding:32px;max-width:480px;width:100%">
-      <div style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Chef Nek Pro</div>
-      <div id="kiosk-clock" style="font-size:clamp(3rem,10vw,5rem);font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
-      <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:48px">${now.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</div>
+    <div style="text-align:center;padding:32px;max-width:500px;width:100%">
+      <div style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px">Chef Nek Pro — Kiosk</div>
+      <div id="kiosk-clock" style="font-size:clamp(3rem,10vw,5rem);font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:1rem;color:rgba(255,255,255,0.4);margin-bottom:40px">${now.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})}</div>
 
       <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px;margin-bottom:20px">
-        <div style="font-size:0.82rem;color:rgba(255,255,255,0.45);margin-bottom:16px">Enter your name to clock in or out</div>
-        <input id="kiosk-name" type="text" placeholder="Your name..." style="width:100%;height:52px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:1.1rem;font-family:var(--font-body);padding:0 18px;outline:none;box-sizing:border-box;text-align:center;margin-bottom:16px" oninput="this.style.borderColor='#1D9E75'">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <button onclick="kioskAction('in','${rid}')" style="height:54px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">&#9654; Clock In</button>
-          <button onclick="kioskAction('out','${rid}')" style="height:54px;border-radius:14px;border:none;background:rgba(229,57,53,0.15);border:1.5px solid rgba(229,57,53,0.4);color:#FF8A80;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">&#9646;&#9646; Clock Out</button>
+        <div style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:16px;font-weight:600">Select your name</div>
+
+        <!-- Staff dropdown -->
+        <div id="kiosk-staff-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;max-height:240px;overflow-y:auto">
+          <div style="color:rgba(255,255,255,0.3);font-size:0.82rem;padding:12px">Loading staff...</div>
         </div>
-        <div id="kiosk-msg" style="margin-top:16px;font-size:0.875rem;color:#2DD4A0;min-height:24px;text-align:center"></div>
+
+        <!-- Selected name display -->
+        <div id="kiosk-selected-wrap" style="display:none;background:rgba(29,158,117,0.15);border:1.5px solid rgba(29,158,117,0.4);border-radius:12px;padding:14px;margin-bottom:16px;text-align:center">
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:4px">Selected</div>
+          <div id="kiosk-selected-name" style="font-size:1.2rem;font-weight:800;color:#fff"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <button onclick="kioskAction('in','${rid}')" style="height:56px;border-radius:14px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">✅ Clock In</button>
+          <button onclick="kioskAction('out','${rid}')" style="height:56px;border-radius:14px;border:2px solid rgba(229,57,53,0.5);background:rgba(229,57,53,0.1);color:#FF8A80;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">🔴 Clock Out</button>
+        </div>
+        <div id="kiosk-msg" style="margin-top:16px;font-size:0.9rem;min-height:26px;text-align:center;font-weight:600"></div>
       </div>
 
-      <button onclick="document.getElementById('kiosk-overlay').remove()" style="height:40px;padding:0 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.35);font-size:0.82rem;cursor:pointer;font-family:var(--font-body)">&#10005; Exit Kiosk Mode</button>
+      <button onclick="document.getElementById('kiosk-overlay').remove()" style="height:40px;padding:0 24px;border-radius:100px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:0.82rem;cursor:pointer;font-family:var(--font-body)">✕ Exit Kiosk Mode</button>
     </div>`;
 
   document.body.appendChild(overlay);
 
-  // Update clock every second
+  // Live clock
   const clockInterval = setInterval(() => {
     const el = document.getElementById('kiosk-clock');
     if (!el) { clearInterval(clockInterval); return; }
-    el.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    el.textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   }, 1000);
 
-  // Focus name input
-  setTimeout(() => document.getElementById('kiosk-name')?.focus(), 100);
+  // Load staff from Firestore
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const db = window._db;
+    const snap = await getDocs(collection(db, `restaurants/${rid}/staff`));
+    const staffList = document.getElementById('kiosk-staff-list');
+    if (!staffList) return;
+
+    const staff = snap.docs.map(d => ({id:d.id, ...d.data()}));
+
+    if (!staff.length) {
+      staffList.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:0.82rem;padding:12px">No staff found. Add staff in the Staff Register.</div>';
+      return;
+    }
+
+    staffList.innerHTML = '';
+    staff.forEach(s => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'width:100%;padding:14px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:1rem;font-weight:600;cursor:pointer;font-family:var(--font-body);display:flex;align-items:center;gap:12px;transition:all 0.15s;text-align:left';
+      btn.innerHTML = `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1D9E75,#16856A);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;flex-shrink:0">${(s.name||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2)}</div><div><div style="font-size:0.95rem;font-weight:700">${s.name||'Unknown'}</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.4)">${s.role||s.position||'Staff'}</div></div>`;
+      btn.onmouseover = () => btn.style.background = 'rgba(29,158,117,0.15)';
+      btn.onmouseout  = () => btn.style.background = window._kioskSelected === s.name ? 'rgba(29,158,117,0.2)' : 'rgba(255,255,255,0.04)';
+      btn.onclick = () => {
+        window._kioskSelected = s.name;
+        // Highlight selected
+        staffList.querySelectorAll('button').forEach(b => b.style.background = 'rgba(255,255,255,0.04)');
+        btn.style.background = 'rgba(29,158,117,0.2)';
+        btn.style.borderColor = '#1D9E75';
+        staffList.querySelectorAll('button').forEach(b => { if(b !== btn) b.style.borderColor = 'rgba(255,255,255,0.1)'; });
+        // Show selected name
+        const wrap = document.getElementById('kiosk-selected-wrap');
+        const nameEl = document.getElementById('kiosk-selected-name');
+        if (wrap) wrap.style.display = 'block';
+        if (nameEl) nameEl.textContent = s.name;
+      };
+      staffList.appendChild(btn);
+    });
+  } catch(e) {
+    console.error(e);
+    const staffList = document.getElementById('kiosk-staff-list');
+    if (staffList) staffList.innerHTML = '<div style="color:#FF8A80;font-size:0.82rem;padding:12px">Could not load staff list.</div>';
+  }
 }
 
 window.kioskAction = async (type, rid) => {
-  const nameEl = document.getElementById('kiosk-name');
-  const msgEl  = document.getElementById('kiosk-msg');
-  const name   = nameEl?.value.trim();
+  const msgEl = document.getElementById('kiosk-msg');
+  const name  = window._kioskSelected;
 
   if (!name) {
-    if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = 'Please enter your name first.'; }
-    nameEl?.focus();
+    if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = '⚠️ Please select your name first.'; }
     return;
   }
 
@@ -11964,7 +12013,14 @@ window.kioskAction = async (type, rid) => {
       if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = `👋 ${name} clocked OUT at ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
     }
 
-    if (nameEl) nameEl.value = '';
+    // Reset selection
+    window._kioskSelected = null;
+    const wrap = document.getElementById('kiosk-selected-wrap');
+    if (wrap) wrap.style.display = 'none';
+    document.querySelectorAll('#kiosk-staff-list button').forEach(b => {
+      b.style.background = 'rgba(255,255,255,0.04)';
+      b.style.borderColor = 'rgba(255,255,255,0.1)';
+    });
     setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
   } catch(e) {
     if (msgEl) { msgEl.style.color = '#FF8A80'; msgEl.textContent = 'Error saving. Please try again.'; }
