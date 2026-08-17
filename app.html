@@ -6639,7 +6639,7 @@ window.openStationDish = function(id) {
   if (dish.prepTime) body.innerHTML += ' <span style="font-size:0.75rem;color:var(--ink-muted);">Prep: ' + dish.prepTime + '</span>';
   if (dish.ingredients) {
     body.innerHTML += '<div style="margin-top:18px;"><div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:8px;">Ingredients</div>'
-      + dish.ingredients.split('\n').filter(l=>l.trim()).map(l=>'<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:6px;flex-shrink:0;"></span><span style="font-size:0.875rem;color:var(--ink);line-height:1.5;">' + l.replace(/^[-•*]\s*/,'') + '</span></div>').join('') + '</div>';
+      + (Array.isArray(dish.ingredients) ? dish.ingredients : (dish.ingredients||'').split('\n')).filter(l=>l.trim()).map(l=>'<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:6px;flex-shrink:0;"></span><span style="font-size:0.875rem;color:var(--ink);line-height:1.5;">' + l.replace(/^[-•*]\s*/,'') + '</span></div>').join('') + '</div>';
   }
   if (dish.steps) {
     body.innerHTML += '<div style="margin-top:18px;"><div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:8px;">How to make it</div>'
