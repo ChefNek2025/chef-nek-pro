@@ -13841,24 +13841,17 @@ async function renderBilling(main, userData) {
 
 window.startStripeCheckout = async function(email, uid, restaurantName) {
   const btn = document.getElementById('stripe-checkout-btn');
-  if (btn) { btn.disabled=true; btn.textContent='Loading checkout...'; }
+  if (btn) { btn.disabled=true; btn.textContent='Redirecting to secure payment...'; }
 
-  try {
-    const res = await fetch('/api/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, uid, restaurantName })
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      throw new Error(data.error || 'Could not create checkout');
-    }
-  } catch(e) {
-    showToast('Checkout error: ' + e.message, 'error');
-    if (btn) { btn.disabled=false; btn.textContent='💳 Subscribe for $49/month →'; }
-  }
+  // Direct Stripe Payment Link — no backend needed
+  const stripeUrl = 'https://buy.stripe.com/bJeaEQ5435fg0H1cCbcbC00';
+
+  // Add prefilled email if possible
+  const url = stripeUrl + '?prefilled_email=' + encodeURIComponent(email);
+
+  setTimeout(() => {
+    window.location.href = url;
+  }, 500);
 }
 
 // ============================================
