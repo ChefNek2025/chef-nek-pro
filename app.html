@@ -1252,16 +1252,47 @@ function renderApp(userData) {
   }
   // Show trial banner for non-admin restaurants on trial
   if (!isAdmin && userData.plan === 'trial') {
-    const start = new Date(userData.trialStart || new Date());
+    const start = new Date(userData.trialStart || userData.createdAt?.toDate?.() || new Date());
     const daysUsed = Math.floor((new Date() - start) / (1000*60*60*24));
-    const daysLeft = Math.max(0, (userData.trialDays||30) - daysUsed);
-    if (daysLeft <= 30) {
+    const totalDays = userData.trialDays || 30;
+    const daysLeft = Math.max(0, totalDays - daysUsed);
+
+    // Show banner based on urgency
+    if (daysLeft <= 7 || daysLeft === 0) {
       const banner = document.createElement('div');
-      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:500;background:'+(daysLeft<=5?'#E53935':'#1D9E75')+';color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:var(--font-body);font-size:0.8rem;font-weight:600;';
-      banner.innerHTML = '<span>'+(daysLeft<=5?'⚠️':'🎉')+' '+(daysLeft===0?'Your trial has ended — contact Chef Nek to continue':'Your free trial: <strong>'+daysLeft+' day'+(daysLeft!==1?'s':'')+' left</strong>')+'</span>'
-        + '<a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Chef Nek Pro Subscription" style="background:rgba(255,255,255,0.2);color:#fff;padding:5px 14px;border-radius:100px;text-decoration:none;font-size:0.75rem;font-weight:700;white-space:nowrap;">Contact Chef Nek →</a>';
+      const isExpired = daysLeft === 0;
+      const isUrgent  = daysLeft <= 3 && !isExpired;
+      const isWarning = daysLeft <= 7 && daysLeft > 3;
+
+      const bg    = isExpired ? '#B71C1C' : isUrgent ? '#E53935' : '#F2A623';
+      const emoji = isExpired ? '🔒' : isUrgent ? '⚠️' : '⏰';
+
+      const msg = isExpired
+        ? 'Your free trial has ended. Contact Chef Nek to keep access.'
+        : isUrgent
+        ? `⚠️ Only <strong>${daysLeft} day${daysLeft!==1?'s':''} left</strong> on your free trial — don't lose access!`
+        : `⏰ Your free trial ends in <strong>${daysLeft} days</strong> — upgrade to keep access.`;
+
+      banner.style.cssText = `position:fixed;bottom:0;left:0;right:0;z-index:500;background:${bg};color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;box-shadow:0 -4px 20px rgba(0,0,0,0.2);`;
+      banner.innerHTML = `
+        <span>${emoji} ${msg}</span>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Chef Nek Pro Subscription — ${userData.restaurantName||userData.email}" 
+             style="background:rgba(255,255,255,0.25);color:#fff;padding:6px 16px;border-radius:100px;text-decoration:none;font-size:0.75rem;font-weight:700;white-space:nowrap;">
+            📧 Contact Chef Nek
+          </a>
+          <button onclick="navigate('billing')" 
+             style="background:#fff;color:${bg};border:none;padding:6px 16px;border-radius:100px;font-size:0.75rem;font-weight:800;cursor:pointer;white-space:nowrap;">
+            💳 Upgrade Now
+          </button>
+        </div>`;
       document.getElementById('root')?.appendChild(banner);
     }
+
+    // Also show a toast notification when first logging in near expiry
+    if (daysLeft === 7) showToast('⏰ 7 days left on your free trial!', 'warning');
+    if (daysLeft === 3) showToast('⚠️ Only 3 days left — upgrade to keep access!', 'error');
+    if (daysLeft === 1) showToast('🔴 Last day of your free trial!', 'error');
   }
   // Ensure sidebar is closed on page load
   setTimeout(() => {
@@ -1660,7 +1691,41 @@ async function loadDashboardNotifs(rid) {
   const el = document.getElementById('dashboard-notifs');
   if (!el) return;
   try {
-    const { getDocs, query, collection, where, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const { getDocs, query, collection, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
+    // Check for expiring trials — alert Chef Nek
+    const clientsSnap = await getDocs(query(collection(db,'users'), where('isAdmin','==',false)));
+    const expiring = clientsSnap.docs.map(d=>({id:d.id,...d.data()})).filter(c => {
+      if (c.plan !== 'trial') return false;
+      const start = c.createdAt?.toDate?.() || new Date();
+      const daysUsed = Math.floor((new Date()-start)/(1000*60*60*24));
+      const daysLeft = Math.max(0,(c.trialDays||30)-daysUsed);
+      return daysLeft <= 7;
+    });
+
+    if (expiring.length > 0) {
+      const alertEl = document.createElement('div');
+      alertEl.style.cssText = 'background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:16px;';
+      alertEl.innerHTML = `<div style="font-size:0.82rem;font-weight:800;color:#C17F3A;margin-bottom:10px;">⏰ Trial Expiring Soon (${expiring.length} client${expiring.length!==1?'s':''})</div>`
+        + expiring.map(c => {
+            const start = c.createdAt?.toDate?.() || new Date();
+            const daysUsed = Math.floor((new Date()-start)/(1000*60*60*24));
+            const daysLeft = Math.max(0,(c.trialDays||30)-daysUsed);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(242,166,35,0.2);">
+              <div>
+                <div style="font-size:0.82rem;font-weight:700;color:var(--ink);">${c.restaurantName||c.email}</div>
+                <div style="font-size:0.72rem;color:var(--ink-muted);">${c.email}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75rem;font-weight:800;color:${daysLeft<=3?'#E53935':'#C17F3A'};">${daysLeft===0?'EXPIRED':daysLeft+'d left'}</span>
+                <a href="mailto:${c.email}?subject=Your Chef Nek Pro Trial is Ending&body=Hi ${c.restaurantName||''},%0A%0AYour Chef Nek Pro free trial ends in ${daysLeft} day${daysLeft!==1?'s':''}. Reply to this email to continue your subscription at $49/month.%0A%0AThank you,%0AChef Nek"
+                   style="font-size:0.72rem;background:#F2A623;color:#fff;padding:4px 10px;border-radius:8px;text-decoration:none;font-weight:700;">📧 Email</a>
+              </div>
+            </div>`;
+          }).join('')
+        + `<div style="margin-top:10px;font-size:0.75rem;color:var(--ink-muted);">Click 📧 Email to send a renewal reminder directly to the client.</div>`;
+      el.prepend(alertEl);
+    }
     const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid)));
     const notifs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,30);
     const unread = notifs.filter(n=>!n.read);
