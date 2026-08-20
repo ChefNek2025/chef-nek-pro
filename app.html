@@ -4916,6 +4916,7 @@ window.showAddClientModal = function() {
         <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Plan</label>
         <select id="acm-plan" style="width:100%;height:46px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;background:#fff;">
           <option value="trial">Free Trial (30 days)</option>
+          <option value="trial3">🎁 Free Trial (3 Months)</option>
           <option value="founding">🏆 Founding Member (Free Forever)</option>
           <option value="pro">Paid — $49/month</option>
         </select>
@@ -4963,7 +4964,7 @@ window.submitAddClient = async function() {
       isAdmin: false,
       createdAt: serverTimestamp(),
       createdBy: 'admin',
-      trialDays: plan === 'founding' ? 99999 : plan === 'pro' ? 99999 : 30,
+      trialDays: plan === 'founding' ? 99999 : plan === 'pro' ? 99999 : plan === 'trial3' ? 90 : 30,
     });
 
     // Send notification
