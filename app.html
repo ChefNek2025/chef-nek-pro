@@ -10405,14 +10405,27 @@ async function thRefreshTasks(rid, myName) {
 
       // Admin actions
       if (isAdmin) {
+        const actionsWrap = document.createElement('div');
+        actionsWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;flex-shrink:0;';
+
+        // Assign button
+        const assignBtn = document.createElement('button');
+        assignBtn.style.cssText = 'height:28px;padding:0 10px;border-radius:6px;border:0.5px solid var(--green);background:#EDFAF4;color:var(--green);font-size:0.72rem;cursor:pointer;font-family:var(--font-body);white-space:nowrap;';
+        assignBtn.textContent = '👤 Assign';
+        assignBtn.onclick = () => thAssignTask(task.id, task.assignedTo||'', rid, myName);
+        actionsWrap.appendChild(assignBtn);
+
+        // Delete button
         const del = document.createElement('button');
-        del.style.cssText = 'height:28px;padding:0 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);flex-shrink:0;';
+        del.style.cssText = 'height:28px;padding:0 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);';
         del.textContent = '🗑️';
         del.onclick = async () => {
           await deleteDoc(doc(db,'teamTasks',task.id));
           thRefreshTasks(rid, myName);
         };
-        card.appendChild(del);
+        actionsWrap.appendChild(del);
+
+        card.appendChild(actionsWrap);
       }
 
       taskList.appendChild(card);
@@ -10422,6 +10435,38 @@ async function thRefreshTasks(rid, myName) {
     taskList.innerHTML = '<div style="padding:14px;background:#FCEBEB;border-radius:12px;color:#A32D2D;">Error: ' + e.message + '</div>';
   }
 }
+
+window.thAssignTask = async function(taskId, current, rid, myName) {
+  // Get staff list
+  const staffSnap = await getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)));
+  const staffList = staffSnap.docs.map(d => d.data().name).filter(Boolean);
+
+  const options = ['(Unassigned)', ...staffList];
+  const selected = prompt(
+    'Assign task to:\n' + options.map((s,i) => `${i}. ${s}`).join('\n') + '\n\nEnter number:',
+    current ? options.indexOf(current).toString() : '0'
+  );
+
+  if (selected === null) return;
+  const idx = parseInt(selected);
+  if (isNaN(idx) || idx < 0 || idx >= options.length) return;
+
+  const assignedTo = idx === 0 ? null : options[idx];
+
+  await setDoc(doc(db,'teamTasks',taskId), { assignedTo }, {merge:true});
+
+  if (assignedTo) {
+    await addDoc(collection(db,'notifications'), {
+      type: 'task-assigned',
+      message: `📋 Task assigned to ${assignedTo} by Chef Nek`,
+      restaurantId: rid,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  thRefreshTasks(rid, myName);
+};
 
 window.thToggleTask = async function(taskId, done, rid, myName) {
   const senderName = isAdmin ? 'Chef Nek' : myName;
