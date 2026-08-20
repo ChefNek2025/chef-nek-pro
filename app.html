@@ -5037,6 +5037,30 @@ async function loadClients() {
         paidBtn.textContent = '💳 Mark Paid';
         paidBtn.onclick = () => clientMarkPaid(client.id, listEl);
         actions.appendChild(paidBtn);
+
+        const foundingBtn = document.createElement('button');
+        foundingBtn.style.cssText = 'height:36px;padding:0 12px;border-radius:9px;border:none;background:#EDFAF4;color:#0A5C3F;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+        foundingBtn.textContent = '🏆 Founding';
+        foundingBtn.onclick = async () => {
+          if (!confirm('Give ' + (client.restaurantName||client.email) + ' FREE FOREVER founding access?')) return;
+          await setDoc(doc(db,'users',client.id),{plan:'founding'},{merge:true});
+          showToast('🏆 Marked as Founding Member — free forever!');
+          renderManageClients(main, userData);
+        };
+        actions.appendChild(foundingBtn);
+      }
+
+      if (isPaid || isFounder) {
+        const revokeBtn = document.createElement('button');
+        revokeBtn.style.cssText = 'height:36px;padding:0 12px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;';
+        revokeBtn.textContent = '↩️ Revoke';
+        revokeBtn.onclick = async () => {
+          if (!confirm('Revoke paid access for ' + (client.restaurantName||client.email) + '?')) return;
+          await setDoc(doc(db,'users',client.id),{plan:'trial'},{merge:true});
+          showToast('Access revoked');
+          renderManageClients(main, userData);
+        };
+        actions.appendChild(revokeBtn);
       }
 
       const suspendBtn = document.createElement('button');
