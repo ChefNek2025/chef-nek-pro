@@ -1185,6 +1185,10 @@ function renderApp(userData) {
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3.3 2.2-5 5-5s5 1.7 5 5"/><circle cx="13" cy="6" r="2"/><path d="M13 10c1.7 0 3 1 3 3"/></svg>
             Staff
           </button>
+          <button class="nav-item ${currentPage==='reviews'?'active':''}" onclick="navigate('reviews')">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="8,1 10,6 15,6 11,9 13,14 8,11 3,14 5,9 1,6 6,6"/></svg>
+            Staff Reviews
+          </button>
           <button class="nav-item ${currentPage==='schedule'?'active':''}" onclick="navigate('schedule')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="14" height="13" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/><line x1="4" y1="10" x2="6" y2="10"/><line x1="7" y1="10" x2="12" y2="10"/><line x1="4" y1="13" x2="8" y2="13"/></svg>
             Schedule
@@ -1405,6 +1409,7 @@ function renderPage(userData) {
     case 'billing':     renderBilling(main, userData); break;
     case 'teamhub':     renderTeamHub(main, userData); break;
     case 'staff':       renderStaff(main, userData); break;
+    case 'reviews':     renderStaffReviews(main, userData); break;
     case 'schedule':    renderSchedule(main, userData); break;
     case 'timeclock':   renderTimeClock(main, userData); break;
         default:          renderDashboard(main, userData);
@@ -10781,6 +10786,397 @@ window.thSaveTask = async function(rid) {
 // ============================================
 // STAFF REGISTER
 // ============================================
+
+// ============================================
+// STAFF REVIEWS — Performance & Appreciation
+// ============================================
+async function renderStaffReviews(main, userData) {
+  main.innerHTML = '';
+  const rid = userData.restaurantId || userData.uid;
+
+  const header = document.createElement('div');
+  header.className = 'page-header';
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">⭐ Staff Reviews</h1>
+        <p class="page-sub">Performance profiles, appreciation & recognition</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="review-cycle" style="height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.82rem;background:#fff;cursor:pointer;">
+          <option value="3">Every 3 Months</option>
+          <option value="6">Every 6 Months</option>
+          <option value="12">Annual Review</option>
+        </select>
+      </div>
+    </div>`;
+  main.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'page-body';
+  body.id = 'reviews-body';
+  body.innerHTML = '<div class="empty-state"><div class="loading-spinner" style="margin:0 auto 12px;"></div></div>';
+  main.appendChild(body);
+
+  await loadStaffReviews(rid, userData);
+}
+
+async function loadStaffReviews(rid, userData) {
+  const body = document.getElementById('reviews-body');
+  if (!body) return;
+
+  try {
+    const { getDocs, query, collection, where, orderBy, getDoc, doc: fsDoc, setDoc, addDoc, serverTimestamp } 
+      = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
+    // Load staff
+    const staffSnap = await getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)));
+    const staff = staffSnap.docs.map(d => ({id:d.id,...d.data()}));
+
+    if (!staff.length) {
+      body.innerHTML = `<div class="empty-state">
+        <div style="font-size:2.5rem;margin-bottom:12px;">👥</div>
+        <div class="empty-state-title">No staff yet</div>
+        <div class="empty-state-sub">Add staff in the Staff Register first</div>
+        <button onclick="navigate('staff')" style="margin-top:16px;height:40px;padding:0 20px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-weight:700;cursor:pointer;">Go to Staff Register</button>
+      </div>`;
+      return;
+    }
+
+    // Load time clock data for auto-stats
+    const clockSnap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    const clockEntries = clockSnap.docs.map(d => d.data());
+
+    // Load tasks data
+    const taskSnap = await getDocs(query(collection(db,'teamTasks'), where('restaurantId','==',rid)));
+    const tasks = taskSnap.docs.map(d => d.data());
+
+    // Load existing reviews
+    const reviewSnap = await getDocs(query(collection(db,'staffReviews'), where('restaurantId','==',rid)));
+    const reviews = {};
+    reviewSnap.docs.forEach(d => { const r = d.data(); reviews[r.staffId] = r; });
+
+    body.innerHTML = '';
+
+    // Summary bar
+    const avgScore = staff.length ? Math.round(staff.reduce((sum, s) => {
+      const r = reviews[s.id];
+      return sum + (r?.score || 70);
+    }, 0) / staff.length) : 0;
+
+    const summaryBar = document.createElement('div');
+    summaryBar.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;';
+    [
+      { label: 'Team Size', val: staff.length, icon: '👥', color: 'var(--green)' },
+      { label: 'Avg Score', val: avgScore + '/100', icon: '⭐', color: '#F2A623' },
+      { label: 'Reviews Done', val: Object.keys(reviews).length + '/' + staff.length, icon: '📋', color: '#2563EB' },
+      { label: 'Due for Review', val: staff.filter(s => {
+          const r = reviews[s.id];
+          if (!r) return true;
+          const months = parseInt(document.getElementById('review-cycle')?.value || 3);
+          const lastReview = new Date(r.reviewedAt || 0);
+          const monthsAgo = (new Date() - lastReview) / (1000*60*60*24*30);
+          return monthsAgo >= months;
+        }).length, icon: '⏰', color: '#E53935' },
+    ].forEach(({label, val, icon, color}) => {
+      summaryBar.innerHTML += `<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:4px;">${icon}</div>
+        <div style="font-size:1.4rem;font-weight:800;color:${color};">${val}</div>
+        <div style="font-size:0.72rem;color:var(--ink-muted);margin-top:2px;">${label}</div>
+      </div>`;
+    });
+    body.appendChild(summaryBar);
+
+    // Staff cards
+    staff.forEach(s => {
+      const review = reviews[s.id] || {};
+      const score = review.score || 0;
+      const scoreColor = score >= 80 ? '#1D9E75' : score >= 60 ? '#F2A623' : '#E53935';
+
+      // Auto-stats from platform data
+      const staffClock = clockEntries.filter(e => e.employeeName === s.name);
+      const shiftsWorked = staffClock.filter(e => e.clockIn).length;
+      const onTimeCount = staffClock.filter(e => {
+        if (!e.clockIn) return false;
+        const hour = parseInt(e.clockIn.split(':')[0]);
+        return hour <= 9;
+      }).length;
+      const onTimeRate = shiftsWorked > 0 ? Math.round((onTimeCount/shiftsWorked)*100) : 0;
+      const tasksCompleted = tasks.filter(t => t.assignedTo === s.name && t.done).length;
+      const totalTasks = tasks.filter(t => t.assignedTo === s.name).length;
+
+      // Badges
+      const badges = review.badges || [];
+      const allBadges = ['🏆 Kitchen MVP', '⭐ Most Reliable', '💪 Most Improved', '🤝 Team Player', '🚀 Goes Above & Beyond', '🍳 Culinary Excellence'];
+
+      const months = parseInt(document.getElementById('review-cycle')?.value || 3);
+      const lastReview = review.reviewedAt ? new Date(review.reviewedAt) : null;
+      const monthsAgo = lastReview ? (new Date()-lastReview)/(1000*60*60*24*30) : 999;
+      const isDue = monthsAgo >= months;
+
+      const card = document.createElement('div');
+      card.style.cssText = `background:#fff;border:1.5px solid ${isDue?'#F2A623':'var(--border)'};border-radius:18px;padding:24px;margin-bottom:16px;`;
+
+      card.innerHTML = `
+        <!-- Staff header -->
+        <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--green),#16856A);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:#fff;flex-shrink:0;">
+            ${(s.name||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2)}
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:1.05rem;font-weight:800;color:var(--ink);">${s.name}</div>
+            <div style="font-size:0.82rem;color:var(--ink-muted);">${s.role||s.position||'Staff'}</div>
+            ${isDue ? `<div style="display:inline-block;background:#FFF8ED;color:#C17F3A;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:100px;margin-top:4px;">⏰ Review Due</div>` : 
+              lastReview ? `<div style="font-size:0.7rem;color:var(--ink-muted);margin-top:4px;">Last reviewed: ${lastReview.toLocaleDateString()}</div>` : 
+              `<div style="display:inline-block;background:#FCEBEB;color:#C62828;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:100px;margin-top:4px;">📋 Never Reviewed</div>`}
+          </div>
+          ${score > 0 ? `<div style="text-align:center;">
+            <div style="font-size:1.8rem;font-weight:900;color:${scoreColor};">${score}</div>
+            <div style="font-size:0.65rem;color:var(--ink-muted);">/ 100</div>
+          </div>` : ''}
+        </div>
+
+        <!-- Auto stats -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
+          ${[
+            {label:'Shifts', val:shiftsWorked, icon:'📅'},
+            {label:'On Time', val:onTimeRate+'%', icon:'⏰'},
+            {label:'Tasks Done', val:tasksCompleted+(totalTasks?'/'+totalTasks:''), icon:'✅'},
+            {label:'Score', val:score||'—', icon:'⭐'},
+          ].map(({label,val,icon})=>`
+            <div style="background:var(--cream);border-radius:10px;padding:10px;text-align:center;">
+              <div style="font-size:1rem;margin-bottom:2px;">${icon}</div>
+              <div style="font-size:0.95rem;font-weight:800;color:var(--ink);">${val}</div>
+              <div style="font-size:0.65rem;color:var(--ink-muted);">${label}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Badges -->
+        ${badges.length > 0 ? `
+          <div style="margin-bottom:16px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Recognition Badges</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${badges.map(b=>`<span style="background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1px solid #F2A623;color:#C17F3A;font-size:0.72rem;font-weight:700;padding:4px 12px;border-radius:100px;">${b}</span>`).join('')}
+            </div>
+          </div>` : ''}
+
+        <!-- Manager notes -->
+        ${review.notes ? `
+          <div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:16px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);margin-bottom:4px;">💬 Manager Notes</div>
+            <div style="font-size:0.82rem;color:var(--ink);line-height:1.6;">${review.notes}</div>
+          </div>` : ''}
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="openReviewModal('${s.id}','${s.name}','${s.role||'Staff'}','${rid}')" 
+            style="height:38px;padding:0 16px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--green),#16856A);color:#fff;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">
+            ${score > 0 ? '✏️ Update Review' : '⭐ Write Review'}
+          </button>
+          <button onclick="openAppreciationModal('${s.id}','${s.name}','${rid}')"
+            style="height:38px;padding:0 16px;border-radius:10px;border:1.5px solid #F2A623;background:#FFF8ED;color:#C17F3A;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">
+            🏆 Give Badge
+          </button>
+          <button onclick="shareReview('${s.name}','${score}','${badges.join(', ')}')"
+            style="height:38px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">
+            📤 Share
+          </button>
+        </div>`;
+
+      body.appendChild(card);
+    });
+
+  } catch(e) {
+    body.innerHTML = `<div style="padding:20px;background:#FCEBEB;border-radius:12px;color:#A32D2D;">Error: ${e.message}</div>`;
+    console.error(e);
+  }
+}
+
+// Review Modal
+window.openReviewModal = function(staffId, staffName, staffRole, rid) {
+  document.getElementById('review-modal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'review-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);overflow-y:auto;';
+
+  const allBadges = ['🏆 Kitchen MVP','⭐ Most Reliable','💪 Most Improved','🤝 Team Player','🚀 Goes Above & Beyond','🍳 Culinary Excellence'];
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:500px;padding:32px;position:relative;margin:auto;">
+      <button onclick="document.getElementById('review-modal').remove()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:#F5F5F0;font-size:1rem;cursor:pointer;">✕</button>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--ink);margin-bottom:4px;">⭐ Review — ${staffName}</div>
+      <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">${staffRole}</div>
+
+      <!-- Score slider -->
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;">Performance Score</label>
+          <span id="score-display" style="font-size:1rem;font-weight:800;color:var(--green);">75/100</span>
+        </div>
+        <input type="range" id="rm-score" min="0" max="100" value="75" 
+          style="width:100%;accent-color:var(--green);"
+          oninput="document.getElementById('score-display').textContent=this.value+'/100'">
+        <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--ink-muted);margin-top:4px;">
+          <span>Needs Improvement</span><span>Average</span><span>Excellent</span>
+        </div>
+      </div>
+
+      <!-- Star rating -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Overall Rating</label>
+        <div style="display:flex;gap:8px;" id="star-row">
+          ${[1,2,3,4,5].map(i=>`<button onclick="setStarRating(${i})" id="star-${i}" 
+            style="font-size:1.8rem;background:none;border:none;cursor:pointer;opacity:0.3;transition:opacity 0.15s;">⭐</button>`).join('')}
+        </div>
+        <input type="hidden" id="rm-stars" value="0">
+      </div>
+
+      <!-- Badges -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Recognition Badges (select all that apply)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${allBadges.map(b=>`<button onclick="toggleBadge(this,'${b}')" 
+            data-badge="${b}"
+            style="padding:6px 14px;border-radius:100px;border:1.5px solid var(--border);background:#fff;color:var(--ink-muted);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.15s;">
+            ${b}
+          </button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Manager Notes</label>
+        <textarea id="rm-notes" placeholder="What did this employee do well? What can they improve? Any specific achievements?" 
+          style="width:100%;height:100px;border-radius:10px;border:1.5px solid var(--border);padding:12px;font-family:var(--font-body);font-size:0.875rem;resize:none;outline:none;box-sizing:border-box;"
+          onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+
+      <!-- Appreciation message -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Personal Appreciation Message (shown to employee)</label>
+        <textarea id="rm-appreciation" placeholder="e.g. Marcus, your dedication to the kitchen is outstanding. Thank you for always showing up ready to work!" 
+          style="width:100%;height:80px;border-radius:10px;border:1.5px solid #F2A623;padding:12px;font-family:var(--font-body);font-size:0.875rem;resize:none;outline:none;box-sizing:border-box;background:#FFFDF7;"
+          onfocus="this.style.borderColor='#F2A623'" onblur="this.style.borderColor='#F2A623'"></textarea>
+      </div>
+
+      <button onclick="submitReview('${staffId}','${staffName}','${rid}')"
+        style="width:100%;height:50px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--green),#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">
+        💾 Save Review
+      </button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+};
+
+window.setStarRating = function(n) {
+  document.getElementById('rm-stars').value = n;
+  [1,2,3,4,5].forEach(i => {
+    const btn = document.getElementById('star-'+i);
+    if (btn) btn.style.opacity = i <= n ? '1' : '0.3';
+  });
+};
+
+window.toggleBadge = function(btn, badge) {
+  const active = btn.getAttribute('data-active') === 'true';
+  btn.setAttribute('data-active', !active);
+  btn.style.background = !active ? '#FFF8ED' : '#fff';
+  btn.style.borderColor = !active ? '#F2A623' : 'var(--border)';
+  btn.style.color = !active ? '#C17F3A' : 'var(--ink-muted)';
+  btn.style.fontWeight = !active ? '800' : '600';
+};
+
+window.submitReview = async function(staffId, staffName, rid) {
+  const score = parseInt(document.getElementById('rm-score')?.value || 75);
+  const stars = parseInt(document.getElementById('rm-stars')?.value || 0);
+  const notes = document.getElementById('rm-notes')?.value.trim();
+  const appreciation = document.getElementById('rm-appreciation')?.value.trim();
+  const badges = [...document.querySelectorAll('[data-badge][data-active="true"]')].map(b => b.getAttribute('data-badge'));
+
+  try {
+    const { setDoc, addDoc, collection, serverTimestamp, doc: fsDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
+    await setDoc(fsDoc(db, 'staffReviews', staffId + '_' + rid), {
+      staffId, staffName, restaurantId: rid,
+      score, stars, notes, appreciation, badges,
+      reviewedAt: new Date().toISOString(),
+      updatedAt: serverTimestamp()
+    });
+
+    // Notify
+    if (appreciation) {
+      await addDoc(collection(db, 'notifications'), {
+        type: 'appreciation',
+        message: `🏆 ${staffName} received a performance review — Score: ${score}/100`,
+        restaurantId: rid, read: false,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    document.getElementById('review-modal')?.remove();
+    showToast(`✅ Review saved for ${staffName}!`);
+    const userData = window._userData;
+    loadStaffReviews(rid, userData);
+  } catch(e) {
+    showToast('Error saving review: ' + e.message, 'error');
+  }
+};
+
+// Badge only modal
+window.openAppreciationModal = function(staffId, staffName, rid) {
+  document.getElementById('badge-modal')?.remove();
+  const allBadges = ['🏆 Kitchen MVP','⭐ Most Reliable','💪 Most Improved','🤝 Team Player','🚀 Goes Above & Beyond','🍳 Culinary Excellence'];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'badge-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;padding:32px;position:relative;">
+      <button onclick="document.getElementById('badge-modal').remove()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:#F5F5F0;font-size:1rem;cursor:pointer;">✕</button>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--ink);margin-bottom:4px;">🏆 Give Badge to ${staffName}</div>
+      <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:24px;">Recognize their achievement!</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+        ${allBadges.map(b=>`
+          <button onclick="giveQuickBadge('${staffId}','${staffName}','${rid}','${b}')" 
+            style="height:48px;border-radius:12px;border:1.5px solid var(--border);background:#fff;color:var(--ink);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;text-align:left;padding:0 18px;transition:all 0.15s;"
+            onmouseover="this.style.background='#FFF8ED';this.style.borderColor='#F2A623'"
+            onmouseout="this.style.background='#fff';this.style.borderColor='var(--border)'">
+            ${b}
+          </button>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+};
+
+window.giveQuickBadge = async function(staffId, staffName, rid, badge) {
+  try {
+    const { setDoc, doc: fsDoc, getDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const reviewRef = fsDoc(db, 'staffReviews', staffId + '_' + rid);
+    const existing = await getDoc(reviewRef);
+    const current = existing.exists() ? (existing.data().badges || []) : [];
+    if (!current.includes(badge)) {
+      await setDoc(reviewRef, {
+        staffId, staffName, restaurantId: rid,
+        badges: [...current, badge],
+        updatedAt: serverTimestamp()
+      }, {merge: true});
+    }
+    document.getElementById('badge-modal')?.remove();
+    showToast(`🏆 ${badge} given to ${staffName}!`);
+    loadStaffReviews(rid, window._userData);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+};
+
+window.shareReview = function(name, score, badges) {
+  const text = `⭐ ${name} — Chef Nek Pro Performance Review\nScore: ${score}/100\nBadges: ${badges||'None yet'}\n\nPowered by Chef Nek Pro — chefnekpro.com`;
+  if (navigator.share) {
+    navigator.share({ title: 'Staff Review', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    showToast('Review copied to clipboard!');
+  }
+};
 
 function renderStaff(main, userData) {
   const rid = currentRestaurantId() || userData.uid;
