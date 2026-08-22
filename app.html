@@ -1,43 +1,43 @@
 <!DOCTYPE html>
-<!-- Chef Nek Pro v4.16 - Switched to Claude Vision -->
+<!-- Chef Nek Pro v4.17 - PWA Fixed -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Chef Nek Pro — Platform</title>
 <!-- PWA Support -->
-<meta name="theme-color" content="#1D9E75">
+<meta name="theme-color" content="#0B2818">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Chef Nek Pro">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Chef Nek Pro">
 <meta name="description" content="Chef Nek Pro — Restaurant management platform. From Struggling to Thriving.">
-<!-- App Icons -->
-
-
-
-
-<!-- iOS Splash Screens -->
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- Apple Touch Icons -->
+<link rel="apple-touch-icon" href="https://chefnekpro.com/logo_128.png">
+<link rel="apple-touch-icon" sizes="152x152" href="https://chefnekpro.com/logo_128.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://chefnekpro.com/logo_128.png">
+<link rel="icon" type="image/png" href="https://chefnekpro.com/logo_128.png">
 <!-- Inline PWA Manifest -->
 <script>
 (function() {
   const manifest = {
     name: "Chef Nek Pro",
-    short_name: "Chef Nek",
+    short_name: "Chef Nek Pro",
     description: "Restaurant management platform — From Struggling to Thriving",
-    start_url: "https://chef-nek-platform.vercel.app/",
+    start_url: "https://chefnekpro.com/app",
+    scope: "https://chefnekpro.com/",
     display: "standalone",
-    background_color: "#1D9E75",
-    theme_color: "#1D9E75",
+    background_color: "#0B2818",
+    theme_color: "#0B2818",
     orientation: "portrait",
     icons: [
-      
-      
+      { src: "https://chefnekpro.com/logo_64.png",  sizes: "64x64",   type: "image/png" },
+      { src: "https://chefnekpro.com/logo_128.png", sizes: "128x128", type: "image/png" },
+      { src: "https://chefnekpro.com/logo_512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
