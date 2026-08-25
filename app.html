@@ -515,7 +515,7 @@
 // ============================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, where, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, where, orderBy, serverTimestamp, updateDoc, writeBatch, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 console.log("%cChef Nek Pro v4.16","color:#1D9E75;font-weight:bold;font-size:14px");
 
@@ -1696,8 +1696,7 @@ async function loadDashboardNotifs(rid) {
   const el = document.getElementById('dashboard-notifs');
   if (!el) return;
   try {
-    const { getDocs, query, collection, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-
+    
     // Check for expiring trials — alert Chef Nek
     const clientsSnap = await getDocs(query(collection(db,'users'), where('isAdmin','==',false)));
     const expiring = clientsSnap.docs.map(d=>({id:d.id,...d.data()})).filter(c => {
@@ -5022,7 +5021,6 @@ window.submitAddClient = async function() {
 
   try {
     // Create Firebase Auth account
-    const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
     const userCred = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCred.user.uid;
 
@@ -5797,8 +5795,7 @@ window.addClient = async function() {
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
     // Use secondary app to create user WITHOUT signing out admin
-    const { initializeApp: initApp2, getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-    const { getAuth: getAuth2, createUserWithEmailAndPassword: createUser2 } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+    const createUser2 = createUserWithEmailAndPassword;
     
     let secondaryApp;
     try { secondaryApp = getApp('secondary'); } catch(e) {
@@ -5809,7 +5806,7 @@ window.addClient = async function() {
       }, 'secondary');
     }
     const auth2 = getAuth2(secondaryApp);
-    const cred = await createUser2(auth2, email, password);
+    const cred = await createUserWithEmailAndPassword(auth2, email, password);
     
     // Save to Firestore using main app (admin is still signed in)
     await setDoc(doc(db, 'users', cred.user.uid), {
@@ -10826,9 +10823,7 @@ async function loadStaffReviews(rid, userData) {
   if (!body) return;
 
   try {
-    const { getDocs, query, collection, where, orderBy, getDoc, doc: fsDoc, setDoc, addDoc, serverTimestamp } 
-      = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-
+    const fsDoc = doc;
     // Load staff
     const staffSnap = await getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)));
     const staff = staffSnap.docs.map(d => ({id:d.id,...d.data()}));
@@ -11160,8 +11155,7 @@ window.submitReview = async function(staffId, staffName, rid) {
   }).filter(r => r.name);
 
   try {
-    const { setDoc, addDoc, collection, serverTimestamp, doc: fsDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-
+    
     await setDoc(fsDoc(db, 'staffReviews', staffId + '_' + rid), {
       staffId, staffName, restaurantId: rid,
       score, stars, notes, appreciation, badges, rewards,
@@ -11214,8 +11208,7 @@ window.openAppreciationModal = function(staffId, staffName, rid) {
 
 window.giveQuickBadge = async function(staffId, staffName, rid, badge) {
   try {
-    const { setDoc, doc: fsDoc, getDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const reviewRef = fsDoc(db, 'staffReviews', staffId + '_' + rid);
+        const reviewRef = fsDoc(db, 'staffReviews', staffId + '_' + rid);
     const existing = await getDoc(reviewRef);
     const current = existing.exists() ? (existing.data().badges || []) : [];
     if (!current.includes(badge)) {
@@ -11495,8 +11488,7 @@ window.showNotifications = async function() {
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-muted);">Loading…</div>';
 
   try {
-    const { getDocs, query, collection, where, orderBy, limit, updateDoc, doc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid)));
+        const snap = await getDocs(query(collection(db,'notifications'), where('restaurantId','==',rid)));
     const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
 
     listEl.innerHTML = '';
@@ -12638,9 +12630,7 @@ async function openKioskMode(rid) {
 
   // Load staff from Firestore
   try {
-    const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const db = window._db || (await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(()=>null));
-    // Use the global db from app scope
+            // Use the global db from app scope
     const snap = await getDocs(query(collection(window.__appDb, 'staffMembers'), where('restaurantId','==',rid), where('active','==',true)));
     const staffList = document.getElementById('kiosk-staff-list');
     if (!staffList) return;
@@ -12743,8 +12733,7 @@ window.kioskAction = async (type, rid) => {
   }
 
   try {
-    const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const db = window.__appDb;
+        const db = window.__appDb;
     if (!db) throw new Error('No DB');
 
     const now = new Date();
