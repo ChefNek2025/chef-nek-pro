@@ -11229,10 +11229,17 @@ window.giveQuickBadge = async function(staffId, staffName, rid, badge) {
 window.shareReview = function(name, score, badges) {
   const text = `⭐ ${name} — Chef Nek Pro Performance Review\nScore: ${score}/100\nBadges: ${badges||'None yet'}\n\nPowered by Chef Nek Pro — chefnekpro.com`;
   if (navigator.share) {
-    navigator.share({ title: 'Staff Review', text });
+    navigator.share({ title: 'Staff Review', text })
+      .catch(() => {
+        // Fallback to clipboard if share fails
+        navigator.clipboard?.writeText(text)
+          .then(() => showToast('Review copied to clipboard!'))
+          .catch(() => showToast('Review: ' + text.split('\n')[0]));
+      });
   } else {
-    navigator.clipboard.writeText(text);
-    showToast('Review copied to clipboard!');
+    navigator.clipboard?.writeText(text)
+      .then(() => showToast('Review copied to clipboard!'))
+      .catch(() => showToast('Share not supported on this device'));
   }
 };
 
