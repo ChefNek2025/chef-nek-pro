@@ -2430,7 +2430,8 @@ async function loadPrepCategories(userData) {
               <div style="font-size:0.72rem;font-weight:600;color:#854F0B;margin-bottom:3px;">📝 Note from Chef Nek</div>
               <div style="font-size:0.85rem;color:#5A3A00;">${cat.employeeNote}</div>
             </div>` : ''}
-            <div class="prep-header-row">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <div class="prep-header-row" style="min-width:520px;">
               <div style="font-size:0.75rem;font-weight:500;color:var(--ink-muted);">Item</div>
               <div class="day-header">Qty</div>
               ${days.map((d,i) => `<div class="day-header" style="${i===todayCol?'color:var(--green);font-weight:700;':''}">${d}</div>`).join('')}
@@ -2439,7 +2440,7 @@ async function loadPrepCategories(userData) {
               const isCritical = item.critical;
               const rowChecks = days.map((_,i) => checks[item.id+'_'+i]);
               return `
-                <div class="prep-item-row ${isCritical && !checks[item.id+'_'+todayCol] ? 'critical-row' : ''}" style="${isCritical && !checks[item.id+'_'+todayCol] ? 'border-left:3px solid #E24B4A;animation:criticalPulse 2s ease infinite;' : ''}">
+                <div class="prep-item-row ${isCritical && !checks[item.id+'_'+todayCol] ? 'critical-row' : ''}" style="min-width:520px;${isCritical && !checks[item.id+'_'+todayCol] ? 'border-left:3px solid #E24B4A;animation:criticalPulse 2s ease infinite;' : ''}">
                   <div class="prep-item-name">
                     ${isCritical ? `<span style="font-size:0.7rem;background:${!checks[item.id+'_'+todayCol]?'#E24B4A':'#1D9E75'};color:#fff;padding:2px 8px;border-radius:10px;font-weight:600;">${!checks[item.id+'_'+todayCol]?'🚨 Critical':'✅ Done'}</span>` : ''}
                     ${item.name}
@@ -2481,6 +2482,7 @@ async function loadPrepCategories(userData) {
                   </div>
                 </div>`;
             }).join('')}
+            </div><!-- end scroll wrapper -->
             ${isAdmin ? `
             <div style="padding:10px 18px;border-top:0.5px solid var(--border);">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
