@@ -13224,7 +13224,7 @@ async function tcAdminExport(rid, el) {
   const card = document.createElement('div');
   card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;';
   card.innerHTML = '<div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px;">📊 Export Timesheet</div>'
-    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Download hours as CSV for payroll</div>';
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:20px;">Download hours as CSV or PDF for payroll</div>';
 
   const fromWrap = document.createElement('div'); fromWrap.style.cssText = 'margin-bottom:12px;';
   fromWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">From Date</label>';
@@ -13238,29 +13238,152 @@ async function tcAdminExport(rid, el) {
   toInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
   toWrap.appendChild(toInput); card.appendChild(toWrap);
 
+  // Helper to fetch entries
+  async function fetchEntries(from, to) {
+    const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
+    return snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=from&&e.date<=to)
+      .sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
+  }
+
+  // Format date nicely for display
+  function fmtDate(d) {
+    if (!d) return '';
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[parseInt(parts[1])-1] + ' ' + parseInt(parts[2]) + ', ' + parts[0];
+    }
+    return d;
+  }
+
+  // CSV Button
   const dlBtn = document.createElement('button');
-  dlBtn.style.cssText = 'width:100%;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
-  dlBtn.textContent = '📥 Download CSV';
+  dlBtn.style.cssText = 'width:100%;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;margin-bottom:10px;';
+  dlBtn.textContent = '📥 Download CSV (Excel)';
   dlBtn.addEventListener('click', async () => {
     const from = fromInput.value, to = toInput.value;
     if (!from||!to) { showToast('Select date range','error'); return; }
     dlBtn.disabled=true; dlBtn.textContent='Exporting...';
     try {
-      const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
-      const entries = snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=from&&e.date<=to)
-        .sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
-      if (!entries.length) { showToast('No entries in that range','error'); dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV'; return; }
-      let csv = 'Employee,Date,Clock In,Clock Out,Hours\n';
-      entries.forEach(e=>{ csv += '"'+e.employeeName+'","'+e.date+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n'; });
-      const blob = new Blob([csv],{type:'text/csv'});
+      const entries = await fetchEntries(from, to);
+      if (!entries.length) { showToast('No entries in that range','error'); dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV (Excel)'; return; }
+      // Add BOM for Excel to recognize UTF-8 and format date properly
+      let csv = '\uFEFF' + 'Employee,Date,Clock In,Clock Out,Hours\n';
+      entries.forEach(e=>{
+        const dateDisplay = fmtDate(e.date);
+        csv += '"'+e.employeeName+'","'+dateDisplay+'","'+(e.clockIn||'')+'","'+(e.clockOut||'')+'","'+(e.hours||0).toFixed(2)+'"\n';
+      });
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
       const url  = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download='timeclock-'+from+'-to-'+to+'.csv'; a.click();
       URL.revokeObjectURL(url);
       showToast('📊 Exported '+entries.length+' entries!');
     } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
-    dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV';
+    dlBtn.disabled=false; dlBtn.textContent='📥 Download CSV (Excel)';
   });
   card.appendChild(dlBtn);
+
+  // PDF Button
+  const pdfBtn = document.createElement('button');
+  pdfBtn.style.cssText = 'width:100%;height:50px;border-radius:12px;border:none;background:linear-gradient(135deg,#E53935,#C62828);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;';
+  pdfBtn.textContent = '📄 Download PDF';
+  pdfBtn.addEventListener('click', async () => {
+    const from = fromInput.value, to = toInput.value;
+    if (!from||!to) { showToast('Select date range','error'); return; }
+    pdfBtn.disabled=true; pdfBtn.textContent='Generating PDF...';
+    try {
+      const entries = await fetchEntries(from, to);
+      if (!entries.length) { showToast('No entries in that range','error'); pdfBtn.disabled=false; pdfBtn.textContent='📄 Download PDF'; return; }
+
+      // Calculate totals per employee
+      const totals = {};
+      entries.forEach(e => {
+        if (!totals[e.employeeName]) totals[e.employeeName] = 0;
+        totals[e.employeeName] += parseFloat(e.hours||0);
+      });
+
+      // Build print window
+      const win = window.open('','_blank');
+      const rows = entries.map(e=>`
+        <tr>
+          <td>${e.employeeName||''}</td>
+          <td>${fmtDate(e.date)}</td>
+          <td>${e.clockIn||'—'}</td>
+          <td>${e.clockOut||'—'}</td>
+          <td style="text-align:right;font-weight:600;">${(parseFloat(e.hours)||0).toFixed(2)}</td>
+        </tr>`).join('');
+
+      const summaryRows = Object.entries(totals).map(([name, hrs])=>`
+        <tr>
+          <td style="font-weight:600;">${name}</td>
+          <td colspan="3"></td>
+          <td style="text-align:right;font-weight:700;color:#1D9E75;">${hrs.toFixed(2)} hrs</td>
+        </tr>`).join('');
+
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Timesheet — Chef Nek Pro</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 30px; color: #222; }
+            h1 { color: #1D9E75; margin-bottom: 4px; }
+            .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { background: #0B2818; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; }
+            td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
+            tr:nth-child(even) { background: #F8FDF9; }
+            .summary { margin-top: 20px; }
+            .summary h3 { color: #0B2818; margin-bottom: 8px; }
+            .total-row { background: #EDFAF4 !important; font-weight: 700; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>Chef Nek Pro — Timesheet Export</h1>
+          <div class="subtitle">Period: ${fmtDate(from)} to ${fmtDate(to)} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString()}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Date</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th style="text-align:right;">Hours</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="summary">
+            <h3>Summary by Employee</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th colspan="3"></th>
+                  <th style="text-align:right;">Total Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${summaryRows}
+                <tr class="total-row">
+                  <td>TOTAL ALL EMPLOYEES</td>
+                  <td colspan="3"></td>
+                  <td style="text-align:right;color:#1D9E75;">${Object.values(totals).reduce((a,b)=>a+b,0).toFixed(2)} hrs</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:30px;font-size:11px;color:#aaa;">Generated by Chef Nek Pro — chefnekpro.com</div>
+          <script>window.onload=()=>{window.print();}<\/script>
+        </body>
+        </html>`);
+      win.document.close();
+      showToast('📄 PDF ready — select Save as PDF in print dialog!');
+    } catch(err){ showToast('PDF failed: '+err.message,'error'); console.error(err); }
+    pdfBtn.disabled=false; pdfBtn.textContent='📄 Download PDF';
+  });
+  card.appendChild(pdfBtn);
   el.appendChild(card);
 }
 
