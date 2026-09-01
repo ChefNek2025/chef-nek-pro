@@ -12820,8 +12820,18 @@ async function renderTimeClock(main, userData) {
     exportBtn.style.cssText = 'height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;';
     exportBtn.textContent = '📊 Export CSV';
     exportBtn.onclick = () => tcExportWeek(rid);
+    const pdfHeaderBtn = document.createElement('button');
+    pdfHeaderBtn.style.cssText = 'height:38px;padding:0 16px;background:#FCEBEB;border:1.5px solid #F09595;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;color:#A32D2D;';
+    pdfHeaderBtn.textContent = '📄 Export PDF';
+    pdfHeaderBtn.onclick = () => {
+      // Switch to Export tab
+      window._tcAdminTab = 'export';
+      const content = document.querySelector('.page-body');
+      if (content) tcRenderAdmin(rid, new Date().toISOString().split('T')[0], content, userData);
+    };
     headerBtns.appendChild(kioskBtn);
     headerBtns.appendChild(exportBtn);
+    headerBtns.appendChild(pdfHeaderBtn);
     headerInner.appendChild(headerBtns);
   }
 
