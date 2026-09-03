@@ -12310,11 +12310,11 @@ window.openCalcModal = function(targetFieldId) {
     + '<div style="display:grid;grid-template-columns:1fr 120px auto;gap:8px;align-items:end;">'
     + '<div><label style="font-size:0.68rem;color:#5B3DB5;display:block;margin-bottom:3px;">Ingredient name</label>'
     + '<input type="text" id="custom-ing-name" class="form-input-small" placeholder="e.g. My special sauce" style="width:100%;"></div>'
-    + '<div><label style="font-size:0.68rem;color:#5B3DB5;display:block;margin-bottom:3px;">Calories per 100g</label>'
+    + '<div><label style="font-size:0.68rem;color:#5B3DB5;display:block;margin-bottom:3px;">Calories per oz</label>'
     + '<input type="number" id="custom-ing-cal" class="form-input-small" placeholder="e.g. 120" style="width:100%;"></div>'
     + '<button onclick="calcAddCustom()" style="height:42px;padding:0 14px;border-radius:8px;background:#5B3DB5;color:#fff;border:none;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap;">+ Add</button>'
     + '</div>'
-    + '<div style="font-size:0.68rem;color:#7B5DB5;margin-top:6px;">💡 Look up calories on Google: search "<b>100g [ingredient name] calories</b>"</div>'
+    + '<div style="font-size:0.68rem;color:#7B5DB5;margin-top:6px;">💡 Look up calories on Google: search "<b>1 oz [ingredient name] calories</b>"</div>'
     + '</div>'
 
     // Quick add common proteins
@@ -12378,7 +12378,7 @@ window.calcSearch = function(query) {
     const cal = CALORIE_DB[name];
     return `<div onclick="calcAddIngredient('${name}', ${cal})" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid var(--border);" onmouseenter="this.style.background='var(--green-light)'" onmouseleave="this.style.background=''">`
       + `<span style="font-size:0.875rem;color:var(--ink);text-transform:capitalize;">${name}</span>`
-      + `<span style="font-size:0.78rem;color:var(--green);font-weight:600;">${cal === 0 ? 'Minimal' : cal + ' kcal/100g'}</span>`
+      + `<span style="font-size:0.78rem;color:var(--green);font-weight:600;">${cal === 0 ? 'Minimal' : Math.round(cal * 28.3495 / 100) + ' kcal/oz'}</span>`
       + `</div>`;
   }).join('');
 }
@@ -12397,7 +12397,7 @@ window.calcAddIngredient = function(name, calPer100g) {
 
   // Add to list
   const id = Date.now();
-  window._calcIngredients.push({ id, name, calPer100g, grams: 100, displayAmount: 100, unit: 'g' });
+  window._calcIngredients.push({ id, name, calPer100g, grams: 28.3495, displayAmount: 1, unit: 'oz' });
   calcRenderList();
 }
 
@@ -12481,7 +12481,7 @@ function calcRenderList() {
         </div>
         <div style="text-align:right;min-width:55px;">
           <div style="font-size:0.82rem;font-weight:700;color:#C05C00;">${ing.calPer100g === 0 ? '~0' : Math.round(ing.calPer100g * ing.grams / 100)} kcal</div>
-          <div style="font-size:0.6rem;color:#999;">${Math.round(ing.grams)}g</div>
+          <div style="font-size:0.6rem;color:#999;">${(ing.grams / 28.3495).toFixed(1)}oz</div>
         </div>
         <button onclick="calcRemoveIngredient(${ing.id})" style="width:28px;height:28px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
       </div>`).join('');
@@ -12824,10 +12824,13 @@ async function renderTimeClock(main, userData) {
     pdfHeaderBtn.style.cssText = 'height:38px;padding:0 16px;background:#FCEBEB;border:1.5px solid #F09595;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;color:#A32D2D;';
     pdfHeaderBtn.textContent = '📄 Export PDF';
     pdfHeaderBtn.onclick = () => {
-      // Switch to Export tab
-      window._tcAdminTab = 'export';
-      const content = document.querySelector('.page-body');
-      if (content) tcRenderAdmin(rid, new Date().toISOString().split('T')[0], content, userData);
+      const exportTab = document.getElementById('tc-admin-tab-export');
+      if (exportTab) exportTab.click();
+      else {
+        window._tcAdminTab = 'export';
+        const content = document.getElementById('tc-admin-content');
+        if (content) tcAdminExport(rid, content);
+      }
     };
     headerBtns.appendChild(kioskBtn);
     headerBtns.appendChild(exportBtn);
