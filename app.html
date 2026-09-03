@@ -12514,7 +12514,7 @@ function calcRenderTotal() {
     + '<div>'
     + '<div style="font-size:0.72rem;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Total calories per serving</div>'
     + '<div style="font-size:2.5rem;font-weight:900;color:#C05C00;line-height:1;">' + totalRounded + ' <span style="font-size:1rem;font-weight:600;">kcal</span></div>'
-    + '<div style="font-size:0.72rem;color:#A05020;margin-top:2px;">' + window._calcIngredients.length + ' ingredients · ' + window._calcIngredients.reduce((s,i)=>s+i.grams,0) + 'g total weight</div>'
+    + '<div style="font-size:0.72rem;color:#A05020;margin-top:2px;">' + window._calcIngredients.length + ' ingredients · ' + (window._calcIngredients.reduce((s,i)=>s+i.grams,0) / 28.3495).toFixed(1) + 'oz total weight</div>'
     + '</div>'
     + '<div style="text-align:center;">'
     + '<div style="font-size:0.72rem;font-weight:700;color:' + level[0] + ';background:' + level[2] + ';padding:4px 14px;border-radius:100px;border:1px solid ' + level[1] + ';">' + level[0] + '</div>'
@@ -15087,7 +15087,7 @@ Respond ONLY in this exact JSON format with no other text:
       + '<div style="font-size:0.72rem;font-weight:600;color:#A05020;">KCAL</div>'
       + '</div>'
       + '<div style="flex:1;">'
-      + '<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:6px;">Estimated for ' + food.portion_grams + 'g portion</div>'
+      + '<div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:6px;">Estimated for ' + (food.portion_grams / 28.3495).toFixed(1) + 'oz portion</div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
       + '<span style="font-size:0.72rem;background:#EEF4FF;color:#185FA5;padding:2px 8px;border-radius:6px;">🥩 ' + food.nutrition.protein + ' protein</span>'
       + '<span style="font-size:0.72rem;background:#FFF8E1;color:#854F0B;padding:2px 8px;border-radius:6px;">🌾 ' + food.nutrition.carbs + ' carbs</span>'
@@ -15099,7 +15099,7 @@ Respond ONLY in this exact JSON format with no other text:
       + '<div style="font-size:0.72rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Detected ingredients:</div>'
       + (Array.isArray(food.ingredients) ? food.ingredients : []).map(ing => '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);">'
           + '<span style="font-size:0.82rem;color:var(--ink);text-transform:capitalize;">' + ing.name + '</span>'
-          + '<span style="font-size:0.75rem;color:var(--ink-muted);">' + ing.grams + 'g · <b style="color:#C05C00;">' + ing.calories + ' kcal</b></span>'
+          + '<span style="font-size:0.75rem;color:var(--ink-muted);">' + (ing.grams / 28.3495).toFixed(1) + 'oz · <b style="color:#C05C00;">' + ing.calories + ' kcal</b></span>'
           + '</div>').join('')
       + '</div>'
 
