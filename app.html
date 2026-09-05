@@ -10598,6 +10598,24 @@ async function thRefreshTasks(rid, myName) {
       if (task.done && task.doneBy) meta.innerHTML += '<span>✅ Done by ' + task.doneBy + '</span>';
       content.appendChild(meta);
 
+      // Completion note from employee
+      if (task.completionNote) {
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'margin-top:8px;background:#EDFAF4;border-radius:8px;padding:8px 12px;border-left:3px solid var(--green);';
+        noteEl.innerHTML = '<div style="font-size:0.68rem;font-weight:700;color:var(--green);margin-bottom:2px;">📝 Note from ' + (task.doneBy||'Employee') + ':</div>'
+          + '<div style="font-size:0.8rem;color:var(--ink);">' + task.completionNote + '</div>';
+        content.appendChild(noteEl);
+      }
+
+      // Reply from admin
+      if (task.replyFromAdmin) {
+        const replyEl = document.createElement('div');
+        replyEl.style.cssText = 'margin-top:6px;background:#FFF8ED;border-radius:8px;padding:8px 12px;border-left:3px solid #F2A623;';
+        replyEl.innerHTML = '<div style="font-size:0.68rem;font-weight:700;color:#C17F3A;margin-bottom:2px;">📩 Reply from Chef Nek:</div>'
+          + '<div style="font-size:0.8rem;color:var(--ink);">' + task.replyFromAdmin + '</div>';
+        content.appendChild(replyEl);
+      }
+
       card.appendChild(content);
 
       // Admin actions — show for super admin AND restaurant owners
@@ -10611,6 +10629,15 @@ async function thRefreshTasks(rid, myName) {
         assignBtn.textContent = '👤 Assign';
         assignBtn.onclick = () => thAssignTask(task.id, task.assignedTo||'', rid, myName);
         actionsWrap.appendChild(assignBtn);
+
+        // Reply button — only on completed tasks with a note
+        if (task.done && task.completionNote) {
+          const replyBtn = document.createElement('button');
+          replyBtn.style.cssText = 'height:28px;padding:0 10px;border-radius:6px;border:0.5px solid #F2A623;background:#FFF8ED;color:#C17F3A;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);white-space:nowrap;';
+          replyBtn.textContent = '📩 Reply';
+          replyBtn.onclick = () => thReplyToTask(task.id, rid, myName);
+          actionsWrap.appendChild(replyBtn);
+        }
 
         // Delete button
         const del = document.createElement('button');
@@ -10667,18 +10694,54 @@ window.thAssignTask = async function(taskId, current, rid, myName) {
 
 window.thToggleTask = async function(taskId, done, rid, myName) {
   const senderName = isAdmin ? 'Chef Nek' : myName;
+
+  // When marking DONE — ask for completion note
+  if (done && !isAdmin) {
+    const note = prompt('✅ Great work! Add a note for Chef Nek (optional):\n\nExample: "Done! Used the last of the chicken" or "Completed — need more supplies"');
+    try {
+      const taskDoc = await getDoc(doc(db,'teamTasks',taskId));
+      const task = taskDoc.data();
+
+      await setDoc(doc(db,'teamTasks',taskId), {
+        done: true,
+        doneBy: senderName,
+        doneAt: serverTimestamp(),
+        completionNote: note || '',
+        replyFromAdmin: '',
+      }, {merge:true});
+
+      const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      const today = new Date().toISOString().split('T')[0];
+      await addDoc(collection(db,'notifications'), {
+        type: 'task_done',
+        restaurantId: rid,
+        employeeName: senderName,
+        taskId,
+        taskTitle: task?.title || 'Task',
+        message: senderName + ' completed: "' + (task?.title||'Task') + '"' + (note ? ' — Note: ' + note : ''),
+        date: today, time,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      showToast('✅ Task marked done!');
+    } catch(e) { showToast('Error','error'); }
+    thRefreshTasks(rid, myName);
+    return;
+  }
+
   try {
-    // Get task details first for the notification
     const taskDoc = await getDoc(doc(db,'teamTasks',taskId));
     const task = taskDoc.data();
 
     await setDoc(doc(db,'teamTasks',taskId), {
       done,
       doneBy: done ? senderName : null,
-      doneAt: done ? serverTimestamp() : null
+      doneAt: done ? serverTimestamp() : null,
+      completionNote: done ? (task?.completionNote||'') : '',
+      replyFromAdmin: done ? (task?.replyFromAdmin||'') : '',
     }, {merge:true});
 
-    // Send notification to admin when employee marks done
     if (done && !isAdmin && task) {
       const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
       const today = new Date().toISOString().split('T')[0];
@@ -10689,8 +10752,7 @@ window.thToggleTask = async function(taskId, done, rid, myName) {
         taskId,
         taskTitle: task.title || 'Task',
         message: senderName + ' completed: "' + (task.title||'Task') + '"',
-        date: today,
-        time,
+        date: today, time,
         read: false,
         createdAt: serverTimestamp()
       });
@@ -10698,6 +10760,26 @@ window.thToggleTask = async function(taskId, done, rid, myName) {
 
     thRefreshTasks(rid, myName);
   } catch(e) { showToast('Error','error'); }
+}
+
+window.thReplyToTask = async function(taskId, rid, myName) {
+  const reply = prompt('📩 Send a reply to the employee:');
+  if (!reply) return;
+  try {
+    await setDoc(doc(db,'teamTasks',taskId), {
+      replyFromAdmin: reply,
+      replyAt: serverTimestamp()
+    }, {merge:true});
+    await addDoc(collection(db,'notifications'), {
+      type: 'task_reply',
+      restaurantId: rid,
+      message: 'Chef Nek replied to your task: "' + reply + '"',
+      read: false,
+      createdAt: serverTimestamp()
+    });
+    showToast('📩 Reply sent!');
+    thRefreshTasks(rid, myName);
+  } catch(e) { showToast('Error sending reply','error'); }
 }
 
 window.thShowTaskForm = async function(rid) {
