@@ -8824,6 +8824,12 @@ function renderTempLog(main, userData) {
         <button onclick="changeTempDate(1)" style="width:36px;height:36px;border-radius:8px;border:0.5px solid var(--border);background:var(--white);cursor:pointer;font-size:1.1rem;">›</button>
       </div>
 
+      <!-- CHECKER NAME BAR -->
+      <div id="tl-checker-bar" style="background:var(--cream);border:1.5px solid var(--border);border-radius:12px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="font-size:0.82rem;color:var(--ink-muted);">Checking as: <strong id="tl-checker-name-display" style="color:var(--green);">Not set yet</strong></div>
+        <button onclick="changeTempCheckerName()" style="height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:white;font-family:var(--font-body);font-size:0.72rem;cursor:pointer;color:var(--ink-muted);">✏️ Change</button>
+      </div>
+
       <!-- LOG SESSIONS — AM / PM / EVENING -->
       <div style="display:flex;gap:8px;background:var(--cream);border-radius:12px;padding:4px;margin-bottom:20px;">
         <button id="tl-tab-am" onclick="switchTempSession('AM')" style="flex:1;height:36px;border-radius:8px;border:none;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;background:var(--white);color:var(--ink);">AM Check</button>
@@ -8848,6 +8854,12 @@ function renderTempLog(main, userData) {
 
   window._tlDate = todayKey;
   window._tlSession = 'AM';
+
+  // Show saved checker name
+  const savedCheckerName = sessionStorage.getItem('cnp-temp-checker-name') || '';
+  const checkerDisplay = document.getElementById('tl-checker-name-display');
+  if (checkerDisplay) checkerDisplay.textContent = savedCheckerName || 'Not set — will ask on first log';
+
   loadTempLogData();
 }
 
@@ -8862,6 +8874,15 @@ window.changeTempDate = function(delta) {
   if (display) display.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   loadTempLogData();
 }
+
+window.changeTempCheckerName = function() {
+  const newName = prompt('Enter your name for temperature log:');
+  if (!newName || !newName.trim()) return;
+  sessionStorage.setItem('cnp-temp-checker-name', newName.trim());
+  const display = document.getElementById('tl-checker-name-display');
+  if (display) display.textContent = newName.trim();
+  showToast('✅ Name updated to ' + newName.trim());
+};
 
 window.switchTempSession = function(session) {
   window._tlSession = session;
@@ -9029,8 +9050,16 @@ window.saveTempReading = async function(equipId, equipName, type, min, max) {
   if (isNaN(temp)) { showToast('Enter a temperature first','error'); return; }
 
   const rid = currentRestaurantId();
-  const name = prompt('Your name:');
-  if (!name) return;
+
+  // Ask name once per session — remember in sessionStorage
+  let name = sessionStorage.getItem('cnp-temp-checker-name') || '';
+  if (!name) {
+    name = prompt('👤 Your name (asked once per session):');
+    if (!name || !name.trim()) { showToast('Please enter your name','error'); return; }
+    sessionStorage.setItem('cnp-temp-checker-name', name.trim());
+    showToast('✅ Name saved — you won\'t be asked again this session!');
+  }
+  name = name.trim();
 
   const isSafe = type==='cold' ? temp<=max : temp>=min;
   const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
