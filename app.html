@@ -4779,12 +4779,18 @@ async function loadInvCategories(userData) {
     // Show low stock alert banner
     if (lowStockAlerts.length > 0 && alertZone) {
       alertZone.innerHTML = `
-        <div style="background:var(--amber-light);border:1px solid #FAC775;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
-          <div style="font-size:1.5rem;flex-shrink:0;">⚠️</div>
-          <div>
-            <div style="font-size:0.9375rem;font-weight:500;color:#854F0B;margin-bottom:6px;">${lowStockAlerts.length} item${lowStockAlerts.length>1?'s':''} need restocking!</div>
-            ${lowStockAlerts.map(i=>`<div style="font-size:0.8125rem;color:#854F0B;">• ${i.name} <span style="opacity:0.7;">(${i.cat}) — ${i.qty} ${i.unit||''} left</span></div>`).join('')}
+        <div style="background:var(--amber-light);border:1px solid #FAC775;border-radius:12px;padding:14px 18px;margin-bottom:16px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+            <div style="font-size:1.5rem;flex-shrink:0;">⚠️</div>
+            <div style="flex:1;">
+              <div style="font-size:0.9375rem;font-weight:500;color:#854F0B;margin-bottom:6px;">${lowStockAlerts.length} item${lowStockAlerts.length>1?'s':''} need restocking!</div>
+              ${lowStockAlerts.map(i=>`<div style="font-size:0.8125rem;color:#854F0B;">• ${i.name} <span style="opacity:0.7;">(${i.cat}) — ${i.qty} ${i.unit||''} left</span></div>`).join('')}
+            </div>
           </div>
+          <button onclick="sendLowStockToSupplier(${JSON.stringify(lowStockAlerts).replace(/"/g,'&quot;')})" 
+            style="width:100%;height:40px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">
+            🚛 Send Low Stock Items to Supplier Order
+          </button>
         </div>`;
     } else if (alertZone) {
       alertZone.innerHTML = '';
@@ -4795,6 +4801,13 @@ async function loadInvCategories(userData) {
     listEl.innerHTML = `<div class="card"><p style="color:var(--ink-muted);">Error loading inventory. Please refresh.</p></div>`;
   }
 }
+
+window.sendLowStockToSupplier = function(items) {
+  // Store low stock items in sessionStorage for supplier page to pick up
+  sessionStorage.setItem('cnp-reorder-items', JSON.stringify(items));
+  showToast('🚛 Sending ' + items.length + ' items to Supplier Order...');
+  setTimeout(() => navigate('suppliers'), 600);
+};
 
 window.toggleInvCat = function(id) {
   const body = document.getElementById('inv-cat-body-'+id);
@@ -13670,7 +13683,34 @@ async function renderSuppliers(main, userData) {
   });
   body.appendChild(tabBar);
 
-  // Content area
+  // Check if coming from inventory with low stock items
+  const reorderItems = sessionStorage.getItem('cnp-reorder-items');
+  if (reorderItems) {
+    try {
+      const items = JSON.parse(reorderItems);
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:18px;';
+      banner.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:0.875rem;font-weight:800;color:#C17F3A;">🚛 Low Stock Items from Inventory</div>
+            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">These items need reordering — add them to a supplier order</div>
+          </div>
+          <button onclick="this.closest('div[style]').remove();sessionStorage.removeItem('cnp-reorder-items')" 
+            style="height:28px;padding:0 12px;border-radius:8px;border:1px solid #F2A623;background:transparent;color:#C17F3A;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);">✕ Dismiss</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          ${items.map(i=>`<span style="background:#fff;border:1px solid #F2A623;color:#854F0B;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:100px;">⚠️ ${i.name} — ${i.qty} ${i.unit||''} left</span>`).join('')}
+        </div>
+        <button onclick="suppShowOrderModalWithItems('${rid}', ${JSON.stringify(items).replace(/"/g,'&quot;')})"
+          style="width:100%;height:42px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">
+          📋 Create Supplier Order with These Items
+        </button>`;
+      body.insertBefore(banner, tabBar.nextSibling);
+    } catch(e) {
+      sessionStorage.removeItem('cnp-reorder-items');
+    }
+  }
   const content = document.createElement('div');
   content.id = 'supp-content';
   body.appendChild(content);
@@ -14373,6 +14413,13 @@ window.suppDeleteCatalogItem = async function(itemId, suppId, rid) {
   try { await deleteDoc(doc(db,'supplierItems',itemId)); showToast('Item removed'); await suppLoadCatalogItems(suppId, rid); }
   catch(e) { showToast('Error','error'); }
 }
+
+window.suppShowOrderModalWithItems = async function(rid, items) {
+  sessionStorage.removeItem('cnp-reorder-items');
+  // Pre-fill the order modal with low stock items
+  const itemText = items.map(i => `• ${i.name} (need reorder — ${i.qty} ${i.unit||''} left)`).join('\n');
+  await suppShowOrderModal(rid, itemText);
+};
 
 window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
   // Load suppliers for dropdown
