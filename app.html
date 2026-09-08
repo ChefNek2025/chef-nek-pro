@@ -14150,9 +14150,30 @@ Based on this data, provide smart reorder suggestions. Respond ONLY in this exac
   ]
 }`;
 
+    const apiKey = getStoredAIKey();
+    if (!apiKey) {
+      results.innerHTML = `
+        <div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:20px;">
+          <div style="font-size:1rem;font-weight:700;color:#854F0B;margin-bottom:8px;">🔑 Enter Your Anthropic API Key</div>
+          <div style="font-size:0.82rem;color:#A05020;margin-bottom:14px;">Get a free key at console.anthropic.com — your key is saved for this session only.</div>
+          <input id="ai-reorder-key-input" type="password" placeholder="sk-ant-..." 
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid #F2A623;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;margin-bottom:12px;">
+          <button onclick="
+            const k = document.getElementById('ai-reorder-key-input').value.trim();
+            if (!k) { alert('Please enter your API key'); return; }
+            sessionStorage.setItem('cnp-ai-key', k);
+            suppRunAIReorder('${rid}');" 
+            style="width:100%;height:42px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">
+            Save Key & Generate Reorder List
+          </button>
+        </div>`;
+      if (btn) { btn.disabled=false; btn.textContent='🤖 Generate Reorder List'; }
+      return;
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:prompt}]})
     });
 
