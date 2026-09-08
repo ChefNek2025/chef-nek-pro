@@ -13688,23 +13688,48 @@ async function renderSuppliers(main, userData) {
   if (reorderItems) {
     try {
       const items = JSON.parse(reorderItems);
+
+      // Group items by category
+      const grouped = {};
+      items.forEach(i => {
+        const cat = i.cat || 'Other';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(i);
+      });
+
       const banner = document.createElement('div');
       banner.style.cssText = 'background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:18px;';
+
+      const catHTML = Object.entries(grouped).map(([cat, catItems]) => `
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.72rem;font-weight:800;color:#C17F3A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📂 ${cat}</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${catItems.map(i => `
+              <label style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #F2A623;border-radius:10px;padding:8px 12px;cursor:pointer;">
+                <input type="checkbox" checked data-item='${JSON.stringify(i).replace(/'/g,'&#39;')}' 
+                  style="width:16px;height:16px;accent-color:#F2A623;flex-shrink:0;">
+                <div style="flex:1;">
+                  <div style="font-size:0.82rem;font-weight:700;color:#854F0B;">${i.name}</div>
+                  <div style="font-size:0.72rem;color:var(--ink-muted);">${i.qty} ${i.unit||''} left — needs reorder</div>
+                </div>
+                <span style="font-size:0.68rem;background:#FFF0CC;color:#C17F3A;padding:2px 8px;border-radius:100px;font-weight:700;">LOW</span>
+              </label>`).join('')}
+          </div>
+        </div>`).join('');
+
       banner.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
           <div>
             <div style="font-size:0.875rem;font-weight:800;color:#C17F3A;">🚛 Low Stock Items from Inventory</div>
-            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">These items need reordering — add them to a supplier order</div>
+            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">${items.length} items need reordering — uncheck any you don't want to order</div>
           </div>
-          <button onclick="this.closest('div[style]').remove();sessionStorage.removeItem('cnp-reorder-items')" 
+          <button onclick="this.closest('div').parentElement.remove();sessionStorage.removeItem('cnp-reorder-items')" 
             style="height:28px;padding:0 12px;border-radius:8px;border:1px solid #F2A623;background:transparent;color:#C17F3A;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);">✕ Dismiss</button>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          ${items.map(i=>`<span style="background:#fff;border:1px solid #F2A623;color:#854F0B;font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:100px;">⚠️ ${i.name} — ${i.qty} ${i.unit||''} left</span>`).join('')}
-        </div>
-        <button onclick="suppShowOrderModalWithItems('${rid}', ${JSON.stringify(items).replace(/"/g,'&quot;')})"
-          style="width:100%;height:42px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">
-          📋 Create Supplier Order with These Items
+        <div id="reorder-cats">${catHTML}</div>
+        <button onclick="suppOrderCheckedItems('${rid}')"
+          style="width:100%;height:42px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;margin-top:4px;">
+          📋 Create Supplier Order with Selected Items
         </button>`;
       body.insertBefore(banner, tabBar.nextSibling);
     } catch(e) {
@@ -14413,6 +14438,16 @@ window.suppDeleteCatalogItem = async function(itemId, suppId, rid) {
   try { await deleteDoc(doc(db,'supplierItems',itemId)); showToast('Item removed'); await suppLoadCatalogItems(suppId, rid); }
   catch(e) { showToast('Error','error'); }
 }
+
+window.suppOrderCheckedItems = async function(rid) {
+  const checked = [...document.querySelectorAll('#reorder-cats input[type=checkbox]:checked')];
+  if (!checked.length) { showToast('Select at least one item', 'error'); return; }
+  const items = checked.map(cb => {
+    try { return JSON.parse(cb.getAttribute('data-item').replace(/&#39;/g,"'")); } catch(e) { return null; }
+  }).filter(Boolean);
+  sessionStorage.removeItem('cnp-reorder-items');
+  await suppShowOrderModalWithItems(rid, items);
+};
 
 window.suppShowOrderModalWithItems = async function(rid, items) {
   sessionStorage.removeItem('cnp-reorder-items');
