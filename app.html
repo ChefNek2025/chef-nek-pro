@@ -1799,6 +1799,59 @@ const INGR_CATEGORIES = {
 
 window._recipeIngredients = [];
 
+// All ingredients flat list for search
+const ALL_INGREDIENTS = Object.entries(INGR_CATEGORIES).flatMap(([cat, items]) =>
+  items.map(name => ({ name, cat }))
+);
+
+window.searchIngredients = function(query) {
+  const dropdown = document.getElementById('ingr-dropdown');
+  if (!dropdown) return;
+  if (!query || query.length < 1) { dropdown.style.display = 'none'; return; }
+
+  const q = query.toLowerCase();
+  const matches = ALL_INGREDIENTS.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
+
+  if (!matches.length) {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  dropdown.innerHTML = matches.map(i => `
+    <div onclick="selectIngredient('${i.name}','${i.cat}')"
+      style="padding:10px 14px;cursor:pointer;font-size:0.875rem;color:var(--ink);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;"
+      onmouseover="this.style.background='var(--cream)'"
+      onmouseout="this.style.background='#fff'">
+      <span style="font-weight:500;">${i.name}</span>
+      <span style="font-size:0.68rem;color:var(--ink-muted);background:var(--cream);padding:2px 8px;border-radius:100px;">${i.cat}</span>
+    </div>`).join('') +
+    `<div onclick="selectIngredient(document.getElementById('ingr-search').value,'')"
+      style="padding:10px 14px;cursor:pointer;font-size:0.82rem;color:var(--green);font-weight:700;border-top:1px solid var(--border);"
+      onmouseover="this.style.background='var(--cream)'"
+      onmouseout="this.style.background='#fff'">
+      ➕ Add "${query}" as custom ingredient
+    </div>`;
+
+  dropdown.style.display = 'block';
+};
+
+window.selectIngredient = function(name, cat) {
+  const input = document.getElementById('ingr-search');
+  if (input) input.value = name;
+  input._selectedName = name;
+  const dropdown = document.getElementById('ingr-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  document.getElementById('ingr-amount')?.focus();
+};
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ingr-search') && !e.target.closest('#ingr-dropdown')) {
+    const dd = document.getElementById('ingr-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
 window.switchIngrCat = function(cat) {
   // Update active tab style
   document.querySelectorAll('[data-ingr-cat]').forEach(btn => {
@@ -1828,30 +1881,22 @@ window.switchIngrCat = function(cat) {
 };
 
 window.addIngrToRecipe = function() {
-  const select = document.getElementById('ingr-name-select');
-  const customInput = document.getElementById('ingr-custom-name');
+  const searchInput = document.getElementById('ingr-search');
   const amount = document.getElementById('ingr-amount')?.value.trim();
   const unit = document.getElementById('ingr-unit')?.value;
-  const customRow = document.getElementById('ingr-custom-row');
 
-  let name = '';
-  if (customRow?.style.display !== 'none') {
-    name = customInput?.value.trim();
-    if (!name) { showToast('Type a custom ingredient name', 'error'); return; }
-  } else {
-    name = select?.value;
-    if (!name) { showToast('Pick an ingredient first', 'error'); return; }
-  }
-
+  const name = (searchInput?._selectedName || searchInput?.value || '').trim();
+  if (!name) { showToast('Search and select an ingredient first', 'error'); return; }
   if (!amount) { showToast('Add an amount', 'error'); return; }
 
   const ingredient = { name, amount, unit };
   window._recipeIngredients.push(ingredient);
 
-  // Reset inputs
-  if (select) select.value = '';
-  if (customInput) customInput.value = '';
+  // Reset
+  if (searchInput) { searchInput.value = ''; searchInput._selectedName = ''; }
   if (document.getElementById('ingr-amount')) document.getElementById('ingr-amount').value = '';
+  const dropdown = document.getElementById('ingr-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
 
   renderIngrList();
   showToast(`✅ ${name} added!`);
@@ -1959,11 +2004,14 @@ function renderRecipes(main, userData) {
 
           <!-- Ingredient picker row -->
           <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
-            <div style="flex:1;min-width:160px;">
-              <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Ingredient</label>
-              <select id="ingr-name-select" style="width:100%;height:42px;border-radius:8px;border:1.5px solid var(--green);padding:0 10px;font-family:var(--font-body);font-size:0.875rem;background:#fff;outline:none;">
-                <option value="">Select category first...</option>
-              </select>
+            <div style="flex:1;min-width:200px;position:relative;">
+              <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">🔍 Search Ingredient</label>
+              <input type="text" id="ingr-search" autocomplete="off"
+                placeholder="Type to search (e.g. chick, mayo...)"
+                style="width:100%;height:42px;border-radius:8px;border:1.5px solid var(--green);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;"
+                oninput="searchIngredients(this.value)"
+                onkeydown="if(event.key==='Enter'){addIngrToRecipe();event.preventDefault();}">
+              <div id="ingr-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green);border-top:none;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
             </div>
             <div style="width:80px;">
               <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Amount</label>
