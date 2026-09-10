@@ -5213,7 +5213,7 @@ async function renderConsulting(main, userData) {
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
         <h1 class="page-title">🍽️ Restaurant Consulting</h1>
-        <p class="page-sub">Manage consultations, menu design, and packages</p>
+        <p class="page-sub">Nationwide consulting — Zoom, in-person & on-site kitchen visits</p>
       </div>
       <button onclick="openNewConsultModal()" style="height:42px;padding:0 20px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(29,158,117,0.3);">
         + New Consultation
@@ -5254,13 +5254,14 @@ async function renderConsulting(main, userData) {
     <div style="font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:14px;">💼 Consulting Packages</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
       ${[
-        {name:'Starter Package', price:'$1,500', color:'#1D9E75', items:['3 consultation sessions','Custom menu (20 items)','Food cost analysis','3 months Chef Nek Pro FREE']},
-        {name:'Growth Package', price:'$3,500', color:'#F2A623', items:['5 consultation sessions','Full menu (40 items)','Staff hiring guide','2 Born to Kitchen staff','6 months Chef Nek Pro FREE']},
-        {name:'Full Launch Package', price:'$7,500', color:'#7C3AED', items:['Unlimited consultations (3mo)','Complete menu development','Kitchen setup guidance','3 Born to Kitchen staff','12 months Chef Nek Pro FREE','Soft opening support']},
+        {name:'Starter Package', price:'$1,500', color:'#1D9E75', mode:'🌐 Zoom', items:['3 Zoom sessions (1hr each)','Custom menu (20 items)','Food cost analysis','3 months Chef Nek Pro FREE','Available anywhere in the US']},
+        {name:'Growth Package', price:'$3,500', color:'#F2A623', mode:'🌐 Zoom + 🍳 In-Person', items:['5 sessions (Zoom + in-person option)','Full menu (40 items)','Staff hiring guide','2 Born to Kitchen staff','6 months Chef Nek Pro FREE','Chef Nek visits your city']},
+        {name:'Full Launch Package', price:'$7,500', color:'#7C3AED', mode:'✈️ Chef Nek Flies to You', items:['Unlimited consultations (3mo)','Complete menu development','Chef Nek on-site kitchen setup','3 Born to Kitchen staff trained','12 months Chef Nek Pro FREE','Soft opening — Chef Nek present']},
       ].map(pkg => `
         <div style="background:#fff;border:1.5px solid ${pkg.color};border-radius:14px;padding:18px;position:relative;overflow:hidden;">
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${pkg.color};"></div>
-          <div style="font-size:0.875rem;font-weight:800;color:var(--ink);margin-bottom:4px;margin-top:4px;">${pkg.name}</div>
+          <div style="font-size:0.875rem;font-weight:800;color:var(--ink);margin-bottom:2px;margin-top:4px;">${pkg.name}</div>
+          <div style="font-size:0.72rem;color:var(--ink-muted);margin-bottom:6px;">${pkg.mode}</div>
           <div style="font-size:1.5rem;font-weight:900;color:${pkg.color};margin-bottom:12px;">${pkg.price}</div>
           ${pkg.items.map(i=>`<div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">✓ ${i}</div>`).join('')}
           <button onclick="openNewConsultModal('${pkg.name}','${pkg.price}')" 
@@ -5330,7 +5331,11 @@ async function loadConsultations(filter='All') {
           <div style="flex:1;">
             <div style="font-size:1rem;font-weight:800;color:var(--ink);">${c.clientName}</div>
             <div style="font-size:0.78rem;color:var(--ink-muted);">${c.email||''} ${c.phone ? '· '+c.phone : ''}</div>
-            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">📍 ${c.restaurantConcept||'No concept specified'}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+              ${c.restaurantConcept ? `<div style="font-size:0.72rem;color:var(--ink-muted);">📍 ${c.restaurantConcept}</div>` : ''}
+              ${c.location ? `<div style="font-size:0.72rem;background:#EDFAF4;color:var(--green);padding:2px 8px;border-radius:100px;font-weight:600;">📌 ${c.location}</div>` : ''}
+              ${c.mode ? `<div style="font-size:0.72rem;background:#EEF4FF;color:#2563EB;padding:2px 8px;border-radius:100px;font-weight:600;">${c.mode}</div>` : ''}
+            </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             <span style="font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:100px;background:${statusColors[c.status]||'#888'}22;color:${statusColors[c.status]||'#888'};">${c.status||'Pending'}</span>
@@ -5412,6 +5417,18 @@ window.openNewConsultModal = function(pkgName='', pkgPrice='') {
         <input id="cm-concept" type="text" placeholder="e.g. Ethiopian fast casual in Silver Spring" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;"></div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">📍 Client Location</label>
+          <input id="cm-location" type="text" placeholder="e.g. Houston, TX or London, UK" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;"></div>
+          <div><label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">🌐 Consultation Mode</label>
+          <select id="cm-mode" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;background:#fff;outline:none;">
+            <option value="Zoom only">🌐 Zoom Only</option>
+            <option value="Zoom + In-Person">🌐 Zoom + In-Person</option>
+            <option value="Chef Nek Flies to Client">✈️ Chef Nek Flies to Client</option>
+            <option value="In-Person DMV">🍳 In-Person (DMV Area)</option>
+          </select></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div><label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">Package</label>
           <select id="cm-package" style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;background:#fff;outline:none;">
             <option value="Starter Package">Starter — $1,500</option>
@@ -5457,6 +5474,8 @@ window.saveConsultation = async function() {
   const email = document.getElementById('cm-email')?.value.trim();
   const phone = document.getElementById('cm-phone')?.value.trim();
   const restaurantConcept = document.getElementById('cm-concept')?.value.trim();
+  const location = document.getElementById('cm-location')?.value.trim();
+  const mode = document.getElementById('cm-mode')?.value;
   const pkg = document.getElementById('cm-package')?.value;
   const price = document.getElementById('cm-price')?.value.trim();
   const startDate = document.getElementById('cm-start')?.value;
@@ -5470,6 +5489,7 @@ window.saveConsultation = async function() {
   try {
     await addDoc(collection(db,'consultations'), {
       clientName, email, phone, restaurantConcept,
+      location, mode,
       package: pkg, price, startDate,
       totalSessions, sessionsCompleted: 0,
       menuStatus: 'Not started',
