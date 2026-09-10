@@ -1782,6 +1782,103 @@ async function loadDashboardStats(userData) {
 // ============================================
 // RECIPES PAGE
 // ============================================
+// ============================================
+// RECIPE INGREDIENT BUILDER
+// ============================================
+const INGR_CATEGORIES = {
+  'Proteins': ['Chicken Breast','Chicken Thigh','Ground Beef','Beef Steak','Salmon','Tuna','Shrimp','Eggs','Turkey','Bacon','Ham','Tofu','Lamb','Pork Chop','Crab','Lobster'],
+  'Vegetables': ['Lettuce','Spinach','Tomato','Onion','Bell Pepper','Garlic','Cucumber','Broccoli','Carrot','Celery','Mushroom','Avocado','Jalapeño','Red Onion','Cabbage','Kale','Zucchini','Corn','Asparagus','Green Onion'],
+  'Dairy': ['Cheddar Cheese','Mozzarella','Parmesan','Cream Cheese','Sour Cream','Heavy Cream','Butter','Milk','Greek Yogurt','Feta Cheese','Swiss Cheese','Blue Cheese','Provolone','Brie'],
+  'Grains': ['White Rice','Brown Rice','Pasta','Bread','Flour Tortilla','Corn Tortilla','Breadcrumbs','Pita Bread','Hamburger Bun','Panko','Oats','Quinoa','Couscous','Noodles'],
+  'Sauces': ['Mayo','Ranch Dressing','Caesar Dressing','Hot Sauce','BBQ Sauce','Ketchup','Mustard','Sriracha','Soy Sauce','Worcestershire','Teriyaki Sauce','Buffalo Sauce','Chipotle Sauce','Tzatziki','Hummus','Pesto','Marinara'],
+  'Spices': ['Salt','Black Pepper','Garlic Powder','Onion Powder','Paprika','Cumin','Chili Powder','Oregano','Thyme','Basil','Cayenne','Red Pepper Flakes','Italian Seasoning','Old Bay','Turmeric','Cinnamon','Cajun Seasoning'],
+  'Fruits': ['Lemon','Lime','Orange','Apple','Mango','Pineapple','Strawberry','Blueberry','Avocado','Tomato','Banana','Cranberry','Cherry','Raspberry'],
+  'Oils & Fats': ['Olive Oil','Vegetable Oil','Canola Oil','Sesame Oil','Coconut Oil','Butter','Lard','Ghee','Avocado Oil'],
+  'Custom': []
+};
+
+window._recipeIngredients = [];
+
+window.switchIngrCat = function(cat) {
+  // Update active tab style
+  document.querySelectorAll('[data-ingr-cat]').forEach(btn => {
+    const isActive = btn.getAttribute('data-ingr-cat') === cat;
+    btn.style.background = isActive ? 'var(--green)' : 'var(--cream)';
+    btn.style.color = isActive ? '#fff' : 'var(--ink-muted)';
+    btn.style.borderColor = isActive ? 'var(--green)' : 'var(--border)';
+  });
+
+  const select = document.getElementById('ingr-name-select');
+  const customRow = document.getElementById('ingr-custom-row');
+
+  if (cat === 'Custom') {
+    if (select) select.style.display = 'none';
+    if (customRow) customRow.style.display = 'block';
+    return;
+  }
+
+  if (customRow) customRow.style.display = 'none';
+  if (select) select.style.display = '';
+
+  const items = INGR_CATEGORIES[cat] || [];
+  if (select) {
+    select.innerHTML = `<option value="">Choose ${cat}...</option>` +
+      items.map(i => `<option value="${i}">${i}</option>`).join('');
+  }
+};
+
+window.addIngrToRecipe = function() {
+  const select = document.getElementById('ingr-name-select');
+  const customInput = document.getElementById('ingr-custom-name');
+  const amount = document.getElementById('ingr-amount')?.value.trim();
+  const unit = document.getElementById('ingr-unit')?.value;
+  const customRow = document.getElementById('ingr-custom-row');
+
+  let name = '';
+  if (customRow?.style.display !== 'none') {
+    name = customInput?.value.trim();
+    if (!name) { showToast('Type a custom ingredient name', 'error'); return; }
+  } else {
+    name = select?.value;
+    if (!name) { showToast('Pick an ingredient first', 'error'); return; }
+  }
+
+  if (!amount) { showToast('Add an amount', 'error'); return; }
+
+  const ingredient = { name, amount, unit };
+  window._recipeIngredients.push(ingredient);
+
+  // Reset inputs
+  if (select) select.value = '';
+  if (customInput) customInput.value = '';
+  if (document.getElementById('ingr-amount')) document.getElementById('ingr-amount').value = '';
+
+  renderIngrList();
+  showToast(`✅ ${name} added!`);
+};
+
+window.removeIngr = function(idx) {
+  window._recipeIngredients.splice(idx, 1);
+  renderIngrList();
+};
+
+function renderIngrList() {
+  const list = document.getElementById('recipe-ingredients-list');
+  if (!list) return;
+  if (!window._recipeIngredients.length) {
+    list.innerHTML = '<div style="font-size:0.78rem;color:var(--ink-muted);font-style:italic;padding:8px 0;">No ingredients added yet</div>';
+    return;
+  }
+  list.innerHTML = window._recipeIngredients.map((ing, idx) => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--cream);border-radius:8px;padding:8px 12px;border:1px solid var(--border);">
+      <div style="flex:1;">
+        <span style="font-size:0.875rem;font-weight:600;color:var(--ink);">${ing.name}</span>
+        <span style="font-size:0.82rem;color:var(--ink-muted);margin-left:8px;">${ing.amount} ${ing.unit}</span>
+      </div>
+      <button onclick="removeIngr(${idx})" style="width:26px;height:26px;border-radius:6px;border:none;background:#FCEBEB;color:#A32D2D;cursor:pointer;font-size:0.8rem;flex-shrink:0;">✕</button>
+    </div>`).join('');
+}
+
 function renderRecipes(main, userData) {
   main.innerHTML = `
     <div class="page-header">
@@ -1839,7 +1936,73 @@ function renderRecipes(main, userData) {
               <span style="font-size:11px;color:var(--green);margin-left:8px;">Photo ready!</span>
             </div>
         </div>
-        <textarea id="recipe-notes" style="width:100%;margin-top:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.875rem;color:var(--ink);background:var(--cream);resize:vertical;min-height:80px;outline:none;" placeholder="Chef Nek notes, steps, ingredients..."></textarea>
+        <textarea id="recipe-notes" style="width:100%;margin-top:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.875rem;color:var(--ink);background:var(--cream);resize:vertical;min-height:60px;outline:none;" placeholder="Chef Nek notes, cooking steps, special instructions..."></textarea>
+
+        <!-- INGREDIENT BUILDER -->
+        <div style="margin-top:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--ink);">🥬 Ingredients</div>
+            <div style="font-size:0.72rem;color:var(--ink-muted);">Pick category → ingredient → amount</div>
+          </div>
+
+          <!-- Category tabs -->
+          <div id="ingr-cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+            ${[
+              ['🥩','Proteins'],['🥦','Vegetables'],['🧀','Dairy'],['🌾','Grains'],
+              ['🫙','Sauces'],['🌶️','Spices'],['🍋','Fruits'],['🛢️','Oils & Fats'],['➕','Custom']
+            ].map(([icon,cat]) => `
+              <button onclick="switchIngrCat('${cat}')" data-ingr-cat="${cat}"
+                style="height:32px;padding:0 12px;border-radius:100px;border:1.5px solid var(--border);background:var(--cream);color:var(--ink-muted);font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;">
+                ${icon} ${cat}
+              </button>`).join('')}
+          </div>
+
+          <!-- Ingredient picker row -->
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+            <div style="flex:1;min-width:160px;">
+              <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Ingredient</label>
+              <select id="ingr-name-select" style="width:100%;height:42px;border-radius:8px;border:1.5px solid var(--green);padding:0 10px;font-family:var(--font-body);font-size:0.875rem;background:#fff;outline:none;">
+                <option value="">Select category first...</option>
+              </select>
+            </div>
+            <div style="width:80px;">
+              <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Amount</label>
+              <input type="text" id="ingr-amount" placeholder="e.g. 2" style="width:100%;height:42px;border-radius:8px;border:1.5px solid var(--border);padding:0 10px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;">
+            </div>
+            <div style="width:80px;">
+              <label style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Unit</label>
+              <select id="ingr-unit" style="width:100%;height:42px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.82rem;background:#fff;outline:none;">
+                <option value="oz">oz</option>
+                <option value="lbs">lbs</option>
+                <option value="cup">cup</option>
+                <option value="tbsp">tbsp</option>
+                <option value="tsp">tsp</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+                <option value="piece">piece</option>
+                <option value="slice">slice</option>
+                <option value="whole">whole</option>
+                <option value="bunch">bunch</option>
+                <option value="pinch">pinch</option>
+                <option value="to taste">to taste</option>
+              </select>
+            </div>
+            <button onclick="addIngrToRecipe()" style="height:42px;padding:0 16px;border-radius:8px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap;">+ Add</button>
+          </div>
+
+          <!-- Custom ingredient input (hidden by default) -->
+          <div id="ingr-custom-row" style="display:none;margin-bottom:12px;">
+            <input type="text" id="ingr-custom-name" placeholder="Type custom ingredient name..." 
+              style="width:100%;height:42px;border-radius:8px;border:1.5px solid #F2A623;padding:0 14px;font-family:var(--font-body);font-size:0.875rem;box-sizing:border-box;outline:none;background:#FFFDF5;">
+          </div>
+
+          <!-- Added ingredients list -->
+          <div id="recipe-ingredients-list" style="display:flex;flex-direction:column;gap:6px;min-height:40px;">
+            <div style="font-size:0.78rem;color:var(--ink-muted);font-style:italic;padding:8px 0;">No ingredients added yet — pick from categories above</div>
+          </div>
+        </div>
         <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <select id="recipe-restaurant" style="height:42px;padding:0 14px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.875rem;background:var(--cream);color:var(--ink);outline:none;flex:1;">
             <option value="">Assign to restaurant...</option>
@@ -1946,6 +2109,16 @@ function recipeCard(r) {
         <div style="flex:1;">
           ${r.servings ? `<div style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:6px;">${r.servings} servings</div>` : ''}
           ${r.notes ? `<div style="font-size:0.875rem;color:var(--ink-soft);line-height:1.6;">${r.notes}</div>` : ''}
+          ${r.ingredients?.length ? `
+            <div style="margin-top:10px;">
+              <div style="font-size:0.68rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">🥬 Ingredients</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                ${r.ingredients.map(ing => `
+                  <span style="background:var(--cream);border:1px solid var(--border);border-radius:100px;padding:3px 10px;font-size:0.72rem;color:var(--ink);font-weight:500;">
+                    ${ing.name} <span style="color:var(--ink-muted);">${ing.amount} ${ing.unit}</span>
+                  </span>`).join('')}
+              </div>
+            </div>` : ''}
         </div>
         ${isAdmin ? `
         <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -2151,10 +2324,17 @@ window.addRecipe = async function() {
   const photoUrl = document.getElementById('recipe-photo').value.trim();
   const notes = document.getElementById('recipe-notes').value.trim();
   const restaurantId = document.getElementById('recipe-restaurant').value;
+  const ingredients = window._recipeIngredients || [];
+
   if (!name || !restaurantId) { showToast('Recipe name and restaurant are required', 'error'); return; }
   try {
-    await addDoc(collection(db, 'recipes'), { name, category, servings, calories, price, photoUrl, notes, restaurantId, createdAt: serverTimestamp() });
+    await addDoc(collection(db, 'recipes'), {
+      name, category, servings, calories, price, photoUrl, notes,
+      ingredients, restaurantId, createdAt: serverTimestamp()
+    });
     showToast('Recipe added successfully!');
+    window._recipeIngredients = [];
+    renderIngrList();
     loadRecipes(window._userData);
     document.getElementById('recipe-name').value = '';
     document.getElementById('recipe-category').value = '';
