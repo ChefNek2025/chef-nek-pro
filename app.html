@@ -11142,22 +11142,60 @@ async function thRefreshTasks(rid, myName) {
       .sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
 
     // Filter
-    if (window._thTaskFilter === 'active') tasks = tasks.filter(t => !t.done);
-    else if (window._thTaskFilter === 'mine') tasks = tasks.filter(t => !t.done && (!t.assignedTo || t.assignedTo === myName || (isAdmin && t.isAdmin)));
-    else if (window._thTaskFilter === 'done') tasks = tasks.filter(t => t.done);
+    let filteredTasks = tasks;
+    if (window._thTaskFilter === 'active') filteredTasks = activeTasks;
+    else if (window._thTaskFilter === 'mine') filteredTasks = tasks.filter(t => !t.done && (!t.assignedTo || t.assignedTo === myName || (isAdmin && t.isAdmin)));
+    else if (window._thTaskFilter === 'done') filteredTasks = doneTasks;
+    else {
+      // Default — show active first, then completed at bottom
+      filteredTasks = [...activeTasks, ...doneTasks];
+    }
 
     taskList.innerHTML = '';
 
+    const activeTasks = tasks.filter(t => !t.done);
+    const doneTasks = tasks.filter(t => t.done);
+
+    // Show "no tasks" only if nothing at all
     if (!tasks.length) {
-      taskList.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-muted);font-size:0.85rem;">'
-        + (window._thTaskFilter==='done' ? '✅ No completed tasks yet' : '🎉 No tasks — all clear!')
-        + '</div>';
+      taskList.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-muted);font-size:0.85rem;">🎉 No tasks — all clear!</div>';
       return;
+    }
+
+    // Admin banner for completed tasks with notes
+    if (isAdmin && doneTasks.length > 0) {
+      const withNotes = doneTasks.filter(t => t.completionNote && !t.replyFromAdmin);
+      if (withNotes.length > 0) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#EDFAF4;border:1.5px solid var(--green);border-radius:14px;padding:14px 18px;margin-bottom:16px;';
+        banner.innerHTML = '<div style="font-size:0.875rem;font-weight:800;color:var(--green);margin-bottom:8px;">📩 ' + withNotes.length + ' completed task' + (withNotes.length>1?'s':'') + ' waiting for your reply!</div>'
+          + withNotes.map(t => '<div style="font-size:0.78rem;color:var(--ink);margin-bottom:4px;">✅ <b>' + t.doneBy + '</b> completed "<b>' + t.title + '</b>" — ' + (t.completionNote||'No note') + '</div>').join('');
+        taskList.appendChild(banner);
+      }
     }
 
     const priorityColors = {high:['#FCEBEB','#E24B4A','🔴'], medium:['#FFF8E1','#F2A623','🟡'], low:['#E0F5EC','#1D9E75','🟢']};
 
-    tasks.forEach(task => {
+    // Section header for active tasks
+    if (!window._thTaskFilter || window._thTaskFilter === 'all') {
+      if (activeTasks.length > 0) {
+        const activeHeader = document.createElement('div');
+        activeHeader.style.cssText = 'font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;';
+        activeHeader.textContent = '📋 Active Tasks (' + activeTasks.length + ')';
+        taskList.appendChild(activeHeader);
+      }
+    }
+
+    filteredTasks.forEach((task, taskIndex) => {
+      // Add divider before done section
+      if (!window._thTaskFilter || window._thTaskFilter === 'all') {
+        if (taskIndex === activeTasks.length && doneTasks.length > 0) {
+          const doneHeader = document.createElement('div');
+          doneHeader.style.cssText = 'font-size:0.72rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 10px;border-top:1px solid var(--border);padding-top:14px;';
+          doneHeader.textContent = '✅ Completed (' + doneTasks.length + ')';
+          taskList.appendChild(doneHeader);
+        }
+      }
       const [bg, color, dot] = priorityColors[task.priority||'medium'];
       const isAssignedToMe = !isAdmin && task.assignedTo === myName;
       const isMyTask = isAdmin || isAssignedToMe || !task.assignedTo;
