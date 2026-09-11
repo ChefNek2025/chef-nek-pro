@@ -11238,7 +11238,8 @@ async function thRefreshTasks(rid, myName) {
       card.appendChild(content);
 
       // Admin actions — show for super admin AND restaurant owners
-      if (isAdmin || userData.role === 'owner' || userData.restaurantId) {
+      const _ud = window._userData || {};
+      if (isAdmin || _ud.role === 'owner' || _ud.restaurantId) {
         const actionsWrap = document.createElement('div');
         actionsWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;flex-shrink:0;';
 
