@@ -13985,17 +13985,37 @@ async function tcAdminExport(rid, el) {
   fromInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
   fromWrap.appendChild(fromInput); card.appendChild(fromWrap);
 
-  const toWrap = document.createElement('div'); toWrap.style.cssText = 'margin-bottom:20px;';
+  const toWrap = document.createElement('div'); toWrap.style.cssText = 'margin-bottom:12px;';
   toWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">To Date</label>';
   const toInput = document.createElement('input'); toInput.type='date'; toInput.id='exp-to'; toInput.value=wEnd;
   toInput.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;';
   toWrap.appendChild(toInput); card.appendChild(toWrap);
 
-  // Helper to fetch entries
+  // Employee dropdown
+  const empWrap = document.createElement('div'); empWrap.style.cssText = 'margin-bottom:20px;';
+  empWrap.innerHTML = '<label style="display:block;font-size:0.7rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">👤 Employee</label>';
+  const empSelect = document.createElement('select'); empSelect.id='exp-employee';
+  empSelect.style.cssText = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--green);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;background:#fff;';
+  empSelect.innerHTML = '<option value="">All Employees</option>';
+  // Load staff members
+  try {
+    const staffSnap = await getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid)));
+    staffSnap.docs.forEach(d => {
+      const name = d.data().name;
+      if (name) empSelect.innerHTML += `<option value="${name}">${name}</option>`;
+    });
+  } catch(e) {}
+  empWrap.appendChild(empSelect); card.appendChild(empWrap);
+
+  // Helper to fetch entries filtered by employee
   async function fetchEntries(from, to) {
     const snap = await getDocs(query(collection(db,'timeEntries'), where('restaurantId','==',rid)));
-    return snap.docs.map(d=>d.data()).filter(e=>e.hours&&e.date>=from&&e.date<=to)
-      .sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
+    const selectedEmp = empSelect.value;
+    return snap.docs.map(d=>d.data()).filter(e=>{
+      if (!e.hours || e.date<from || e.date>to) return false;
+      if (selectedEmp && e.employeeName !== selectedEmp) return false;
+      return true;
+    }).sort((a,b)=>a.date.localeCompare(b.date)||(a.employeeName||'').localeCompare(b.employeeName||''));
   }
 
   // Format date nicely for display
@@ -14028,7 +14048,9 @@ async function tcAdminExport(rid, el) {
       });
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
       const url  = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href=url; a.download='timeclock-'+from+'-to-'+to+'.csv'; a.click();
+      const a = document.createElement('a'); a.href=url; 
+      const empName = empSelect.value ? '-'+empSelect.value.replace(/ /g,'-') : '';
+      a.download='timeclock-'+from+'-to-'+to+empName+'.csv'; a.click();
       URL.revokeObjectURL(url);
       showToast('📊 Exported '+entries.length+' entries!');
     } catch(err){ showToast('Export failed: '+err.message,'error'); console.error(err); }
@@ -14094,7 +14116,7 @@ async function tcAdminExport(rid, el) {
         </head>
         <body>
           <h1>Chef Nek Pro — Timesheet Export</h1>
-          <div class="subtitle">Period: ${fmtDate(from)} to ${fmtDate(to)} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString()}</div>
+          <div class="subtitle">Period: ${fmtDate(from)} to ${fmtDate(to)} &nbsp;|&nbsp; Employee: ${empSelect.value || 'All Employees'} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString()}</div>
           <table>
             <thead>
               <tr>
