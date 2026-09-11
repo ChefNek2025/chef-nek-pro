@@ -11142,6 +11142,9 @@ async function thRefreshTasks(rid, myName) {
       .sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
 
     // Filter
+    const activeTasks = tasks.filter(t => !t.done);
+    const doneTasks = tasks.filter(t => t.done);
+
     let filteredTasks = tasks;
     if (window._thTaskFilter === 'active') filteredTasks = activeTasks;
     else if (window._thTaskFilter === 'mine') filteredTasks = tasks.filter(t => !t.done && (!t.assignedTo || t.assignedTo === myName || (isAdmin && t.isAdmin)));
@@ -11152,9 +11155,6 @@ async function thRefreshTasks(rid, myName) {
     }
 
     taskList.innerHTML = '';
-
-    const activeTasks = tasks.filter(t => !t.done);
-    const doneTasks = tasks.filter(t => t.done);
 
     // Show "no tasks" only if nothing at all
     if (!tasks.length) {
