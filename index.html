@@ -202,61 +202,6 @@
   </section>
 
   <!-- CONSULTING -->
-  <section style="padding:80px 24px;background:#FAF7F2;">
-    <div style="max-width:960px;margin:0 auto;">
-      <div class="section-tag">🍽️ Restaurant Consulting</div>
-      <h2 class="section-title">Want to open a restaurant?<br><span style="color:#1D9E75;">Chef Nek will help you do it right.</span></h2>
-      <p class="section-sub">10+ years in professional kitchens. A real restaurant. A live platform. Chef Nek consults with aspiring restaurant owners — anywhere in the world. Zoom to start, fly to finish.</p>
-
-      <!-- How it works -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:48px;">
-        ${[
-          ['🌐','Start on Zoom','First sessions via Zoom — wherever you are in the world.'],
-          ['📋','Design Your Menu','Chef Nek builds your full menu — recipes, costs, and pricing.'],
-          ['✈️','Chef Nek Flies to You','For full launches, Chef Nek comes to your city in person.'],
-          ['🚀','Open with Confidence','Soft opening with Chef Nek by your side. Ready to thrive.'],
-        ].map(([icon,title,desc]) => `
-          <div class="feature-card" style="text-align:center;">
-            <div class="feature-icon" style="margin:0 auto 16px;">${icon}</div>
-            <h4 style="font-size:0.95rem;font-weight:700;color:#1A1A14;margin-bottom:8px;">${title}</h4>
-            <p style="font-size:0.82rem;color:#8A8A7A;line-height:1.6;">${desc}</p>
-          </div>`).join('')}
-      </div>
-
-      <!-- Packages -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:40px;">
-        ${[
-          {name:'Starter',price:'$1,500',mode:'🌐 Zoom Only',color:'#1D9E75',items:['3 Zoom sessions (1hr each)','Custom menu — up to 20 items','Food cost analysis','3 months Chef Nek Pro FREE']},
-          {name:'Growth',price:'$3,500',mode:'🌐 Zoom + In-Person Visit',color:'#F2A623',popular:true,items:['5 sessions — Zoom + in-person','Full menu — up to 40 items','2 Born to Kitchen staff trained','6 months Chef Nek Pro FREE']},
-          {name:'Full Launch',price:'$7,500',mode:'✈️ Chef Nek Flies to You',color:'#7C3AED',items:['Unlimited consultations 3 months','Complete menu development','Chef Nek on-site kitchen setup','12 months Chef Nek Pro FREE']},
-        ].map(pkg => `
-          <div style="background:#fff;border:1.5px solid ${pkg.popular?pkg.color:'rgba(0,0,0,0.08)'};border-radius:16px;padding:24px;position:relative;${pkg.popular?'box-shadow:0 4px 20px rgba(242,166,35,0.15);':''}">
-            ${pkg.popular?`<div style="position:absolute;top:-10px;left:20px;background:#F2A623;color:#fff;font-size:0.62rem;font-weight:700;padding:3px 10px;border-radius:100px;text-transform:uppercase;letter-spacing:0.08em;">Most Popular</div>`:''}
-            <div style="font-size:0.72rem;font-weight:700;color:${pkg.color};margin-bottom:4px;">${pkg.mode}</div>
-            <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:#1A1A14;margin-bottom:4px;">${pkg.name} Package</div>
-            <div style="font-size:1.8rem;font-weight:800;color:${pkg.color};margin-bottom:16px;">${pkg.price}</div>
-            ${pkg.items.map(i=>`<div style="font-size:0.82rem;color:#555;margin-bottom:7px;display:flex;gap:8px;"><span style="color:${pkg.color};font-weight:700;">✓</span>${i}</div>`).join('')}
-            <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=${pkg.name} Package Inquiry&body=Hi Chef Nek,%0A%0AI am interested in the ${pkg.name} Package.%0A%0ARestaurant concept: %0ALocation: %0A%0AThank you"
-              class="btn-primary" style="width:100%;justify-content:center;margin-top:20px;box-sizing:border-box;background:${pkg.color};box-shadow:none;">
-              Book This Package →
-            </a>
-          </div>`).join('')}
-      </div>
-
-      <!-- Free call CTA -->
-      <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:16px;padding:36px;text-align:center;">
-        <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:#1A1A14;margin-bottom:10px;">Not sure where to start?</div>
-        <p style="font-size:0.95rem;color:#8A8A7A;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto;">Book a FREE 30-minute discovery call with Chef Nek. No commitment. Just a real conversation about your restaurant dream.</p>
-        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Free Discovery Call&body=Hi Chef Nek,%0A%0AI would like a free 30-minute call.%0A%0ARestaurant idea: %0ALocation: %0A%0AThank you" class="btn-primary">📧 Book Free Call</a>
-          <a href="https://wa.me/17202781164?text=Hi Chef Nek! I am interested in restaurant consulting." style="height:52px;padding:0 32px;border-radius:14px;border:1.5px solid #1D9E75;background:transparent;color:#1D9E75;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;">💬 WhatsApp</a>
-        </div>
-        <p style="font-size:0.75rem;color:#aaa;margin-top:16px;">📍 Silver Spring, MD · Available Worldwide via Zoom · Willing to Travel ✈️</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CONSULTING -->
   <section id="consulting" style="padding:80px 24px;background:#FAF7F2;">
     <div style="max-width:960px;margin:0 auto;">
       <div class="section-tag">🍽️ Restaurant Consulting</div>
@@ -299,10 +244,10 @@
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#1D9E75;font-weight:700;">✓</span>Custom menu — up to 20 items</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#1D9E75;font-weight:700;">✓</span>Food cost analysis</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#1D9E75;font-weight:700;">✓</span>3 months Chef Nek Pro FREE</div>
-          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Starter Package Inquiry&body=Hi Chef Nek,%0A%0AI am interested in the Starter Package.%0A%0ARestaurant concept: %0ALocation: %0A%0AThank you" class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;">Book This Package →</a>
+          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Starter Package Inquiry&body=Hi Chef Nek, I am interested in the Starter Package." class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;">Book This Package →</a>
         </div>
 
-        <!-- Growth (Popular) -->
+        <!-- Growth -->
         <div style="background:#fff;border:2px solid #F2A623;border-radius:16px;padding:28px;position:relative;box-shadow:0 4px 20px rgba(242,166,35,0.15);">
           <div style="position:absolute;top:-10px;left:20px;background:#F2A623;color:#fff;font-size:0.62rem;font-weight:700;padding:3px 10px;border-radius:100px;text-transform:uppercase;letter-spacing:0.08em;">Most Popular</div>
           <div style="font-size:0.72rem;font-weight:700;color:#F2A623;margin-bottom:4px;">🌐 Zoom + In-Person Visit</div>
@@ -312,7 +257,7 @@
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#F2A623;font-weight:700;">✓</span>Full menu — up to 40 items</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#F2A623;font-weight:700;">✓</span>2 Born to Kitchen staff trained</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#F2A623;font-weight:700;">✓</span>6 months Chef Nek Pro FREE</div>
-          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Growth Package Inquiry&body=Hi Chef Nek,%0A%0AI am interested in the Growth Package.%0A%0ARestaurant concept: %0ALocation: %0A%0AThank you" class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;background:#F2A623;box-shadow:none;">Book This Package →</a>
+          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Growth Package Inquiry&body=Hi Chef Nek, I am interested in the Growth Package." class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;background:#F2A623;box-shadow:none;">Book This Package →</a>
         </div>
 
         <!-- Full Launch -->
@@ -324,16 +269,16 @@
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#7C3AED;font-weight:700;">✓</span>Complete menu development</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#7C3AED;font-weight:700;">✓</span>Chef Nek on-site kitchen setup</div>
           <div style="font-size:0.82rem;color:#555;margin-bottom:8px;display:flex;gap:8px;"><span style="color:#7C3AED;font-weight:700;">✓</span>12 months Chef Nek Pro FREE</div>
-          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Full Launch Package Inquiry&body=Hi Chef Nek,%0A%0AI am interested in the Full Launch Package.%0A%0ARestaurant concept: %0ALocation: %0A%0AThank you" class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;background:#7C3AED;box-shadow:none;">Book This Package →</a>
+          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Full Launch Package Inquiry&body=Hi Chef Nek, I am interested in the Full Launch Package." class="btn-primary" style="display:flex;justify-content:center;margin-top:20px;background:#7C3AED;box-shadow:none;">Book This Package →</a>
         </div>
       </div>
 
-      <!-- Free call CTA -->
+      <!-- CTA -->
       <div class="feature-card" style="text-align:center;padding:36px;">
         <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:#1A1A14;margin-bottom:10px;">Not sure where to start?</div>
         <p style="font-size:0.95rem;color:#8A8A7A;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto;">Book a FREE 30-minute discovery call with Chef Nek. No commitment. Just a real conversation about your restaurant dream.</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Free Discovery Call&body=Hi Chef Nek,%0A%0AI would like a free 30-minute call.%0A%0ARestaurant idea: %0ALocation: %0A%0AThank you" class="btn-primary">📧 Book Free Call</a>
+          <a href="mailto:hailu.nekatibeb2025@gmail.com?subject=Free Discovery Call&body=Hi Chef Nek, I would like a free 30-minute discovery call." class="btn-primary">📧 Book Free Call</a>
           <a href="https://wa.me/17202781164?text=Hi Chef Nek! I am interested in restaurant consulting." style="height:52px;padding:0 32px;border-radius:14px;border:1.5px solid #1D9E75;background:transparent;color:#1D9E75;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;">💬 WhatsApp</a>
         </div>
         <p style="font-size:0.75rem;color:#aaa;margin-top:16px;">📍 Silver Spring, MD · Available Worldwide via Zoom · Willing to Travel ✈️</p>
