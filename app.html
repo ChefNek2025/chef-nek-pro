@@ -7363,7 +7363,7 @@ window.importRecipesToStation = async function() {
           ${newRecipes.map(r => `
             <label style="display:flex;align-items:center;gap:12px;background:var(--cream);border-radius:10px;padding:10px 14px;cursor:pointer;border:1.5px solid transparent;" 
               onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='transparent'">
-              <input type="checkbox" checked value="${r.id}" data-name="${r.name}" data-category="${r.category||'General'}" data-notes="${(r.notes||'').replace(/"/g,'&quot;')}" data-photo="${r.photoUrl||''}"
+              <input type="checkbox" checked value="${r.id}" data-name="${r.name}" data-category="${r.category||'General'}" data-notes="${(r.notes||'').replace(/"/g,'&quot;')}" data-photo="${r.photoUrl||''}" data-ingredients='${JSON.stringify(r.ingredients||[]).replace(/'/g,"&#39;")}'
                 style="width:16px;height:16px;accent-color:var(--green);flex-shrink:0;">
               <div style="flex:1;">
                 <div style="font-size:0.875rem;font-weight:700;color:var(--ink);">${r.name}</div>
@@ -7398,11 +7398,21 @@ window.doImportRecipes = async function(rid) {
   let count = 0;
   for (const cb of checkboxes) {
     try {
+      // Build ingredients text for station guide
+      let ingredientsText = '';
+      try {
+        const ingr = JSON.parse(cb.getAttribute('data-ingredients') || '[]');
+        if (ingr.length) {
+          ingredientsText = ingr.map(i => `${i.name} — ${i.amount} ${i.unit||''}`).join('\n');
+        }
+      } catch(e) {}
+      if (!ingredientsText) ingredientsText = cb.getAttribute('data-notes') || '';
+
       await addDoc(collection(db,'stationDishes'), {
         restaurantId: rid,
         name: cb.getAttribute('data-name'),
         category: cb.getAttribute('data-category') || 'General',
-        steps: cb.getAttribute('data-notes') || '',
+        steps: ingredientsText,
         photoUrl: cb.getAttribute('data-photo') || '',
         importedFromRecipe: true,
         createdAt: serverTimestamp()
