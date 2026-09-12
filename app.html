@@ -7654,7 +7654,7 @@ function showStationForm(title, dish, restaurantId) {
     + '<span id="sg-photo-status" style="font-size:0.75rem;color:var(--ink-muted);"></span></div>'
     + '<div id="sg-photo-preview" style="display:none;align-items:center;gap:8px;"><img id="sg-photo-preview-img" src="" style="width:60px;height:60px;object-fit:cover;border-radius:8px;"><button type="button" onclick="clearSGPhoto()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;font-size:11px;cursor:pointer;">Remove</button></div>'
     + '</div>'
-    + '<div><div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">Ingredients (one per line)</div><textarea id="sg-ingredients" class="form-input-small" style="width:100%;height:80px;resize:vertical;">' + (dish?dish.ingredients||'':'') + '</textarea></div>'
+    + '<div><div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">Ingredients (one per line, e.g. Chicken — 6 oz)</div><textarea id="sg-ingredients" class="form-input-small" style="width:100%;height:80px;resize:vertical;">' + (dish && dish.ingredients ? (Array.isArray(dish.ingredients) ? dish.ingredients.map(ing => typeof ing === 'string' ? ing : `${ing.name} — ${ing.amount||''} ${ing.unit||''}`.trim()).join('\n') : dish.ingredients) : '') + '</textarea></div>'
     + '<div><div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:4px;">Steps (one per line)</div><textarea id="sg-steps" class="form-input-small" style="width:100%;height:100px;resize:vertical;">' + (dish?dish.steps||'':'') + '</textarea></div>'
     + '</div>';
   const btns = document.createElement('div');
@@ -7665,7 +7665,20 @@ function showStationForm(title, dish, restaurantId) {
   saveBtn.onclick = async () => {
     const name = document.getElementById('sg-name')?.value.trim();
     if (!name) { showToast('Dish name required','error'); return; }
-    const data = { name, category: document.getElementById('sg-category')?.value.trim()||'General', prepTime: document.getElementById('sg-preptime')?.value.trim()||'', photoUrl: document.getElementById('sg-photo')?.value.trim()||'', ingredients: document.getElementById('sg-ingredients')?.value.trim()||'', steps: document.getElementById('sg-steps')?.value.trim()||'', restaurantId };
+    // Convert ingredients textarea to array of objects
+    const ingrText = document.getElementById('sg-ingredients')?.value.trim() || '';
+    const ingrArray = ingrText ? ingrText.split('\n').filter(l=>l.trim()).map(line => {
+      const parts = line.split('—');
+      if (parts.length >= 2) {
+        const name = parts[0].trim();
+        const rest = parts[1].trim().split(' ');
+        const amount = rest[0] || '';
+        const unit = rest.slice(1).join(' ') || '';
+        return {name, amount, unit};
+      }
+      return {name: line.trim(), amount: '', unit: ''};
+    }) : [];
+    const data = { name, category: document.getElementById('sg-category')?.value.trim()||'General', prepTime: document.getElementById('sg-preptime')?.value.trim()||'', photoUrl: document.getElementById('sg-photo')?.value.trim()||'', ingredients: ingrArray, steps: document.getElementById('sg-steps')?.value.trim()||'', restaurantId };
     try {
       if (dish) { await setDoc(doc(db,'stationDishes',dish.id), data, {merge:true}); showToast('Updated!'); }
       else { data.createdAt = serverTimestamp(); await addDoc(collection(db,'stationDishes'), data); showToast('Dish added!'); }
