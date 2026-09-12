@@ -7464,10 +7464,13 @@ function renderStationList(dishes) {
       if (dish.ingredients && dish.ingredients.length) {
         const ings = Array.isArray(dish.ingredients) ? dish.ingredients : [dish.ingredients];
         body.innerHTML += '<div style="margin-bottom:8px;">'
-          + ings.slice(0,5).map(ing => '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
-            + '<span style="color:var(--green);font-size:0.7rem;">•</span>'
-            + '<span style="font-size:0.75rem;color:var(--ink-soft);">' + ing + '</span>'
-            + '</div>').join('')
+          + ings.slice(0,5).map(ing => {
+              const label = typeof ing === 'string' ? ing : `${ing.name} — ${ing.amount||''} ${ing.unit||''}`.trim();
+              return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
+                + '<span style="color:var(--green);font-size:0.7rem;">•</span>'
+                + '<span style="font-size:0.75rem;color:var(--ink-soft);">' + label + '</span>'
+                + '</div>';
+            }).join('')
           + (ings.length > 5 ? '<div style="font-size:0.72rem;color:var(--ink-muted);margin-top:2px;">+' + (ings.length-5) + ' more...</div>' : '')
           + '</div>';
       }
