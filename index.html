@@ -29,7 +29,7 @@ html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);overflow-x:hidden}
 img{display:block;max-width:100%}
 
-/* \u2500\u2500 NAV \u2500\u2500 */
+/* ── NAV ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:66px;transition:background 0.4s,box-shadow 0.4s;}
 nav.scrolled{background:rgba(253,248,240,0.95);backdrop-filter:blur(20px);box-shadow:0 1px 0 var(--border);}
 .nav-brand{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.06em;color:var(--white);}
@@ -44,7 +44,7 @@ nav.scrolled .nav-links a:hover{color:var(--ink);}
 .nav-cta:hover{background:var(--green2);transform:translateY(-1px);}
 @media(max-width:768px){.nav-links{display:none;}}
 
-/* \u2500\u2500 HERO \u2500\u2500 */
+/* ── HERO ── */
 .hero{min-height:100vh;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 6% 80px;overflow:hidden;}
 .hero-bg-img{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=85&fit=crop');background-size:cover;background-position:center;filter:brightness(0.9);}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(170deg,rgba(11,40,24,0.82) 0%,rgba(18,46,28,0.75) 50%,rgba(11,40,24,0.88) 100%);}
@@ -69,14 +69,14 @@ nav.scrolled .nav-links a:hover{color:var(--ink);}
 .hero-stat-label{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:4px;text-transform:uppercase;letter-spacing:0.08em;}
 @media(max-width:600px){.hero-stat{padding:16px 20px;}.hero-stat-num{font-size:1.8rem;}}
 
-/* \u2500\u2500 STRIP \u2500\u2500 */
+/* ── STRIP ── */
 .strip{background:var(--moss);padding:16px 0;overflow:hidden;}
 .strip-track{display:flex;gap:48px;width:max-content;animation:scroll 25s linear infinite;}
 @keyframes scroll{to{transform:translateX(-50%);}}
 .strip-item{display:flex;align-items:center;gap:10px;white-space:nowrap;font-size:0.8rem;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:0.02em;}
 .strip-item span{font-size:1rem;opacity:0.8;}
 
-/* \u2500\u2500 SECTION BASE \u2500\u2500 */
+/* ── SECTION BASE ── */
 section{padding:100px 6%;}
 .eyebrow{font-size:0.7rem;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:14px;}
 .section-title{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,5vw,3.8rem);font-weight:900;line-height:1.05;margin-bottom:18px;color:var(--ink);}
@@ -84,7 +84,7 @@ section{padding:100px 6%;}
 .section-title .green{color:var(--green);}
 .section-title .on-dark{color:#fff;}
 
-/* \u2500\u2500 FEATURES \u2500\u2500 */
+/* ── FEATURES ── */
 .features-sec{background:var(--white);}
 .features-header{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end;margin-bottom:60px;}
 .features-header .section-sub{max-width:100%;}
@@ -97,7 +97,7 @@ section{padding:100px 6%;}
 .feat-desc{font-size:0.78rem;color:var(--muted);line-height:1.65;}
 .feat-tag{display:inline-block;margin-top:10px;font-size:0.62rem;font-weight:700;color:var(--green);background:#EDFAF4;border:1px solid #C8EEE0;border-radius:100px;padding:2px 9px;letter-spacing:0.06em;text-transform:uppercase;}
 
-/* \u2500\u2500 PHOTO STRIP \u2500\u2500 */
+/* ── PHOTO STRIP ── */
 .photo-strip{display:grid;grid-template-columns:1fr 1fr 1fr;height:380px;gap:0;}
 .photo-strip figure{overflow:hidden;position:relative;margin:0;}
 .photo-strip figure img{width:100%;height:100%;object-fit:cover;transition:transform 0.7s ease;}
@@ -105,7 +105,7 @@ section{padding:100px 6%;}
 .photo-strip figure figcaption{position:absolute;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(transparent,rgba(11,40,24,0.75));font-family:'Playfair Display',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.85);}
 @media(max-width:768px){.photo-strip{grid-template-columns:1fr;height:auto;}.photo-strip figure{height:240px;}}
 
-/* \u2500\u2500 AI SECTION \u2500\u2500 */
+/* ── AI SECTION ── */
 .ai-sec{background:var(--forest);position:relative;overflow:hidden;}
 .ai-sec-bg{position:absolute;top:0;right:0;width:45%;height:100%;background-image:url('https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=85&fit=crop');background-size:cover;background-position:center;opacity:0.25;}
 .ai-sec-bg-grad{position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(to right,var(--forest) 40%,transparent);}
@@ -141,7 +141,7 @@ section{padding:100px 6%;}
 .ai-feat-desc{font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.6;}
 @media(max-width:768px){.ai-layout{grid-template-columns:1fr;}.ai-phone-wrap{margin-bottom:40px;}}
 
-/* \u2500\u2500 SCHEDULE \u2500\u2500 */
+/* ── SCHEDULE ── */
 .sched-sec{background:var(--cream);}
 .sched-layout{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;margin-top:56px;}
 .sched-card{background:var(--white);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(26,26,20,0.1);border:1px solid var(--border);}
@@ -165,7 +165,7 @@ section{padding:100px 6%;}
 .sched-pt-desc{font-size:0.78rem;color:var(--muted);line-height:1.6;}
 @media(max-width:768px){.sched-layout{grid-template-columns:1fr;}}
 
-/* \u2500\u2500 CHEF STORY \u2500\u2500 */
+/* ── CHEF STORY ── */
 .story-sec{position:relative;overflow:hidden;padding:0;}
 .story-img{height:600px;position:relative;}
 .story-img img{width:100%;height:100%;object-fit:cover;object-position:center top;}
@@ -180,7 +180,7 @@ section{padding:100px 6%;}
 .story-body strong{color:rgba(255,255,255,0.85);font-weight:600;}
 @media(max-width:768px){.story-img{height:auto;}.story-text{position:static;transform:none;padding:60px 6%;}.story-img-overlay{background:linear-gradient(to bottom,rgba(11,40,24,0.4) 0%,rgba(11,40,24,0.95) 60%);}}
 
-/* \u2500\u2500 TESTIMONIAL \u2500\u2500 */
+/* ── TESTIMONIAL ── */
 .testimonial-sec{background:var(--gold-light);padding:80px 6%;}
 .testimonial-inner{max-width:700px;margin:0 auto;text-align:center;}
 .testimonial-text{font-family:'Playfair Display',serif;font-size:clamp(1.2rem,3vw,1.7rem);font-style:italic;color:var(--ink2);line-height:1.55;margin-bottom:28px;}
@@ -191,7 +191,7 @@ section{padding:100px 6%;}
 .testimonial-name{font-weight:700;font-size:0.875rem;color:var(--ink);}
 .testimonial-role{font-size:0.75rem;color:var(--muted);}
 
-/* \u2500\u2500 CTA \u2500\u2500 */
+/* ── CTA ── */
 .cta-sec{background:var(--forest);position:relative;overflow:hidden;text-align:center;padding:120px 6%;}
 .cta-bg{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=1600&q=80&fit=crop');background-size:cover;background-position:center;opacity:0.08;}
 .cta-inner{position:relative;z-index:2;}
@@ -206,14 +206,14 @@ section{padding:100px 6%;}
 .btn-outline-white{height:56px;padding:0 34px;background:transparent;color:#fff;border:2px solid rgba(255,255,255,0.3);border-radius:100px;font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
 .btn-outline-white:hover{border-color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.06);}
 
-/* \u2500\u2500 FOOTER \u2500\u2500 */
+/* ── FOOTER ── */
 footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
 .footer-brand{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:rgba(255,255,255,0.25);}
 .footer-brand span{color:var(--green);}
 .footer-copy{font-size:0.72rem;color:rgba(255,255,255,0.18);}
 .footer-tag{font-family:'Playfair Display',serif;font-size:0.78rem;font-style:italic;color:rgba(255,255,255,0.18);}
 
-/* \u2500\u2500 ANIMATIONS \u2500\u2500 */
+/* ── ANIMATIONS ── */
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 0.75s ease,transform 0.75s ease;}
 .reveal.d1{transition-delay:0.1s;}
 .reveal.d2{transition-delay:0.2s;}
@@ -263,30 +263,30 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
 <!-- SCROLLING STRIP -->
 <div class="strip">
   <div class="strip-track">
-    <div class="strip-item"><span>\ud83d\udccb</span> Recipe Book</div>
+    <div class="strip-item"><span>📋</span> Recipe Book</div>
     <div class="strip-item"><span>✅</span> Prep Lists</div>
-    <div class="strip-item"><span>\ud83d\udce6</span> Inventory</div>
-    <div class="strip-item"><span>\ud83d\udcb0</span> Food Cost</div>
-    <div class="strip-item"><span>\ud83d\udcc5</span> Schedule</div>
-    <div class="strip-item"><span>\ud83d\udc65</span> Staff</div>
-    <div class="strip-item"><span>\ud83d\udcac</span> Team Hub</div>
-    <div class="strip-item"><span>\ud83d\udcf7</span> AI Scanner</div>
-    <div class="strip-item"><span>\ud83c\udf21\ufe0f</span> Temp Log</div>
-    <div class="strip-item"><span>\ud83d\uddfa\ufe0f</span> Station Guide</div>
-    <div class="strip-item"><span>\ud83c\udf7d\ufe0f</span> Menu Design</div>
-    <div class="strip-item"><span>\ud83d\udccb</span> Checklists</div>
-    <div class="strip-item"><span>\ud83d\udccb</span> Recipe Book</div>
+    <div class="strip-item"><span>📦</span> Inventory</div>
+    <div class="strip-item"><span>💰</span> Food Cost</div>
+    <div class="strip-item"><span>📅</span> Schedule</div>
+    <div class="strip-item"><span>👥</span> Staff</div>
+    <div class="strip-item"><span>💬</span> Team Hub</div>
+    <div class="strip-item"><span>📷</span> AI Scanner</div>
+    <div class="strip-item"><span>🌡️</span> Temp Log</div>
+    <div class="strip-item"><span>🗺️</span> Station Guide</div>
+    <div class="strip-item"><span>🍽️</span> Menu Design</div>
+    <div class="strip-item"><span>📋</span> Checklists</div>
+    <div class="strip-item"><span>📋</span> Recipe Book</div>
     <div class="strip-item"><span>✅</span> Prep Lists</div>
-    <div class="strip-item"><span>\ud83d\udce6</span> Inventory</div>
-    <div class="strip-item"><span>\ud83d\udcb0</span> Food Cost</div>
-    <div class="strip-item"><span>\ud83d\udcc5</span> Schedule</div>
-    <div class="strip-item"><span>\ud83d\udc65</span> Staff</div>
-    <div class="strip-item"><span>\ud83d\udcac</span> Team Hub</div>
-    <div class="strip-item"><span>\ud83d\udcf7</span> AI Scanner</div>
-    <div class="strip-item"><span>\ud83c\udf21\ufe0f</span> Temp Log</div>
-    <div class="strip-item"><span>\ud83d\uddfa\ufe0f</span> Station Guide</div>
-    <div class="strip-item"><span>\ud83c\udf7d\ufe0f</span> Menu Design</div>
-    <div class="strip-item"><span>\ud83d\udccb</span> Checklists</div>
+    <div class="strip-item"><span>📦</span> Inventory</div>
+    <div class="strip-item"><span>💰</span> Food Cost</div>
+    <div class="strip-item"><span>📅</span> Schedule</div>
+    <div class="strip-item"><span>👥</span> Staff</div>
+    <div class="strip-item"><span>💬</span> Team Hub</div>
+    <div class="strip-item"><span>📷</span> AI Scanner</div>
+    <div class="strip-item"><span>🌡️</span> Temp Log</div>
+    <div class="strip-item"><span>🗺️</span> Station Guide</div>
+    <div class="strip-item"><span>🍽️</span> Menu Design</div>
+    <div class="strip-item"><span>📋</span> Checklists</div>
   </div>
 </div>
 
@@ -301,25 +301,25 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
   </div>
   <div class="features-grid">
     <div class="feat-card reveal">
-      <div class="feat-icon">\ud83d\udcf7</div>
+      <div class="feat-icon">📷</div>
       <div class="feat-name">AI Food Scanner</div>
       <div class="feat-desc">Snap any dish — Claude Vision AI identifies it instantly and returns calories, macros, and a full ingredient breakdown.</div>
       <span class="feat-tag">Claude Vision AI</span>
     </div>
     <div class="feat-card reveal d1">
-      <div class="feat-icon">\ud83d\udcc5</div>
+      <div class="feat-icon">📅</div>
       <div class="feat-name">Advanced Schedule</div>
       <div class="feat-desc">Weekly shift planner with color-coded positions, off-day marking, AM/PM time pickers, and one-tap editing.</div>
       <span class="feat-tag">New</span>
     </div>
     <div class="feat-card reveal d2">
-      <div class="feat-icon">\ud83d\udcac</div>
+      <div class="feat-icon">💬</div>
       <div class="feat-name">Team Hub</div>
       <div class="feat-desc">WhatsApp-style group chat plus task management for your kitchen. Assign, prioritize, and track completion in real time.</div>
       <span class="feat-tag">New</span>
     </div>
     <div class="feat-card reveal">
-      <div class="feat-icon">\ud83d\udccb</div>
+      <div class="feat-icon">📋</div>
       <div class="feat-name">Recipe Book</div>
       <div class="feat-desc">Store recipes with photos, portions, and step-by-step instructions. Your team always cooks it the right way.</div>
     </div>
@@ -329,37 +329,37 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
       <div class="feat-desc">Assign prep tasks by station. Staff checks off items live. You see progress from anywhere, on any device.</div>
     </div>
     <div class="feat-card reveal d2">
-      <div class="feat-icon">\ud83d\udce6</div>
+      <div class="feat-icon">📦</div>
       <div class="feat-name">Inventory Tracker</div>
       <div class="feat-desc">Track every ingredient with low-stock alerts. Know what you have before you need it — not after you run out.</div>
     </div>
     <div class="feat-card reveal">
-      <div class="feat-icon">\ud83d\udcb0</div>
+      <div class="feat-icon">💰</div>
       <div class="feat-name">Food Cost Calculator</div>
       <div class="feat-desc">Calculate exact food cost per dish. See your margins clearly and price your menu with real confidence.</div>
     </div>
     <div class="feat-card reveal d1">
-      <div class="feat-icon">\ud83d\udc65</div>
+      <div class="feat-icon">👥</div>
       <div class="feat-name">Staff Register</div>
       <div class="feat-desc">Every team member's details, role, and status in one place. Staff check in from their own phone.</div>
     </div>
     <div class="feat-card reveal d2">
-      <div class="feat-icon">\ud83c\udf21\ufe0f</div>
+      <div class="feat-icon">🌡️</div>
       <div class="feat-name">Temp Log</div>
       <div class="feat-desc">Digital temperature logging for every station and cooler. Stay health-code compliant without the paper trail.</div>
     </div>
     <div class="feat-card reveal">
-      <div class="feat-icon">\ud83d\uddfa\ufe0f</div>
+      <div class="feat-icon">🗺️</div>
       <div class="feat-name">Station Guide</div>
       <div class="feat-desc">Visual setup guide for every station. New staff knows exactly how to set up — every single service.</div>
     </div>
     <div class="feat-card reveal d1">
-      <div class="feat-icon">\ud83c\udf7d\ufe0f</div>
+      <div class="feat-icon">🍽️</div>
       <div class="feat-name">Menu Design</div>
       <div class="feat-desc">Design and share your menu digitally. Update prices, items, and photos without reprinting a single page.</div>
     </div>
     <div class="feat-card reveal d2">
-      <div class="feat-icon">\ud83d\udccb</div>
+      <div class="feat-icon">📋</div>
       <div class="feat-name">Opening & Closing</div>
       <div class="feat-desc">Digital checklists for every shift. Nothing gets missed. Everything gets documented automatically.</div>
     </div>
@@ -392,7 +392,7 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
         <div class="phone-bar"><div class="phone-pill"></div></div>
         <div class="phone-inner">
           <div class="p-head">
-            <div class="p-icon">\ud83d\udcf7</div>
+            <div class="p-icon">📷</div>
             <div>
               <div class="p-title">AI Food Scanner</div>
               <div class="p-sub">Point camera at any dish</div>
@@ -418,7 +418,7 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
       <p class="section-sub">Snap any dish and get instant nutrition data — dish name, calories, macros, and a full ingredient breakdown. No manual entry. No databases to search. Just point and shoot.</p>
       <div class="ai-features">
         <div class="ai-feat reveal d1">
-          <div class="ai-feat-icon">\ud83e\udde0</div>
+          <div class="ai-feat-icon">🧠</div>
           <div><div class="ai-feat-name">Powered by Claude Vision AI</div><div class="ai-feat-desc">Anthropic's most advanced vision model identifies dishes with professional accuracy — even complex plated food.</div></div>
         </div>
         <div class="ai-feat reveal d2">
@@ -426,7 +426,7 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
           <div><div class="ai-feat-name">Results in seconds</div><div class="ai-feat-desc">Full calorie count, macros, and ingredient list appear instantly. Works from your camera or photo gallery.</div></div>
         </div>
         <div class="ai-feat reveal d3">
-          <div class="ai-feat-icon">\ud83d\udcca</div>
+          <div class="ai-feat-icon">📊</div>
           <div><div class="ai-feat-name">Feeds straight into food cost</div><div class="ai-feat-desc">One tap sends AI results directly into your food cost calculator. Menu costing just got 10× faster.</div></div>
         </div>
       </div>
@@ -442,7 +442,7 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
   <div class="sched-layout">
     <div class="sched-card reveal">
       <div class="sched-bar">
-        <div class="sched-bar-title">\ud83d\udcc5 Weekly Schedule</div>
+        <div class="sched-bar-title">📅 Weekly Schedule</div>
         <div class="sched-bar-week">Jun 23 – Jun 29, 2026</div>
       </div>
       <div style="overflow-x:auto;">
@@ -457,17 +457,17 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
               <td>Marcus J.</td>
               <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
               <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
-              <td><div class="sh-off">\ud83d\udeab OFF</div></td>
+              <td><div class="sh-off">🚫 OFF</div></td>
               <td><div class="sh-block"><div class="sh-time">12pm–8pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
               <td><div class="sh-block"><div class="sh-time">9am–5pm</div><div class="sh-role">Kitchen · 8h</div></div></td>
             </tr>
             <tr>
               <td>Amara T.</td>
-              <td><div class="sh-off">\ud83d\udeab OFF</div></td>
+              <td><div class="sh-off">🚫 OFF</div></td>
               <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
               <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
               <td><div class="sh-block"><div class="sh-time">11am–7pm</div><div class="sh-role">FOH · 8h</div></div></td>
-              <td><div class="sh-off">\ud83d\udeab OFF</div></td>
+              <td><div class="sh-off">🚫 OFF</div></td>
             </tr>
             <tr>
               <td>Chef Nek</td>
