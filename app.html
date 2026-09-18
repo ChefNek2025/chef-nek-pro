@@ -12934,6 +12934,7 @@ function renderSchedule(main, userData) {
   header.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div><h1 class="page-title">📅 Schedule</h1><p class="page-sub">Weekly employee shift planner</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="showDayOffModal('${rid}')" style="height:38px;padding:0 16px;border-radius:10px;border:1.5px solid #F2A623;background:rgba(242,166,35,0.1);color:#C17F3A;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">📅 Request Day Off</button>
       <button id="sched-print-btn" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🖨️ Print</button>
       ${isAdmin ? `<button id="sched-add-btn" style="height:38px;padding:0 18px;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(29,158,117,0.3);">+ Add Shift</button>` : ''}
     </div></div>`;
