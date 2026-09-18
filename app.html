@@ -12263,6 +12263,82 @@ window.shareReview = function(name, score, badges) {
   }
 };
 
+window.showDayOffModal = function(rid) {
+  document.getElementById('day-off-modal')?.remove();
+  const myName = sessionStorage.getItem('cnp-myname') || '';
+  const overlay = document.createElement('div');
+  overlay.id = 'day-off-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;padding:28px;position:relative;">
+      <button onclick="document.getElementById('day-off-modal').remove()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:#F5F5F0;font-size:1rem;cursor:pointer;">✕</button>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--ink);margin-bottom:4px;">📅 Request Day Off</div>
+      <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:20px;">Submit a request to Chef Nek for approval</div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Your Name</label>
+        <input type="text" id="dor-name" value="${myName}" placeholder="Your full name"
+          style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Date Requested</label>
+        <input type="date" id="dor-date" min="${new Date().toISOString().split('T')[0]}"
+          style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Reason (optional)</label>
+        <input type="text" id="dor-reason" placeholder="e.g. Family event, medical appointment..."
+          style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+      </div>
+
+      <button onclick="submitDayOff('${rid}')" style="width:100%;height:48px;border-radius:12px;border:none;background:linear-gradient(135deg,#F2A623,#C17F3A);color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;">
+        📅 Submit Request
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+};
+
+window.submitDayOff = async function(rid) {
+  const name = document.getElementById('dor-name')?.value.trim();
+  const date = document.getElementById('dor-date')?.value;
+  const reason = document.getElementById('dor-reason')?.value.trim();
+  if (!name) { showToast('Enter your name','error'); return; }
+  if (!date) { showToast('Select a date','error'); return; }
+
+  const btn = document.querySelector('#day-off-modal button[onclick^="submitDayOff"]');
+  if (btn) { btn.disabled=true; btn.textContent='Submitting...'; }
+
+  try {
+    await addDoc(collection(db,'dayOffRequests'), {
+      restaurantId: rid,
+      employeeName: name,
+      date,
+      reason: reason || '',
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+    document.getElementById('day-off-modal')?.remove();
+    showToast('✅ Day off request sent to Chef Nek!');
+  } catch(e) {
+    showToast('Error submitting request','error');
+    if (btn) { btn.disabled=false; btn.textContent='📅 Submit Request'; }
+  }
+};
+
+window.handleDayOff = async function(docId, status, empName, date) {
+  try {
+    await setDoc(doc(db,'dayOffRequests',docId), {status}, {merge:true});
+    const msg = status === 'approved'
+      ? `✅ Approved! ${empName}'s day off on ${date}`
+      : `❌ Denied ${empName}'s request for ${date}`;
+    showToast(msg);
+    // Refresh page
+    navigate('staff');
+  } catch(e) { showToast('Error updating request','error'); }
+};
+
 function renderStaff(main, userData) {
   const rid = currentRestaurantId() || userData.uid;
 
@@ -12295,6 +12371,38 @@ function renderStaff(main, userData) {
     subNote.style.cssText = 'font-size:0.78rem;color:var(--ink-muted);margin-top:6px;';
     subNote.textContent = '👇 Tap your name to check in for your shift';
     header.appendChild(subNote);
+
+    // Request Day Off button
+    const reqBtn = document.createElement('button');
+    reqBtn.style.cssText = 'margin-top:14px;height:44px;padding:0 20px;border-radius:12px;border:1.5px solid #F2A623;background:rgba(242,166,35,0.1);color:#F2A623;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;';
+    reqBtn.innerHTML = '📅 Request Day Off';
+    reqBtn.onclick = () => showDayOffModal(rid);
+    header.appendChild(reqBtn);
+  }
+
+  // Admin: show pending day off requests banner
+  if (isAdmin) {
+    getDocs(query(collection(db,'dayOffRequests'), where('restaurantId','==',rid), where('status','==','pending'))).then(snap => {
+      if (!snap.empty) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#FFF8ED;border:1.5px solid #F2A623;border-radius:14px;padding:14px 18px;margin-bottom:16px;';
+        banner.innerHTML = '<div style="font-size:0.875rem;font-weight:800;color:#C17F3A;margin-bottom:8px;">📅 ' + snap.size + ' day-off request' + (snap.size>1?'s':'') + ' pending your approval!</div>'
+          + snap.docs.map(d => {
+            const r = d.data();
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);">
+              <div>
+                <span style="font-size:0.82rem;font-weight:700;color:var(--ink);">${r.employeeName}</span>
+                <span style="font-size:0.78rem;color:var(--ink-muted);margin-left:8px;">📅 ${r.date} ${r.reason ? '· '+r.reason : ''}</span>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="handleDayOff('${d.id}','approved','${r.employeeName}','${r.date}')" style="height:30px;padding:0 12px;border-radius:8px;border:none;background:var(--green);color:#fff;font-size:0.75rem;font-weight:700;cursor:pointer;">✓ Approve</button>
+                <button onclick="handleDayOff('${d.id}','rejected','${r.employeeName}','${r.date}')" style="height:30px;padding:0 12px;border-radius:8px;border:none;background:#FCEBEB;color:#A32D2D;font-size:0.75rem;font-weight:700;cursor:pointer;">✗ Deny</button>
+              </div>
+            </div>`;
+          }).join('');
+        main.querySelector('.page-body') ? main.querySelector('.page-body').prepend(banner) : main.appendChild(banner);
+      }
+    }).catch(()=>{});
   }
   main.appendChild(header);
 
