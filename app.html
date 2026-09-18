@@ -12363,6 +12363,13 @@ function renderStaff(main, userData) {
     headerRow.appendChild(addBtn);
   }
 
+  // Request Day Off button — visible to ALL users
+  const reqBtn = document.createElement('button');
+  reqBtn.style.cssText = 'height:40px;padding:0 16px;border-radius:12px;border:1.5px solid #F2A623;background:rgba(242,166,35,0.1);color:#F2A623;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;';
+  reqBtn.innerHTML = '📅 Request Day Off';
+  reqBtn.onclick = () => showDayOffModal(rid);
+  headerRow.appendChild(reqBtn);
+
   header.appendChild(headerRow);
 
   // Employee-only subtitle
