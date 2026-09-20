@@ -4662,19 +4662,38 @@ window.setInvCatColor = async function(catId, color, colorBg) {
     const catEl = document.getElementById('inv-cat-'+catId);
     if (catEl) {
       catEl.style.border = `1.5px solid ${color}40`;
+      // Header
       const header = catEl.querySelector('.inv-cat-header');
       if (header) header.style.background = colorBg;
       const title = catEl.querySelector('.inv-cat-title');
       if (title) title.style.color = color;
       const chevron = catEl.querySelector('.inv-cat-chevron');
       if (chevron) chevron.style.color = color;
+      // Color bar background
+      const colorBar = catEl.querySelector('.inv-cat-body > div');
+      if (colorBar) colorBar.style.background = colorBg;
+      // Header row
+      const headerRow = catEl.querySelector('.inv-header-row');
+      if (headerRow) {
+        headerRow.style.background = color + '18';
+        headerRow.style.borderBottom = `1.5px solid ${color}30`;
+        headerRow.querySelectorAll('.inv-col-label').forEach(l => l.style.color = color);
+      }
+      // All item rows - apply color stripes + left border
+      const itemRows = catEl.querySelectorAll('.inv-item-row');
+      itemRows.forEach((row, idx) => {
+        const isOut = row.classList.contains('critical-stock');
+        const isLow = row.classList.contains('low-stock');
+        if (!isOut && !isLow) {
+          row.style.background = idx % 2 === 0 ? colorBg : '#fff';
+        }
+        row.style.borderLeft = `3px solid ${color}`;
+      });
       // Update swatch borders
       const swatches = catEl.querySelectorAll('button[title]');
       swatches.forEach(s => {
         s.style.border = s.style.background === color ? '3px solid #222' : '2px solid transparent';
       });
-      const colorBar = catEl.querySelector('.inv-cat-body > div');
-      if (colorBar) colorBar.style.background = colorBg;
     }
     showToast('✅ Category color updated!');
   } catch(e) {
@@ -4991,17 +5010,18 @@ async function loadInvCategories(userData) {
               </div>
               <button onclick="deleteInvCategory('${cat.id}')" style="flex-shrink:0;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;cursor:pointer;">Delete</button>
             </div>` : ''}
-            <div class="inv-header-row">
-              <div class="inv-col-label">Item</div>
-              <div class="inv-col-label">Unit</div>
-              <div class="inv-col-label">Quantity</div>
-              <div class="inv-col-label">Status</div>
+            <div class="inv-header-row" style="background:${catColor}18;border-bottom:1.5px solid ${catColor}30;">
+              <div class="inv-col-label" style="color:${catColor};font-weight:800;">Item</div>
+              <div class="inv-col-label" style="color:${catColor};font-weight:800;">Unit</div>
+              <div class="inv-col-label" style="color:${catColor};font-weight:800;">Quantity</div>
+              <div class="inv-col-label" style="color:${catColor};font-weight:800;">Status</div>
             </div>
-            ${items.map(item => {
+            ${items.map((item, idx) => {
               const isLow = item.currentQty <= item.alertAt;
               const isOut = item.currentQty === 0;
+              const rowBg = isOut ? 'background:#FCEBEB;' : isLow ? 'background:#FFF8ED;' : idx%2===0 ? `background:${catBg};` : 'background:#fff;';
               return `
-                <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}">
+                <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg}border-left:3px solid ${catColor};">
                   <div>
                     <div class="inv-item-name">
                       ${item.frozen ? '<span style="font-size:0.75rem;background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;margin-right:6px;">❄️ Frozen</span>' : ''}
