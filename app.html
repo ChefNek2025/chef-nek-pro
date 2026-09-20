@@ -4938,19 +4938,35 @@ async function loadInvCategories(userData) {
       const catColor = cat.color || '#1D9E75';
       const catBg = cat.colorBg || 'rgba(29,158,117,0.08)';
       const colorOptions = [
-        {color:'#1D9E75', bg:'rgba(29,158,117,0.08)', label:'Green'},
+        {color:'#1D9E75', bg:'rgba(29,158,117,0.08)', label:'Emerald'},
+        {color:'#16A34A', bg:'rgba(22,163,74,0.08)', label:'Forest Green'},
+        {color:'#65A30D', bg:'rgba(101,163,13,0.08)', label:'Lime'},
+        {color:'#0EA5E9', bg:'rgba(14,165,233,0.08)', label:'Sky Blue'},
         {color:'#185FA5', bg:'rgba(24,95,165,0.08)', label:'Blue'},
+        {color:'#1E40AF', bg:'rgba(30,64,175,0.08)', label:'Dark Blue'},
         {color:'#8B3DCC', bg:'rgba(139,61,204,0.08)', label:'Purple'},
-        {color:'#C17F3A', bg:'rgba(193,127,58,0.08)', label:'Gold'},
-        {color:'#C0392B', bg:'rgba(192,57,43,0.08)', label:'Red'},
+        {color:'#7C3AED', bg:'rgba(124,58,237,0.08)', label:'Violet'},
+        {color:'#DB2777', bg:'rgba(219,39,119,0.08)', label:'Hot Pink'},
         {color:'#D4629A', bg:'rgba(212,98,154,0.08)', label:'Pink'},
+        {color:'#C0392B', bg:'rgba(192,57,43,0.08)', label:'Red'},
+        {color:'#DC2626', bg:'rgba(220,38,38,0.08)', label:'Crimson'},
+        {color:'#EA580C', bg:'rgba(234,88,12,0.08)', label:'Orange'},
+        {color:'#F59E0B', bg:'rgba(245,158,11,0.08)', label:'Amber'},
+        {color:'#C17F3A', bg:'rgba(193,127,58,0.08)', label:'Gold'},
+        {color:'#CA8A04', bg:'rgba(202,138,4,0.08)', label:'Yellow'},
         {color:'#2C7873', bg:'rgba(44,120,115,0.08)', label:'Teal'},
+        {color:'#0F766E', bg:'rgba(15,118,110,0.08)', label:'Dark Teal'},
+        {color:'#0891B2', bg:'rgba(8,145,178,0.08)', label:'Cyan'},
+        {color:'#475569', bg:'rgba(71,85,105,0.08)', label:'Slate'},
         {color:'#555555', bg:'rgba(85,85,85,0.08)', label:'Grey'},
+        {color:'#7F1D1D', bg:'rgba(127,29,29,0.08)', label:'Dark Red'},
+        {color:'#831843', bg:'rgba(131,24,67,0.08)', label:'Rose'},
+        {color:'#1C1C1C', bg:'rgba(28,28,28,0.06)', label:'Black'},
       ];
       const colorSwatches = colorOptions.map(c =>
         `<button title="${c.label}" onclick="setInvCatColor('${cat.id}','${c.color}','${c.bg}')"
-          style="width:22px;height:22px;border-radius:50%;background:${c.color};border:${cat.color===c.color?'3px solid #222':'2px solid transparent'};cursor:pointer;"
-          onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></button>`
+          style="width:20px;height:20px;border-radius:50%;background:${c.color};border:${cat.color===c.color?'3px solid #222':'2px solid transparent'};cursor:pointer;flex-shrink:0;"
+          onmouseover="this.style.transform='scale(1.25)';this.style.zIndex='2'" onmouseout="this.style.transform='scale(1)';this.style.zIndex='1'"></button>`
       ).join('');
 
       html += `
@@ -4969,9 +4985,11 @@ async function loadInvCategories(userData) {
           <div class="inv-cat-body" id="inv-cat-body-${cat.id}">
             ${isAdmin ? `
             <div style="padding:10px 18px;background:${catBg};border-bottom:1px solid ${catColor}20;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-              <span style="font-size:0.72rem;color:var(--ink-muted);font-weight:600;margin-right:4px;">🎨 Color:</span>
-              ${colorSwatches}
-              <button onclick="deleteInvCategory('${cat.id}')" style="margin-left:auto;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;cursor:pointer;">Delete category</button>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
+                <span style="font-size:0.72rem;color:var(--ink-muted);font-weight:600;white-space:nowrap;">🎨 Color:</span>
+                <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">${colorSwatches}</div>
+              </div>
+              <button onclick="deleteInvCategory('${cat.id}')" style="flex-shrink:0;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #F09595;background:#FCEBEB;color:#A32D2D;cursor:pointer;">Delete</button>
             </div>` : ''}
             <div class="inv-header-row">
               <div class="inv-col-label">Item</div>
