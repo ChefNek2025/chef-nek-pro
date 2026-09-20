@@ -12369,11 +12369,12 @@ window.shareReview = function(name, score, badges) {
 window.showDayOffModal = function(rid) {
   document.getElementById('day-off-modal')?.remove();
   const myName = sessionStorage.getItem('cnp-myname') || '';
+  const today = new Date().toISOString().split('T')[0];
   const overlay = document.createElement('div');
   overlay.id = 'day-off-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);overflow-y:auto;';
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;padding:28px;position:relative;">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;padding:28px;position:relative;margin:auto;">
       <button onclick="document.getElementById('day-off-modal').remove()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:#F5F5F0;font-size:1rem;cursor:pointer;">✕</button>
       <div style="font-size:1.1rem;font-weight:800;color:var(--ink);margin-bottom:4px;">📅 Request Day Off</div>
       <div style="font-size:0.82rem;color:var(--ink-muted);margin-bottom:20px;">Submit a request to Chef Nek for approval</div>
@@ -12384,13 +12385,21 @@ window.showDayOffModal = function(rid) {
           style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
       </div>
 
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Date Requested</label>
-        <input type="date" id="dor-date" min="${new Date().toISOString().split('T')[0]}"
-          style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Dates Requested</label>
+        <div id="dor-dates-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+          <div class="dor-date-row" style="display:flex;gap:8px;align-items:center;">
+            <input type="date" class="dor-date-input" min="${today}"
+              style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+            <button onclick="removeDorDate(this)" style="width:32px;height:32px;border-radius:8px;border:none;background:#FCEBEB;color:#A32D2D;font-size:1rem;cursor:pointer;flex-shrink:0;">✕</button>
+          </div>
+        </div>
+        <button onclick="addDorDate('${today}')" style="width:100%;height:36px;border-radius:10px;border:1.5px dashed #C17F3A;background:rgba(242,166,35,0.06);color:#C17F3A;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">
+          + Add Another Date
+        </button>
       </div>
 
-      <div style="margin-bottom:20px;">
+      <div style="margin-bottom:20px;margin-top:14px;">
         <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Reason (optional)</label>
         <input type="text" id="dor-reason" placeholder="e.g. Family event, medical appointment..."
           style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border);padding:0 14px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
@@ -12403,12 +12412,31 @@ window.showDayOffModal = function(rid) {
   document.body.appendChild(overlay);
 };
 
+window.addDorDate = function(today) {
+  const list = document.getElementById('dor-dates-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'dor-date-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  row.innerHTML = `
+    <input type="date" class="dor-date-input" min="${today}"
+      style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.875rem;outline:none;box-sizing:border-box;">
+    <button onclick="removeDorDate(this)" style="width:32px;height:32px;border-radius:8px;border:none;background:#FCEBEB;color:#A32D2D;font-size:1rem;cursor:pointer;flex-shrink:0;">✕</button>`;
+  list.appendChild(row);
+};
+
+window.removeDorDate = function(btn) {
+  const rows = document.querySelectorAll('.dor-date-row');
+  if (rows.length <= 1) { showToast('Need at least one date','error'); return; }
+  btn.closest('.dor-date-row').remove();
+};
+
 window.submitDayOff = async function(rid) {
   const name = document.getElementById('dor-name')?.value.trim();
-  const date = document.getElementById('dor-date')?.value;
+  const dates = [...document.querySelectorAll('.dor-date-input')].map(i => i.value).filter(Boolean);
   const reason = document.getElementById('dor-reason')?.value.trim();
   if (!name) { showToast('Enter your name','error'); return; }
-  if (!date) { showToast('Select a date','error'); return; }
+  if (!dates.length) { showToast('Select at least one date','error'); return; }
 
   const btn = document.querySelector('#day-off-modal button[onclick^="submitDayOff"]');
   if (btn) { btn.disabled=true; btn.textContent='Submitting...'; }
@@ -12417,13 +12445,14 @@ window.submitDayOff = async function(rid) {
     await addDoc(collection(db,'dayOffRequests'), {
       restaurantId: rid,
       employeeName: name,
-      date,
+      dates,
+      date: dates[0],
       reason: reason || '',
       status: 'pending',
       createdAt: serverTimestamp()
     });
     document.getElementById('day-off-modal')?.remove();
-    showToast('✅ Day off request sent to Chef Nek!');
+    showToast(`✅ Day off request sent! (${dates.length} day${dates.length>1?'s':''})`);
   } catch(e) {
     showToast('Error submitting request','error');
     if (btn) { btn.disabled=false; btn.textContent='📅 Submit Request'; }
