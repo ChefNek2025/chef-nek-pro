@@ -5019,9 +5019,9 @@ async function loadInvCategories(userData) {
             ${items.map((item, idx) => {
               const isLow = item.currentQty <= item.alertAt;
               const isOut = item.currentQty === 0;
-              const rowBg = isOut ? 'background:#FCEBEB;' : isLow ? 'background:#FFF8ED;' : idx%2===0 ? `background:${catBg};` : 'background:#fff;';
+              const rowBg = isOut ? 'background:#FCEBEB' : isLow ? 'background:#FFF8ED' : idx%2===0 ? 'background:'+catBg : 'background:#fff';
               return `
-                <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg}border-left:3px solid ${catColor};">
+                <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg};border-left:3px solid ${catColor};">
                   <div>
                     <div class="inv-item-name">
                       ${item.frozen ? '<span style="font-size:0.75rem;background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;margin-right:6px;">❄️ Frozen</span>' : ''}
