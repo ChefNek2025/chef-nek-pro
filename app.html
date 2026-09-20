@@ -436,8 +436,6 @@
   .inv-cat-body { border-top:0.5px solid var(--border); display:none; }
   .inv-item-row { display:grid; grid-template-columns:1fr 100px 120px 80px; gap:8px; align-items:center; padding:10px 18px; border-bottom:0.5px solid var(--border); }
   .inv-item-row:last-child { border-bottom:none; }
-  .inv-item-row.low-stock { background:#FFF8EC; border-left:3px solid var(--amber); }
-  .inv-item-row.critical-stock { background:#FCEBEB; border-left:3px solid var(--red); }
   .inv-item-name { font-size:0.875rem; color:var(--ink); font-weight:500; }
   .inv-item-unit { font-size:0.8rem; color:var(--ink-muted); text-align:center; }
   .inv-qty-controls { display:flex; align-items:center; gap:6px; justify-content:center; }
@@ -5019,9 +5017,10 @@ async function loadInvCategories(userData) {
             ${items.map((item, idx) => {
               const isLow = item.currentQty <= item.alertAt;
               const isOut = item.currentQty === 0;
-              const rowBg = isOut ? 'background:#FCEBEB' : isLow ? 'background:#FFF8ED' : 'background:'+catBg;
+              const rowBg = isOut ? '#FCEBEB' : isLow ? '#FFF8ED' : catBg;
+              const leftColor = isOut ? '#A32D2D' : isLow ? 'var(--amber)' : catColor;
               return `
-                <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg};border-left:3px solid ${catColor};">
+                <div class="inv-item-row" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="background:${rowBg};border-left:3px solid ${leftColor};">
                   <div>
                     <div class="inv-item-name">
                       ${item.frozen ? '<span style="font-size:0.75rem;background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;margin-right:6px;">❄️ Frozen</span>' : ''}
