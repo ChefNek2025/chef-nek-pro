@@ -7705,7 +7705,7 @@ window.loadCloverWidget = async function(merchantId, apiToken, containerId) {
 window.syncCloverMenu = async function(merchantId, apiToken) {
   showToast('Syncing menu from Clover...');
   try {
-    const url = CLOVER_BASE + merchantId + '/items?limit=200';
+    const url = CLOVER_BASE + merchantId + '/items?expand=categories&limit=200';
     const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + apiToken } });
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
@@ -7729,6 +7729,14 @@ window.syncCloverMenu = async function(merchantId, apiToken) {
   }
 }
 
+window.cloverSyncSelectCategory = function(cat) {
+  document.querySelectorAll('.clover-sync-cb').forEach(cb => {
+    if (cat === '__all__') cb.checked = true;
+    else if (cat === '__none__') cb.checked = false;
+    else cb.checked = (cb.dataset.cat === cat);
+  });
+};
+
 function showCloverSyncModal(items, restaurantId) {
   const existing = document.getElementById('clover-sync-modal');
   if (existing) existing.remove();
@@ -7737,18 +7745,29 @@ function showCloverSyncModal(items, restaurantId) {
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
   const box = document.createElement('div');
   box.style.cssText = 'background:#fff;border-radius:24px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;';
+
+  const categories = [...new Set(items.map(i => i.categories?.elements?.[0]?.name || 'Uncategorized'))].sort();
+
   box.innerHTML = '<div style="background:linear-gradient(135deg,#0A6B3A,#12A05A);padding:22px 28px;border-radius:24px 24px 0 0;">'
     + '<div style="font-size:1.1rem;font-weight:700;color:#fff;">Sync Clover items</div>'
     + '<div style="font-size:0.8rem;color:rgba(255,255,255,0.6);margin-top:2px;">' + items.length + ' new items found in Clover</div>'
     + '</div>'
     + '<div style="padding:20px 24px;">'
-    + '<div style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:14px;">Select which items to add to your Recipe Book:</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;">'
-    + items.map((item,i) => '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cream);border-radius:10px;cursor:pointer;">'
-      + '<input type="checkbox" class="clover-sync-cb" data-name="' + (item.name||'').replace(/"/g,'&quot;') + '" data-price="' + ((item.price||0)/100).toFixed(2) + '" data-cat="' + (item.categories?.elements?.[0]?.name||'Menu').replace(/"/g,'&quot;') + '" checked style="accent-color:#0A6B3A;width:16px;height:16px;">'
+    + '<div style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:10px;">Select a category to sync, or pick items individually:</div>'
+    + '<div id="clover-cat-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">'
+    + '<button type="button" onclick="cloverSyncSelectCategory(\'__all__\')" style="height:30px;padding:0 12px;border-radius:100px;border:1.5px solid var(--border);background:transparent;color:var(--ink-soft);font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;">All</button>'
+    + '<button type="button" onclick="cloverSyncSelectCategory(\'__none__\')" style="height:30px;padding:0 12px;border-radius:100px;border:1.5px solid var(--border);background:transparent;color:var(--ink-soft);font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;">None</button>'
+    + categories.map(cat => '<button type="button" onclick="cloverSyncSelectCategory(\'' + cat.replace(/'/g,"\\'") + '\')" style="height:30px;padding:0 12px;border-radius:100px;border:1.5px solid #0A6B3A;background:transparent;color:#0A6B3A;font-family:var(--font-body);font-size:0.75rem;font-weight:600;cursor:pointer;">' + cat + '</button>').join('')
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;">'
+    + items.map((item,i) => {
+        const cat = item.categories?.elements?.[0]?.name || 'Uncategorized';
+        return '<label class="clover-sync-row" data-cat="' + cat.replace(/"/g,'&quot;') + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cream);border-radius:10px;cursor:pointer;">'
+      + '<input type="checkbox" class="clover-sync-cb" data-name="' + (item.name||'').replace(/"/g,'&quot;') + '" data-price="' + ((item.price||0)/100).toFixed(2) + '" data-cat="' + cat.replace(/"/g,'&quot;') + '" checked style="accent-color:#0A6B3A;width:16px;height:16px;">'
       + '<div style="flex:1;"><div style="font-size:0.875rem;font-weight:500;color:var(--ink);">' + item.name + '</div>'
-      + (item.price ? '<div style="font-size:0.75rem;color:var(--ink-muted);">$' + (item.price/100).toFixed(2) + '</div>' : '')
-      + '</div></label>').join('')
+      + '<div style="font-size:0.72rem;color:var(--ink-muted);">' + cat + (item.price ? ' · $' + (item.price/100).toFixed(2) : '') + '</div>'
+      + '</div></label>';
+      }).join('')
     + '</div></div>';
 
   const footer = document.createElement('div');
