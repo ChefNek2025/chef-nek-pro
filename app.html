@@ -5090,7 +5090,7 @@ async function renderHireTrain(main, userData) {
   window._htTab = window._htTab || 'pipeline';
   const tabBar = document.createElement('div');
   tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;';
-  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'}].forEach(t=>{
+  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'},{id:'reviews',label:'⭐ Reviews'}].forEach(t=>{
     const btn = document.createElement('button');
     btn.id = 'ht-tab-'+t.id;
     btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;'
@@ -5109,7 +5109,7 @@ async function renderHireTrain(main, userData) {
 }
 
 async function htRenderTab(body) {
-  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'}].forEach(t=>{
+  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'},{id:'reviews'}].forEach(t=>{
     const btn = document.getElementById('ht-tab-'+t.id);
     if (!btn) return;
     btn.style.background  = window._htTab===t.id?'var(--ink)':'transparent';
@@ -5125,7 +5125,73 @@ async function htRenderTab(body) {
   if (window._htTab==='pipeline')  htRenderPipeline(el, all);
   else if (window._htTab==='certified') htRenderCertified(el, all);
   else if (window._htTab==='placed') htRenderPlaced(el, all);
-  else htRenderTrainingSchedule(el, all);
+  else if (window._htTab==='training') htRenderTrainingSchedule(el, all);
+  else if (window._htTab==='reviews') await htRenderReviews(el);
+}
+
+async function htRenderReviews(el) {
+  el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  const snap = await getDocs(collection(db,'reviews'));
+  const reviews = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  el.innerHTML = '';
+
+  if (!reviews.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;margin-bottom:12px;">⭐</div><div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:8px;">No reviews yet</div><div style="font-size:0.82rem;color:var(--ink-muted);">Reviews submitted from the "Leave a Review" button on your landing page will show up here.</div></div>';
+    return;
+  }
+
+  const pending = reviews.filter(r=>r.status!=='published');
+  const published = reviews.filter(r=>r.status==='published');
+
+  const statsRow = document.createElement('div');
+  statsRow.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;';
+  statsRow.innerHTML = '<div style="background:#FFF8ED;border-radius:12px;padding:14px;text-align:center;border:1px solid #F2A62330;"><div style="font-size:1.4rem;font-weight:800;color:#F2A623;">'+pending.length+'</div><div style="font-size:0.65rem;color:#F2A623;font-weight:600;">⏳ Pending Review</div></div>'
+    + '<div style="background:#EDFAF4;border-radius:12px;padding:14px;text-align:center;border:1px solid #1D9E7530;"><div style="font-size:1.4rem;font-weight:800;color:#1D9E75;">'+published.length+'</div><div style="font-size:0.65rem;color:#1D9E75;font-weight:600;">✅ Published</div></div>';
+  el.appendChild(statsRow);
+
+  reviews.forEach(r => el.appendChild(htReviewCard(r)));
+}
+
+function htReviewCard(r) {
+  const card = document.createElement('div');
+  const isPub = r.status === 'published';
+  card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;';
+  const stars = '★'.repeat(r.rating||0) + '☆'.repeat(5-(r.rating||0));
+  const typeLabel = r.type === 'program' ? '🎓 Trainee review' : '🍽️ Restaurant review';
+  card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">'
+    + '<div><div style="font-weight:700;font-size:0.9rem;color:var(--ink);">'+(r.name||'').replace(/</g,'&lt;')+'</div>'
+    + '<div style="font-size:0.72rem;color:var(--ink-muted);">'+typeLabel+' · '+(r.role||'').replace(/</g,'&lt;')+'</div></div>'
+    + '<div style="font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap;background:'+(isPub?'#EDFAF4':'#FFF8ED')+';color:'+(isPub?'#1D9E75':'#F2A623')+';">'+(isPub?'✅ Published':'⏳ Pending')+'</div>'
+    + '</div>'
+    + '<div style="color:#D4920A;font-size:0.9rem;letter-spacing:2px;margin-bottom:8px;">'+stars+'</div>'
+    + '<div style="font-size:0.85rem;color:var(--ink2);line-height:1.6;font-style:italic;">"'+(r.text||'').replace(/</g,'&lt;')+'"</div>';
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.style.cssText = 'flex:1;height:36px;border-radius:9px;border:none;font-family:var(--font-body);font-size:0.78rem;font-weight:700;cursor:pointer;background:'+(isPub?'transparent':'linear-gradient(135deg,#1D9E75,#16856A)')+';color:'+(isPub?'var(--ink-muted)':'#fff')+';'+(isPub?'border:1.5px solid var(--border);':'');
+  toggleBtn.textContent = isPub ? 'Unpublish' : '✓ Publish to landing page';
+  toggleBtn.onclick = async () => {
+    await setDoc(doc(db,'reviews',r.id),{status: isPub ? 'pending' : 'published', updatedAt: serverTimestamp()},{merge:true});
+    showToast(isPub ? 'Review unpublished' : 'Review published to landing page!');
+    htRenderTab(document.querySelector('.page-body'));
+  };
+
+  const delBtn = document.createElement('button');
+  delBtn.textContent = 'Delete';
+  delBtn.style.cssText = 'height:36px;padding:0 14px;border-radius:9px;border:1.5px solid #E5393530;background:transparent;color:#E53935;font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;';
+  delBtn.onclick = async () => {
+    if (!confirm('Delete this review permanently?')) return;
+    await deleteDoc(doc(db,'reviews',r.id));
+    showToast('Review deleted');
+    htRenderTab(document.querySelector('.page-body'));
+  };
+
+  actions.appendChild(toggleBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+  return card;
 }
 
 // Pipeline stages

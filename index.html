@@ -687,9 +687,60 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
 
         <p style="text-align:center;font-size:0.75rem;color:rgba(255,255,255,0.25);margin-top:14px;">No commitment. Chef Nek personally reviews every request.</p>
       </div>
+
+      <div style="text-align:center;margin-top:28px;">
+        <div style="color:rgba(255,255,255,0.35);font-size:0.8rem;margin-bottom:10px;">Already worked with a Chef Nek Pro trained worker, or went through training yourself?</div>
+        <button type="button" onclick="openReviewModal()" style="height:44px;padding:0 22px;border-radius:100px;border:1.5px solid rgba(255,255,255,0.25);background:transparent;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;"> Leave a Review</button>
+      </div>
     </div>
   </div>
 </section>
+
+<!-- REVIEW MODAL -->
+<div id="review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:22px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;">
+    <div style="background:linear-gradient(135deg,#0B2818,#0A6B3A);padding:24px 26px;border-radius:22px 22px 0 0;position:relative;">
+      <button type="button" onclick="closeReviewModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.3rem;cursor:pointer;line-height:1;">×</button>
+      <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:#fff;">Leave a Review</div>
+      <div style="font-size:0.8rem;color:rgba(255,255,255,0.55);margin-top:4px;">This stays private until Chef Nek chooses to publish it.</div>
+    </div>
+    <div style="padding:22px 26px;">
+      <div id="rv-type-picker" style="display:flex;gap:8px;margin-bottom:18px;">
+        <button type="button" id="rv-type-worker-btn" onclick="setReviewType('worker')" style="flex:1;height:56px;border-radius:12px;border:1.5px solid #1D9E75;background:#EDFAF4;color:#0A5C3F;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;line-height:1.3;">I hired a Chef Nek Pro certified worker</button>
+        <button type="button" id="rv-type-program-btn" onclick="setReviewType('program')" style="flex:1;height:56px;border-radius:12px;border:1.5px solid #E4DDD0;background:transparent;color:#6b6357;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;line-height:1.3;">I went through the training</button>
+      </div>
+
+      <label style="display:block;font-size:0.75rem;font-weight:700;color:#3a352c;margin-bottom:6px;">Your rating</label>
+      <div id="rv-stars" style="display:flex;gap:6px;margin-bottom:16px;"></div>
+
+      <label style="display:block;font-size:0.75rem;font-weight:700;color:#3a352c;margin-bottom:6px;">Your name</label>
+      <input id="rv-name" type="text" placeholder="Full name" style="width:100%;height:44px;border-radius:10px;border:1px solid #E4DDD0;padding:0 14px;font-family:'DM Sans',sans-serif;font-size:0.88rem;margin-bottom:14px;box-sizing:border-box;">
+
+      <label id="rv-role-label" style="display:block;font-size:0.75rem;font-weight:700;color:#3a352c;margin-bottom:6px;">Restaurant name</label>
+      <input id="rv-role" type="text" placeholder="e.g. Black Lion Kitchen" style="width:100%;height:44px;border-radius:10px;border:1px solid #E4DDD0;padding:0 14px;font-family:'DM Sans',sans-serif;font-size:0.88rem;margin-bottom:14px;box-sizing:border-box;">
+
+      <label style="display:block;font-size:0.75rem;font-weight:700;color:#3a352c;margin-bottom:6px;">Your review</label>
+      <textarea id="rv-text" rows="4" placeholder="How was your experience?" style="width:100%;border-radius:10px;border:1px solid #E4DDD0;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:0.88rem;margin-bottom:6px;box-sizing:border-box;resize:vertical;"></textarea>
+
+      <div id="rv-error" style="display:none;background:rgba(229,57,53,0.1);border:1px solid rgba(229,57,53,0.3);color:#C4362F;font-size:0.78rem;padding:8px 12px;border-radius:8px;margin-bottom:6px;"></div>
+      <div id="rv-success" style="display:none;text-align:center;padding:20px 0;">
+        <div style="font-size:2rem;margin-bottom:8px;"></div>
+        <div style="font-weight:700;color:#0A5C3F;">Thank you!</div>
+        <div style="font-size:0.82rem;color:#6b6357;margin-top:4px;">Your review has been sent to Chef Nek.</div>
+      </div>
+
+      <button id="rv-submit" type="button" onclick="submitReview()" style="width:100%;height:48px;border-radius:12px;border:none;background:linear-gradient(135deg,#1D9E75,#16856A);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;margin-top:8px;">Submit Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- MORE REVIEWS (published only, hidden if none) -->
+<div id="published-reviews-sec" style="display:none;background:var(--cream);padding:60px 6%;">
+  <div style="max-width:1000px;margin:0 auto;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.6rem;text-align:center;color:var(--ink);margin-bottom:32px;">What People Are Saying</h3>
+    <div id="published-reviews-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;"></div>
+  </div>
+</div>
 
 <!-- FOOTER -->
 <footer>
@@ -711,7 +762,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
 // ── Firebase Staff Request ─────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, serverTimestamp, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCbX-lJSCX2XU4UKOA-6RvvOdBiU_CFTl0",
@@ -727,6 +778,128 @@ try {
   const app = initializeApp(firebaseConfig, 'landing');
   db = getFirestore(app);
 } catch(e) {}
+
+window._reviewType = 'worker';
+window._reviewRating = 0;
+
+function rvBuildStars() {
+  const wrap = document.getElementById('rv-stars');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (let i=1;i<=5;i++) {
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.textContent = i <= window._reviewRating ? '\u2605' : '\u2606';
+    star.style.cssText = 'background:none;border:none;font-size:1.7rem;cursor:pointer;color:'+(i<=window._reviewRating?'#D4920A':'#D8D2C4')+';padding:0;line-height:1;';
+    star.onclick = () => { window._reviewRating = i; rvBuildStars(); };
+    wrap.appendChild(star);
+  }
+}
+
+window.setReviewType = function(type) {
+  window._reviewType = type;
+  const workerBtn = document.getElementById('rv-type-worker-btn');
+  const programBtn = document.getElementById('rv-type-program-btn');
+  const roleLabel = document.getElementById('rv-role-label');
+  const roleInput = document.getElementById('rv-role');
+  if (type === 'worker') {
+    workerBtn.style.borderColor = '#1D9E75'; workerBtn.style.background = '#EDFAF4'; workerBtn.style.color = '#0A5C3F';
+    programBtn.style.borderColor = '#E4DDD0'; programBtn.style.background = 'transparent'; programBtn.style.color = '#6b6357';
+    roleLabel.textContent = 'Restaurant name';
+    roleInput.placeholder = 'e.g. Black Lion Kitchen';
+  } else {
+    programBtn.style.borderColor = '#1D9E75'; programBtn.style.background = '#EDFAF4'; programBtn.style.color = '#0A5C3F';
+    workerBtn.style.borderColor = '#E4DDD0'; workerBtn.style.background = 'transparent'; workerBtn.style.color = '#6b6357';
+    roleLabel.textContent = 'Position trained for';
+    roleInput.placeholder = 'e.g. Line Cook';
+  }
+};
+
+window.openReviewModal = function() {
+  window._reviewType = 'worker';
+  window._reviewRating = 0;
+  document.getElementById('rv-name').value = '';
+  document.getElementById('rv-role').value = '';
+  document.getElementById('rv-text').value = '';
+  document.getElementById('rv-error').style.display = 'none';
+  document.getElementById('rv-success').style.display = 'none';
+  document.getElementById('rv-submit').style.display = 'block';
+  document.getElementById('rv-type-picker').style.display = 'flex';
+  setReviewType('worker');
+  rvBuildStars();
+  document.getElementById('review-modal').style.display = 'flex';
+};
+
+window.closeReviewModal = function() {
+  document.getElementById('review-modal').style.display = 'none';
+};
+
+window.submitReview = async function() {
+  const name = document.getElementById('rv-name').value.trim();
+  const role = document.getElementById('rv-role').value.trim();
+  const text = document.getElementById('rv-text').value.trim();
+  const errEl = document.getElementById('rv-error');
+  const btn = document.getElementById('rv-submit');
+
+  if (!name || !role || !text || window._reviewRating === 0) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Please add your name, rating, and a short review.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  errEl.style.display = 'none';
+
+  try {
+    if (db) {
+      await addDoc(collection(db, 'reviews'), {
+        type: window._reviewType,
+        name,
+        role,
+        rating: window._reviewRating,
+        text,
+        status: 'pending',
+        source: 'landing-page',
+        createdAt: serverTimestamp()
+      });
+    }
+    document.getElementById('rv-type-picker').style.display = 'none';
+    document.querySelectorAll('#review-modal label, #review-modal input, #review-modal textarea, #review-modal #rv-stars').forEach(el => el.style.display = 'none');
+    btn.style.display = 'none';
+    document.getElementById('rv-success').style.display = 'block';
+  } catch(err) {
+    console.error(err);
+    errEl.style.display = 'block';
+    errEl.textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Submit Review';
+  }
+};
+
+async function loadPublishedReviews() {
+  if (!db) return;
+  try {
+    const q = query(collection(db, 'reviews'), where('status','==','published'), orderBy('createdAt','desc'), limit(9));
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    const grid = document.getElementById('published-reviews-grid');
+    const sec = document.getElementById('published-reviews-sec');
+    grid.innerHTML = snap.docs.map(d => {
+      const r = d.data();
+      const stars = '\u2605'.repeat(r.rating||5) + '\u2606'.repeat(5-(r.rating||5));
+      const roleLine = r.type === 'program' ? 'Born to Kitchen Trainee' : r.role;
+      return '<div style="background:#fff;border-radius:16px;padding:22px;border:0.5px solid var(--border);">'
+        + '<div style="color:#D4920A;font-size:0.95rem;letter-spacing:2px;margin-bottom:10px;">' + stars + '</div>'
+        + '<div style="font-size:0.88rem;color:var(--ink2);line-height:1.6;margin-bottom:14px;font-style:italic;">"' + r.text.replace(/</g,'&lt;') + '"</div>'
+        + '<div style="font-weight:700;font-size:0.82rem;color:var(--ink);">' + r.name.replace(/</g,'&lt;') + '</div>'
+        + '<div style="font-size:0.72rem;color:var(--muted);">' + roleLine.replace(/</g,'&lt;') + '</div>'
+        + '</div>';
+    }).join('');
+    sec.style.display = 'block';
+  } catch(e) { console.error('Could not load reviews', e); }
+}
+setTimeout(loadPublishedReviews, 600);
 
 window.submitStaffRequest = async function() {
   const restaurant = document.getElementById('sf-restaurant')?.value.trim();
