@@ -434,11 +434,11 @@
   .inv-cat-chevron { font-size:18px; color:var(--ink-muted); transition:transform 0.2s; font-weight:300; }
   .inv-cat-chevron.open { transform:rotate(90deg); color:var(--green); }
   .inv-cat-body { border-top:0.5px solid var(--border); display:none; }
-  .inv-item-row { display:grid; grid-template-columns:1fr 100px 120px 80px; gap:8px; align-items:center; padding:10px 18px; border-bottom:0.5px solid var(--border); }
+  .inv-item-row { display:grid; grid-template-columns:minmax(0,1fr) 100px 120px 80px; gap:8px; align-items:center; padding:10px 18px; border-bottom:0.5px solid var(--border); }
   .inv-item-row:last-child { border-bottom:none; }
   .inv-item-row.low-stock { background:#FFF8EC; border-left:3px solid var(--amber); }
   .inv-item-row.critical-stock { background:#FCEBEB; border-left:3px solid var(--red); }
-  .inv-item-name { font-size:0.875rem; color:var(--ink); font-weight:500; }
+  .inv-item-name { font-size:0.875rem; color:var(--ink); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .inv-item-unit { font-size:0.8rem; color:var(--ink-muted); text-align:center; }
   .inv-qty-controls { display:flex; align-items:center; gap:6px; justify-content:center; }
   .inv-qty-btn { width:26px; height:26px; border-radius:6px; border:0.5px solid var(--border); background:var(--cream); color:var(--ink); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -5023,11 +5023,11 @@ async function loadInvCategories(userData) {
             ${items.map((item, idx) => {
               const isLow = item.currentQty <= item.alertAt;
               const isOut = item.currentQty === 0;
-              const rowBg = isOut ? 'background:#FFCDD2;' : isLow ? 'background:#FFF59D;' : idx%2===0 ? `background:${catBg};` : 'background:#FFF9C4;';
+              const rowBg = isOut ? 'background:#FFCDD2;' : isLow ? 'background:#FFF59D;' : idx%2===0 ? `background:${catBg};` : 'background:#F3F3EF;';
               return `
                 <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg}border-left:3px solid ${catColor};">
                   <div>
-                    <div class="inv-item-name">
+                    <div class="inv-item-name" title="${item.name}">
                       ${item.frozen ? '<span style="font-size:0.75rem;background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;margin-right:6px;">❄️ Frozen</span>' : ''}
                       ${item.name}
                     </div>
