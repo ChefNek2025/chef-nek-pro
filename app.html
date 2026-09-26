@@ -435,6 +435,14 @@
   .inv-cat-chevron.open { transform:rotate(90deg); color:var(--green); }
   .inv-cat-body { border-top:0.5px solid var(--border); display:none; }
   .inv-item-row { display:grid; grid-template-columns:minmax(0,1fr) 100px 120px 80px; gap:8px; align-items:center; padding:10px 18px; border-bottom:0.5px solid var(--border); }
+  @media(max-width:640px) {
+    .inv-item-row { grid-template-columns:1fr 1fr 1fr; grid-template-areas:"name name name" "unit qty status"; row-gap:8px; padding:12px 14px; }
+    .inv-item-namecell { grid-area:name; }
+    .inv-item-unit { grid-area:unit; text-align:left; }
+    .inv-qty-controls { grid-area:qty; }
+    .inv-item-statuscell { grid-area:status; text-align:right; }
+    .inv-header-row { display:none; }
+  }
   .inv-item-row:last-child { border-bottom:none; }
   .inv-item-row.low-stock { background:#FFF8EC; border-left:3px solid var(--amber); }
   .inv-item-row.critical-stock { background:#FCEBEB; border-left:3px solid var(--red); }
@@ -5026,7 +5034,7 @@ async function loadInvCategories(userData) {
               const rowBg = isOut ? 'background:#FFCDD2;' : isLow ? 'background:#FFF59D;' : idx%2===0 ? `background:${catBg};` : 'background:#F3F3EF;';
               return `
                 <div class="inv-item-row ${isOut ? 'critical-stock' : isLow ? 'low-stock' : ''}" id="inv-row-${item.id}" data-alert-at="${item.alertAt||0}" style="${rowBg}border-left:3px solid ${catColor};">
-                  <div>
+                  <div class="inv-item-namecell">
                     <div class="inv-item-name" title="${item.name}">
                       ${item.frozen ? '<span style="font-size:0.75rem;background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;margin-right:6px;">❄️ Frozen</span>' : ''}
                       ${item.name}
@@ -5057,7 +5065,7 @@ async function loadInvCategories(userData) {
                     <span class="inv-qty-val" id="inv-qty-val-${item.id}" data-qty="${item.currentQty||0}" style="color:${isOut?'var(--red)':isLow?'var(--amber)':'var(--ink)'};font-weight:${isOut||isLow?'700':'500'};">${item.currentQty||0}</span>
                     <button class="inv-qty-btn" id="inv-plus-${item.id}" onclick="invStep('${item.id}', 1)">+</button>
                   </div>
-                  <div>
+                  <div class="inv-item-statuscell">
                     <div id="inv-counted-${item.id}" style="margin-bottom:4px;"></div>
                     <span class="inv-status" id="inv-status-${item.id}" style="background:${isOut?'#FCEBEB':isLow?'var(--amber-light)':'var(--green-light)'};color:${isOut?'#A32D2D':isLow?'#854F0B':'#0F6E56'};">
                       ${isOut ? '🚨 Out' : isLow ? '⚠ Low' : '✓ OK'}
