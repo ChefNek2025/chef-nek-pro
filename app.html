@@ -7771,7 +7771,7 @@ window.openStationDish = function(id) {
   body.innerHTML += '<div id="sg-cols-'+dish.id+'" style="margin-top:18px;"></div>';
 
   function renderCols() {
-    const wrap = document.getElementById('sg-cols-'+dish.id);
+    const wrap = body.querySelector('#sg-cols-'+dish.id) || document.getElementById('sg-cols-'+dish.id);
     if (!wrap) return;
     if (!columns.length) {
       wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--ink-muted);font-style:italic;padding:8px 0;">No ingredients added yet' + (isAdmin ? ' — add one below' : ' — ask Chef Nek to add them') + '</div>';
@@ -7831,7 +7831,7 @@ window.openStationDish = function(id) {
 
     // populate section picker
     function refreshColPicker() {
-      const sel = document.getElementById('sg-col-pick-'+dish.id);
+      const sel = body.querySelector('#sg-col-pick-'+dish.id) || document.getElementById('sg-col-pick-'+dish.id);
       if (!sel) return;
       sel.innerHTML = '<option value="">Pick section...</option>'
         + columns.map((c,i)=>`<option value="${i}">${c.title||'Section '+(i+1)}</option>`).join('');
