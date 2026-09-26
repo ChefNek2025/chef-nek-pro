@@ -7652,7 +7652,7 @@ function renderStationList(dishes) {
                 + '<span style="font-size:0.75rem;color:var(--ink-soft);">' + label + '</span>'
                 + '</div>';
             }).join('')
-          + (ings.length > 5 ? '<div style="font-size:0.72rem;color:var(--ink-muted);margin-top:2px;">+' + (ings.length-5) + ' more...</div>' : '')
+          + (ings.length > 5 ? '<div onclick="event.stopPropagation();openStationDish(\'' + dish.id + '\')" style="font-size:0.72rem;color:var(--green);font-weight:700;margin-top:2px;cursor:pointer;text-decoration:underline;">+' + (ings.length-5) + ' more — tap to see full recipe</div>' : '')
           + '</div>';
       }
       if (dish.steps && dish.steps.length) {
