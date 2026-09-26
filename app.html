@@ -7568,17 +7568,17 @@ window.doImportRecipes = async function(rid) {
   let count = 0;
   for (const cb of checkboxes) {
     try {
-      // Save only name, photo and ingredients array — no steps/description
       let ingredientsArr = [];
       try {
         ingredientsArr = JSON.parse(cb.getAttribute('data-ingredients') || '[]');
       } catch(e) {}
+      const importedNotes = cb.getAttribute('data-notes') || '';
 
       await addDoc(collection(db,'stationDishes'), {
         restaurantId: rid,
         name: cb.getAttribute('data-name'),
         category: cb.getAttribute('data-category') || 'General',
-        steps: '',
+        steps: importedNotes,
         ingredients: ingredientsArr,
         photoUrl: cb.getAttribute('data-photo') || '',
         importedFromRecipe: true,
@@ -7591,6 +7591,17 @@ window.doImportRecipes = async function(rid) {
   document.getElementById('import-recipe-modal')?.remove();
   showToast('✅ ' + count + ' recipe' + (count>1?'s':'') + ' imported to Station Guide!');
   loadStationGuide(window._userData || {});
+};
+
+window.resyncStationDishFromRecipe = async function(dishId, dishName) {
+  const rid = currentRestaurantId();
+  const recipeSnap = await getDocs(query(collection(db,'recipes'), where('restaurantId','==',rid)));
+  const match = recipeSnap.docs.map(d=>d.data()).find(r => (r.name||'').toLowerCase() === (dishName||'').toLowerCase());
+  if (!match || !match.notes) { showToast('No instructions found on the matching recipe','error'); return; }
+  await setDoc(doc(db,'stationDishes',dishId), { steps: match.notes }, { merge:true });
+  showToast(' Instructions pulled in! Reopen the dish to see them.');
+  loadStationGuide(window._userData || {});
+  document.querySelectorAll('[style*="position:fixed"][style*="z-index:99999"]').forEach(m => m.remove());
 };
 
 window.filterSG = function(cat) {
@@ -7745,6 +7756,9 @@ window.openStationDish = function(id) {
   body.style.padding = '24px';
   body.innerHTML = '<div style="font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:var(--ink);margin-bottom:4px;">' + dish.name + '</div>';
   if (dish.category) body.innerHTML += '<span style="font-size:0.72rem;background:var(--amber-light);color:#854F0B;padding:2px 10px;border-radius:20px;">' + dish.category + '</span>';
+  if (dish.importedFromRecipe && !dish.steps && isAdmin) {
+    body.innerHTML += '<div style="margin-top:10px;"><button onclick="resyncStationDishFromRecipe(\'' + dish.id + '\',\'' + dish.name.replace(/'/g,"\\'") + '\')" style="height:34px;padding:0 14px;border-radius:8px;border:1.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-family:var(--font-body);font-size:0.78rem;font-weight:700;cursor:pointer;"> Pull instructions from Recipe Book</button></div>';
+  }
   if (dish.prepTime) body.innerHTML += ' <span style="font-size:0.75rem;color:var(--ink-muted);">Prep: ' + dish.prepTime + '</span>';
   // ── MULTI-COLUMN INGREDIENTS ──────────────────────────
   // columns = [{title:'Pancake Batter', ingredients:[...]}, ...]
