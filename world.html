@@ -91,6 +91,12 @@ img{display:block;max-width:100%}
 /* swipe affordance hint */
 .swipe-hint{text-align:center;color:rgba(255,255,255,0.35);font-size:0.75rem;margin-top:10px;display:none;}
 @media(max-width:680px){.swipe-hint{display:block;}}
+
+/* ── COUNTRY FILTER ── */
+.country-filter{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
+.country-chip{height:34px;padding:0 16px;border-radius:100px;border:1.5px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.2s,border-color 0.2s,color 0.2s;}
+.country-chip:hover{border-color:var(--green);color:#fff;}
+.country-chip.active{background:var(--green);border-color:var(--green);color:#fff;}
 </style>
 </head>
 <body>
@@ -108,6 +114,7 @@ img{display:block;max-width:100%}
 </div>
 
 <div class="book-wrap">
+  <div class="country-filter" id="country-filter"></div>
   <div class="book" id="book">
     <div style="padding:80px 30px;text-align:center;color:var(--muted);">Loading recipes…</div>
   </div>
@@ -142,8 +149,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig, 'world');
 const db = getFirestore(app);
 
+let allDishes = [];
 let dishes = [];
 let current = 0;
+let activeCountry = 'All';
 
 function esc(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -219,15 +228,37 @@ document.getElementById('book').addEventListener('touchend', e => {
   touchStartX = null;
 }, {passive:true});
 
+function renderCountryFilter() {
+  const filterEl = document.getElementById('country-filter');
+  if (!filterEl) return;
+  if (!allDishes.length) { filterEl.innerHTML = ''; return; }
+  const countries = Array.from(new Set(allDishes.map(d => d.country).filter(Boolean))).sort();
+  const chips = ['All', ...countries];
+  filterEl.innerHTML = chips.map(c =>
+    `<button class="country-chip ${activeCountry===c?'active':''}" onclick="filterByCountry('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`
+  ).join('');
+}
+
+window.filterByCountry = function(country) {
+  activeCountry = country;
+  dishes = country === 'All' ? allDishes : allDishes.filter(d => d.country === country);
+  current = 0;
+  renderCountryFilter();
+  renderBook();
+}
+
 async function loadDishes() {
   try {
     const fetchPromise = getDocs(query(collection(db, 'worldRecipes'), orderBy('order', 'asc')));
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
     const snap = await Promise.race([fetchPromise, timeoutPromise]);
-    dishes = snap.docs.map(d => d.data());
+    allDishes = snap.docs.map(d => d.data());
+    dishes = allDishes;
   } catch(e) {
+    allDishes = [];
     dishes = [];
   }
+  renderCountryFilter();
   renderBook();
 }
 

@@ -16999,6 +16999,7 @@ function renderWorldRecipes(main, userData) {
     </div>
     <div class="page-body">
       <p style="font-size:0.8rem;color:var(--ink-soft);margin-bottom:16px;">💡 "Load Starter Recipes" fills in 7 complete dishes (ingredients + steps) in one click — then just tap Edit on each to add your own photo.</p>
+      <div id="world-recipes-filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div id="world-recipes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">Loading…</div>
     </div>
   `;
@@ -17011,20 +17012,51 @@ window.copyWorldRecipesLink = function() {
     .catch(() => showToast('Could not copy link'));
 }
 
+window._worldRecipeDishes = [];
+window._worldRecipeFilter = 'All';
+
 async function loadWorldRecipes() {
   const el = document.getElementById('world-recipes-list');
   if (!el) return;
   try {
     const snap = await getDocs(query(collection(db,'worldRecipes'), orderBy('order','asc')));
     const dishes = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    if (!dishes.length) {
-      el.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-soft);padding:30px;">No dishes yet. Click "+ Add Dish" to start building your showcase.</div>';
-      return;
-    }
-    el.innerHTML = dishes.map(d => worldRecipeCard(d)).join('');
+    window._worldRecipeDishes = dishes;
+    window._worldRecipeFilter = 'All';
+    renderWorldRecipeFilter(dishes);
+    renderWorldRecipeGrid(dishes);
   } catch(e) {
     el.innerHTML = '<div class="card" style="grid-column:1/-1;color:#A32D2D;">Could not load dishes: ' + e.message + '</div>';
   }
+}
+
+function renderWorldRecipeFilter(dishes) {
+  const filterEl = document.getElementById('world-recipes-filter');
+  if (!filterEl) return;
+  if (!dishes.length) { filterEl.innerHTML = ''; return; }
+  const countries = Array.from(new Set(dishes.map(d => d.country).filter(Boolean))).sort();
+  const chips = ['All', ...countries];
+  filterEl.innerHTML = chips.map(c => {
+    const active = window._worldRecipeFilter === c;
+    return `<button onclick="filterWorldRecipes('${c.replace(/'/g,"\\'")}')" style="height:32px;padding:0 14px;border-radius:100px;border:1.5px solid ${active?'var(--green)':'var(--border)'};background:${active?'var(--green)':'transparent'};color:${active?'#fff':'var(--ink-muted)'};font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;">${c}</button>`;
+  }).join('');
+}
+
+window.filterWorldRecipes = function(country) {
+  window._worldRecipeFilter = country;
+  renderWorldRecipeFilter(window._worldRecipeDishes);
+  const filtered = country === 'All' ? window._worldRecipeDishes : window._worldRecipeDishes.filter(d => d.country === country);
+  renderWorldRecipeGrid(filtered);
+}
+
+function renderWorldRecipeGrid(dishes) {
+  const el = document.getElementById('world-recipes-list');
+  if (!el) return;
+  if (!dishes.length) {
+    el.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-soft);padding:30px;">No dishes yet. Click "+ Add Dish" to start building your showcase.</div>';
+    return;
+  }
+  el.innerHTML = dishes.map(d => worldRecipeCard(d)).join('');
 }
 
 function worldRecipeCard(d) {
@@ -17043,12 +17075,21 @@ function worldRecipeCard(d) {
   </div>`;
 }
 
+const WORLD_RECIPE_COUNTRIES = [
+  "Ethiopia","Eritrea","Somalia","Kenya","Nigeria","South Africa","Morocco","Egypt",
+  "India","Pakistan","Thailand","Vietnam","China","Japan","South Korea","Indonesia","Philippines",
+  "Italy","France","Spain","Greece","Portugal","Turkey","Lebanon","Israel",
+  "Mexico","Peru","Brazil","Jamaica","Cuba","United States","Other"
+];
+
 window.showAddWorldRecipe = async function(id) {
   let existing = null;
   if (id) {
     try { const snap = await getDoc(doc(db,'worldRecipes',id)); if (snap.exists()) existing = {id, ...snap.data()}; } catch(e) {}
   }
   document.getElementById('wr-modal-overlay')?.remove();
+  const existingCountry = existing?.country || '';
+  const isKnownCountry = WORLD_RECIPE_COUNTRIES.slice(0,-1).includes(existingCountry);
   const modal = document.createElement('div');
   modal.id = 'wr-modal-overlay';
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;padding-top:max(20px,env(safe-area-inset-top,20px));overflow-y:auto;-webkit-overflow-scrolling:touch;backdrop-filter:blur(4px);';
@@ -17057,7 +17098,11 @@ window.showAddWorldRecipe = async function(id) {
       <h2 style="font-family:var(--font-display);margin-bottom:16px;">${existing ? 'Edit Dish' : 'Add Dish'}</h2>
       <input type="hidden" id="wr-id" value="${existing ? existing.id : ''}">
       <label class="form-label">Country</label>
-      <input id="wr-country" class="form-input" placeholder="Ethiopia" value="${existing?.country ? existing.country.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
+      <select id="wr-country-select" class="form-input" style="margin-bottom:10px;" onchange="document.getElementById('wr-country-other').style.display = this.value==='Other' ? 'block' : 'none';">
+        <option value="">Select a country…</option>
+        ${WORLD_RECIPE_COUNTRIES.map(c => `<option value="${c}" ${existingCountry===c || (c==='Other' && existingCountry && !isKnownCountry) ?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <input id="wr-country-other" class="form-input" placeholder="Type country name" value="${(!isKnownCountry && existingCountry) ? existingCountry.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;display:${(!isKnownCountry && existingCountry) ? 'block':'none'};">
       <label class="form-label">Dish Name</label>
       <input id="wr-dish" class="form-input" placeholder="Doro Wat" value="${existing?.dish ? existing.dish.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
       <label class="form-label">Description</label>
@@ -17097,7 +17142,8 @@ window.uploadWorldRecipePhoto = async function(input) {
 
 window.saveWorldRecipe = async function() {
   const id = document.getElementById('wr-id')?.value;
-  const country = document.getElementById('wr-country')?.value.trim();
+  const countrySel = document.getElementById('wr-country-select')?.value || '';
+  const country = countrySel === 'Other' ? (document.getElementById('wr-country-other')?.value.trim() || '') : countrySel;
   const dish = document.getElementById('wr-dish')?.value.trim();
   if (!country || !dish) { showToast('Country and dish name are required', 'error'); return; }
   const ingredients = (document.getElementById('wr-ingredients')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
