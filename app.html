@@ -490,6 +490,15 @@
     body { background: white !important; }
     .print-header { display: block !important; }
   }
+  /* Block printing of recipes/station guide for non-admin staff viewers */
+  @media print {
+    body.staff-view-protected .sidebar,
+    body.staff-view-protected .main-content { display: none !important; }
+    body.staff-view-protected::after {
+      content: "Printing is disabled on this account. Please ask a manager for a printed copy.";
+      display: block; font-size: 20px; padding: 80px; text-align: center; font-family: sans-serif;
+    }
+  }
   .print-header { display: none; }
   .print-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1126,6 +1135,10 @@ function renderApp(userData) {
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="3" width="14" height="10" rx="2"/><path d="M5 7h6M5 10h4"/><circle cx="12" cy="2" r="2" fill="currentColor" stroke="none"/></svg>
       🍽️ Consulting
     </button>
+    <button class="nav-item ${currentPage==='worldrecipes'?'active':''}" onclick="navigate('worldrecipes')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c2 2 2 11 0 13M8 1.5c-2 2-2 11 0 13" /></svg>
+      🌍 World Recipes
+    </button>
   ` : '';
 
   document.getElementById('root').innerHTML = `
@@ -1418,6 +1431,7 @@ function renderPage(userData) {
     case 'suppliers': renderSuppliers(main, userData); break;
     case 'menudesign': renderMenuDesign(main, userData); break;
     case 'marketing': renderMarketing(main, userData); break;
+    case 'worldrecipes': renderWorldRecipes(main, userData); break;
     case 'procedures': renderProcedures(main, userData); break;
     case 'checklists': renderChecklists(main, userData); break;
     case 'stationguide': renderStationGuide(main, userData); break;
@@ -1948,7 +1962,7 @@ function renderIngrList() {
     </div>`).join('');
 }
 
-function renderRecipes(main, userData) {
+function renderRecipesInner(main, userData) {
   main.innerHTML = `
     <div class="page-header">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -7620,7 +7634,7 @@ window.saveCLItem = async function(type, restaurantId) {
 // ============================================
 // STATION GUIDE
 // ============================================
-function renderStationGuide(main, userData) {
+function renderStationGuideInner(main, userData) {
   main.innerHTML = `
     <div class="page-header">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -10822,7 +10836,7 @@ window.closeMobileSidebar = function() {
 function updateMobileTitle(page) {
   const titles = {
     dashboard:'Dashboard', recipes:'Recipe Book', preplist:'Prep List',
-    inventory:'Inventory', menudesign:'Menu Design', marketing:'Marketing', procedures:'Procedures',
+    inventory:'Inventory', menudesign:'Menu Design', marketing:'Marketing', worldrecipes:'World Recipes', procedures:'Procedures',
     checklists:'Opening & Closing', stationguide:'Station Guide',
     foodcost:'Food Cost', templog:'Temp Log', clients:'Clients'
   };
@@ -12791,8 +12805,39 @@ function renderStaff(main, userData) {
   listArea.innerHTML = '<div style="text-align:center;padding:30px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
   body.appendChild(listArea);
 
+  if (isAdmin) {
+    const logCard = document.createElement('div');
+    logCard.className = 'card';
+    logCard.style.marginTop = '24px';
+    logCard.innerHTML = '<h3 style="font-family:var(--font-display);font-size:1.05rem;margin-bottom:6px;">🔒 Recipe Access Log</h3>'
+      + '<p style="font-size:0.8rem;color:var(--ink-soft);margin-bottom:14px;">See who opened the Recipe Book or Station Guide, and when.</p>'
+      + '<div id="recipe-access-log">Loading…</div>';
+    body.appendChild(logCard);
+  }
+
   main.appendChild(body);
   staffLoad(rid);
+  if (isAdmin) loadRecipeAccessLog(rid);
+}
+
+async function loadRecipeAccessLog(rid) {
+  const el = document.getElementById('recipe-access-log');
+  if (!el) return;
+  try {
+    const snap = await getDocs(query(collection(db,'recipeViews'), where('restaurantId','==',rid), orderBy('createdAt','desc'), limit(50)));
+    if (snap.empty) { el.innerHTML = '<div style="color:var(--ink-soft);font-size:0.85rem;">No access recorded yet.</div>'; return; }
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">' + snap.docs.map(d => {
+      const r = d.data();
+      const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : '';
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:0.82rem;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.06);">'
+        + '<span style="font-weight:600;">' + (r.staffName || 'Unknown') + '</span>'
+        + '<span style="color:var(--ink-soft);">' + (r.page || '') + '</span>'
+        + '<span style="color:var(--ink-muted);">' + when + '</span>'
+        + '</div>';
+    }).join('') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#A32D2D;font-size:0.82rem;">Could not load access log.</div>';
+  }
 }
 
 async function staffLoad(rid) {
@@ -16835,6 +16880,255 @@ setTimeout(function() {
     renderLogin();
   }
 }, 8000);
+
+// ============================================
+// RECIPE SECURITY — viewer identity, watermark, access log, print block
+// ============================================
+function getViewerIdentity(rid) {
+  try {
+    const raw = sessionStorage.getItem('viewerIdentity_' + rid);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function setViewerIdentity(rid, identity) {
+  try { sessionStorage.setItem('viewerIdentity_' + rid, JSON.stringify(identity)); } catch(e) {}
+}
+
+window.ensureViewerIdentity = function(rid, onReady) {
+  const existing = getViewerIdentity(rid);
+  if (existing) { onReady(existing); return; }
+
+  getDocs(query(collection(db,'staffMembers'), where('restaurantId','==',rid), where('active','==',true))).then(snap => {
+    const names = snap.docs.map(d => d.data().name).filter(Boolean);
+    const overlay = document.createElement('div');
+    overlay.id = 'viewer-id-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center;">'
+      + '<div style="font-size:1.8rem;margin-bottom:8px;">👋</div>'
+      + '<h2 style="font-family:var(--font-display);margin-bottom:6px;">Who\'s viewing?</h2>'
+      + '<p style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:18px;">This helps the kitchen manager know who accessed the recipes.</p>'
+      + '<div id="viewer-id-names" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:10px;">'
+      + (names.length ? names.map(n => '<button onclick="selectViewerIdentity(\'' + rid + '\',\'staff\',\'' + n.replace(/'/g,"\\'") + '\')" style="height:42px;border-radius:10px;border:1.5px solid var(--border);background:var(--cream);font-family:var(--font-body);font-size:0.9rem;cursor:pointer;">' + n + '</button>').join('') : '<div style="font-size:0.8rem;color:var(--ink-soft);">No staff registered yet.</div>')
+      + '</div>'
+      + '<button onclick="selectViewerIdentity(\'' + rid + '\',\'owner\',\'Owner/Manager\')" style="width:100%;height:42px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.9rem;font-weight:700;cursor:pointer;">I\'m the Owner/Manager</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    window._pendingViewerCallback = onReady;
+  }).catch(() => { onReady({type:'staff', name:'Unknown'}); });
+}
+
+window.selectViewerIdentity = function(rid, type, name) {
+  const identity = {type, name};
+  setViewerIdentity(rid, identity);
+  document.getElementById('viewer-id-overlay')?.remove();
+  if (window._pendingViewerCallback) {
+    const cb = window._pendingViewerCallback;
+    window._pendingViewerCallback = null;
+    cb(identity);
+  }
+}
+
+function applyRecipeProtection(containerEl, identity, rid, pageLabel) {
+  if (!containerEl || !identity) return;
+  document.body.classList.add('staff-view-protected');
+
+  // Disable text selection & right-click/copy inside the protected area
+  containerEl.style.userSelect = 'none';
+  containerEl.style.webkitUserSelect = 'none';
+  containerEl.addEventListener('contextmenu', e => e.preventDefault());
+  containerEl.addEventListener('copy', e => e.preventDefault());
+
+  // Inject a repeating diagonal watermark
+  const watermark = document.createElement('div');
+  watermark.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9000;opacity:0.08;'
+    + 'background-image:repeating-linear-gradient(-30deg, transparent, transparent 120px, rgba(0,0,0,0.6) 120px, rgba(0,0,0,0.6) 121px);'
+    + 'display:flex;flex-wrap:wrap;align-content:space-around;justify-content:space-around;';
+  const label = (identity.name || 'Staff') + ' · ' + new Date().toLocaleDateString();
+  let stamps = '';
+  for (let i = 0; i < 24; i++) {
+    stamps += '<div style="transform:rotate(-30deg);font-size:13px;font-family:sans-serif;color:#000;white-space:nowrap;">' + label + '</div>';
+  }
+  watermark.innerHTML = stamps;
+  document.body.appendChild(watermark);
+
+  // Log the view once per session per page
+  const logKey = 'recipeViewLogged_' + rid + '_' + pageLabel;
+  if (!sessionStorage.getItem(logKey)) {
+    addDoc(collection(db,'recipeViews'), {
+      restaurantId: rid,
+      staffName: identity.name || 'Unknown',
+      page: pageLabel,
+      createdAt: serverTimestamp()
+    }).catch(() => {});
+    sessionStorage.setItem(logKey, '1');
+  }
+}
+
+function renderRecipes(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  if (isAdmin) { renderRecipesInner(main, userData); return; }
+  ensureViewerIdentity(rid, (identity) => {
+    renderRecipesInner(main, userData);
+    applyRecipeProtection(document.getElementById('main-content'), identity, rid, 'Recipe Book');
+  });
+}
+
+function renderStationGuide(main, userData) {
+  const rid = currentRestaurantId() || userData.uid;
+  if (isAdmin) { renderStationGuideInner(main, userData); return; }
+  ensureViewerIdentity(rid, (identity) => {
+    renderStationGuideInner(main, userData);
+    applyRecipeProtection(document.getElementById('main-content'), identity, rid, 'Station Guide');
+  });
+}
+
+// ============================================
+// WORLD RECIPES — admin showcase/demo tool (Ethiopian & world cuisine)
+// ============================================
+function renderWorldRecipes(main, userData) {
+  main.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">🌍 World Recipes</h1><p class="page-sub">Your Ethiopian & world-cuisine showcase — a cookbook you can flip through live with clients</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/world.html" target="_blank" style="display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;">👁️ View public page</a>
+        <button onclick="copyWorldRecipesLink()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 Copy link</button>
+        <button onclick="showAddWorldRecipe()" style="height:38px;padding:0 18px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add Dish</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="world-recipes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">Loading…</div>
+    </div>
+  `;
+  loadWorldRecipes();
+}
+
+window.copyWorldRecipesLink = function() {
+  const url = window.location.origin + '/world.html';
+  navigator.clipboard.writeText(url).then(() => showToast('Link copied — share it with clients!'))
+    .catch(() => showToast('Could not copy link'));
+}
+
+async function loadWorldRecipes() {
+  const el = document.getElementById('world-recipes-list');
+  if (!el) return;
+  try {
+    const snap = await getDocs(query(collection(db,'worldRecipes'), orderBy('order','asc')));
+    const dishes = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    if (!dishes.length) {
+      el.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-soft);padding:30px;">No dishes yet. Click "+ Add Dish" to start building your showcase.</div>';
+      return;
+    }
+    el.innerHTML = dishes.map(d => worldRecipeCard(d)).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="card" style="grid-column:1/-1;color:#A32D2D;">Could not load dishes: ' + e.message + '</div>';
+  }
+}
+
+function worldRecipeCard(d) {
+  const photo = d.photoUrl ? `<img src="${d.photoUrl}" style="width:100%;height:130px;object-fit:cover;border-radius:16px 16px 0 0;">` : '<div style="width:100%;height:130px;background:var(--cream);border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:center;font-size:2rem;">🍽️</div>';
+  return `<div class="card" style="padding:0;overflow:hidden;">
+    ${photo}
+    <div style="padding:14px;">
+      <div style="font-size:0.7rem;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${d.country || ''}</div>
+      <div style="font-weight:700;font-size:0.95rem;margin-top:2px;">${d.dish || ''}</div>
+      <p style="font-size:0.78rem;color:var(--ink-soft);margin-top:6px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${d.description || ''}</p>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button onclick="showAddWorldRecipe('${d.id}')" style="flex:1;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;">Edit</button>
+        <button onclick="deleteWorldRecipe('${d.id}')" style="height:30px;width:34px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;">🗑️</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.showAddWorldRecipe = async function(id) {
+  let existing = null;
+  if (id) {
+    try { const snap = await getDoc(doc(db,'worldRecipes',id)); if (snap.exists()) existing = {id, ...snap.data()}; } catch(e) {}
+  }
+  document.getElementById('wr-modal-overlay')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'wr-modal-overlay';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;padding-top:max(20px,env(safe-area-inset-top,20px));overflow-y:auto;-webkit-overflow-scrolling:touch;backdrop-filter:blur(4px);';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:520px;padding:28px;margin:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);">
+      <h2 style="font-family:var(--font-display);margin-bottom:16px;">${existing ? 'Edit Dish' : 'Add Dish'}</h2>
+      <input type="hidden" id="wr-id" value="${existing ? existing.id : ''}">
+      <label class="form-label">Country</label>
+      <input id="wr-country" class="form-input" placeholder="Ethiopia" value="${existing?.country ? existing.country.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
+      <label class="form-label">Dish Name</label>
+      <input id="wr-dish" class="form-input" placeholder="Doro Wat" value="${existing?.dish ? existing.dish.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
+      <label class="form-label">Description</label>
+      <textarea id="wr-desc" class="form-input" rows="2" style="height:auto;padding:12px 16px;margin-bottom:14px;" placeholder="A rich, spiced Ethiopian chicken stew simmered in berbere sauce.">${existing?.description || ''}</textarea>
+      <label class="form-label">Ingredients (one per line)</label>
+      <textarea id="wr-ingredients" class="form-input" rows="4" style="height:auto;padding:12px 16px;margin-bottom:14px;" placeholder="1 whole chicken, cut up&#10;2 large onions, minced&#10;1/2 cup berbere spice">${(existing?.ingredients||[]).join('\n')}</textarea>
+      <label class="form-label">Steps</label>
+      <textarea id="wr-steps" class="form-input" rows="4" style="height:auto;padding:12px 16px;margin-bottom:14px;" placeholder="Simmer onions until deeply caramelized, then add berbere and cook low and slow...">${existing?.steps || ''}</textarea>
+      <label class="form-label">Photo</label>
+      <input type="file" accept="image/*" onchange="uploadWorldRecipePhoto(this)">
+      <input type="hidden" id="wr-photo-url" value="${existing?.photoUrl || ''}">
+      <div id="wr-photo-preview" style="display:${existing?.photoUrl?'block':'none'};margin-top:8px;"><img id="wr-photo-preview-img" src="${existing?.photoUrl||''}" style="max-width:100%;max-height:140px;border-radius:8px;"></div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button onclick="document.getElementById('wr-modal-overlay')?.remove()" style="flex:1;height:44px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;">Cancel</button>
+        <button onclick="saveWorldRecipe()" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Save Dish</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+window.uploadWorldRecipePhoto = async function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById('wr-photo-preview');
+  const img = document.getElementById('wr-photo-preview-img');
+  const reader = new FileReader();
+  reader.onload = e => { if (img) img.src = e.target.result; if (preview) preview.style.display = 'block'; };
+  reader.readAsDataURL(file);
+  showToast('Uploading photo...');
+  try {
+    const url = await uploadPhotoToStorage(file);
+    document.getElementById('wr-photo-url').value = url;
+    if (img) img.src = url;
+    showToast('Photo uploaded!');
+  } catch(e) { showToast('Photo ready!'); }
+}
+
+window.saveWorldRecipe = async function() {
+  const id = document.getElementById('wr-id')?.value;
+  const country = document.getElementById('wr-country')?.value.trim();
+  const dish = document.getElementById('wr-dish')?.value.trim();
+  if (!country || !dish) { showToast('Country and dish name are required', 'error'); return; }
+  const ingredients = (document.getElementById('wr-ingredients')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const data = {
+    country,
+    dish,
+    description: document.getElementById('wr-desc')?.value.trim() || '',
+    ingredients,
+    steps: document.getElementById('wr-steps')?.value.trim() || '',
+    photoUrl: document.getElementById('wr-photo-url')?.value || ''
+  };
+  try {
+    if (id) {
+      await setDoc(doc(db,'worldRecipes',id), data, {merge:true});
+    } else {
+      data.order = Date.now();
+      data.createdAt = serverTimestamp();
+      await addDoc(collection(db,'worldRecipes'), data);
+    }
+    document.getElementById('wr-modal-overlay')?.remove();
+    showToast(id ? 'Dish updated!' : 'Dish added!');
+    loadWorldRecipes();
+  } catch(e) { showToast('Could not save dish', 'error'); }
+}
+
+window.deleteWorldRecipe = async function(id) {
+  if (!confirm('Delete this dish from the showcase?')) return;
+  try {
+    await deleteDoc(doc(db,'worldRecipes',id));
+    showToast('Dish deleted');
+    loadWorldRecipes();
+  } catch(e) { showToast('Could not delete', 'error'); }
+}
 </script>
 </body>
 </html>
