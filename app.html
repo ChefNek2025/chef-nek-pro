@@ -16993,10 +16993,12 @@ function renderWorldRecipes(main, userData) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <a href="/world.html" target="_blank" style="display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;">👁️ View public page</a>
         <button onclick="copyWorldRecipesLink()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 Copy link</button>
+        <button onclick="loadStarterWorldRecipes()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid #F2A623;background:#FFF8ED;color:#C17F3A;font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">✨ Load Starter Recipes</button>
         <button onclick="showAddWorldRecipe()" style="height:38px;padding:0 18px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add Dish</button>
       </div>
     </div>
     <div class="page-body">
+      <p style="font-size:0.8rem;color:var(--ink-soft);margin-bottom:16px;">💡 "Load Starter Recipes" fills in 7 complete dishes (ingredients + steps) in one click — then just tap Edit on each to add your own photo.</p>
       <div id="world-recipes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">Loading…</div>
     </div>
   `;
@@ -17128,6 +17130,170 @@ window.deleteWorldRecipe = async function(id) {
     showToast('Dish deleted');
     loadWorldRecipes();
   } catch(e) { showToast('Could not delete', 'error'); }
+}
+
+// ============================================
+// WORLD RECIPES — starter pack (7 full recipes, no photos — add your own)
+// ============================================
+window.loadStarterWorldRecipes = async function() {
+  if (!confirm("This will add 7 starter dishes (Ethiopian & world cuisine) to your World Recipes showcase. Continue?")) return;
+
+  const starters = [
+    {
+      country: "Ethiopia",
+      dish: "Doro Wat (Ethiopian Chicken Stew)",
+      description: "Ethiopia's national dish — bone-in chicken slow-simmered in a deeply caramelized onion and berbere sauce, finished with hard-boiled eggs. Traditionally eaten with injera.",
+      ingredients: [
+        "3 lb bone-in, skinless chicken thighs and drumsticks",
+        "4 large red onions, finely minced",
+        "1/2 cup niter kibbeh (Ethiopian spiced butter) or clarified butter",
+        "1/3 cup berbere spice blend",
+        "6 cloves garlic, minced",
+        "1-inch piece ginger, minced",
+        "1 tsp ground cardamom",
+        "2 tbsp tomato paste",
+        "2 cups chicken stock or water",
+        "6 hard-boiled eggs, peeled and scored",
+        "Juice of 1 lemon",
+        "Salt to taste"
+      ],
+      steps: "1. Rub chicken with lemon juice and salt; set aside.\n2. In a heavy pot, cook the minced onions over medium heat with no oil, stirring often, until deeply golden and jammy, about 25-30 minutes. This step builds the stew's flavor, so take your time.\n3. Add the niter kibbeh and stir until melted and fragrant.\n4. Stir in garlic, ginger, and berbere; cook 2-3 minutes until aromatic.\n5. Add tomato paste and cook 2 minutes more.\n6. Pour in the stock, bring to a simmer, then add the chicken pieces, skin-side down.\n7. Cover and simmer gently for 35-40 minutes, turning occasionally, until the chicken is tender and the sauce has thickened.\n8. Nestle the scored hard-boiled eggs into the sauce for the final 10 minutes so they soak up the color and flavor.\n9. Taste and adjust salt. Serve hot over injera."
+    },
+    {
+      country: "Ethiopia",
+      dish: "Tibs (Sauteed Beef & Vegetables)",
+      description: "Quick-seared cubes of beef tossed with onions, peppers, jalapeno and rosemary in a hot skillet — one of the most popular everyday dishes in Ethiopian kitchens.",
+      ingredients: [
+        "2 lb beef sirloin or tenderloin, cut into 1-inch cubes",
+        "3 tbsp niter kibbeh or butter",
+        "1 large onion, sliced",
+        "2 bell peppers, sliced",
+        "2-3 jalapenos or serrano peppers, sliced",
+        "4 cloves garlic, minced",
+        "2 sprigs fresh rosemary",
+        "1 tbsp berbere spice (optional, for spicier tibs)",
+        "Salt and black pepper to taste"
+      ],
+      steps: "1. Pat the beef cubes dry and season generously with salt and pepper.\n2. Heat a heavy skillet or wok until very hot. Add the niter kibbeh.\n3. Sear the beef in batches so it browns rather than steams, about 2-3 minutes per batch. Set aside.\n4. In the same pan, add the onions and cook 3-4 minutes until just softened.\n5. Add garlic, peppers, and rosemary; cook 2 minutes until fragrant.\n6. Return the beef to the pan along with any juices. Add berbere if using.\n7. Toss everything over high heat for 2-3 minutes until well combined and the beef is cooked to your liking.\n8. Serve immediately, straight from the skillet, with injera or rice."
+    },
+    {
+      country: "Ethiopia",
+      dish: "Shiro (Spiced Chickpea Stew)",
+      description: "A beloved vegan staple — roasted chickpea flour simmered into a smooth, spiced stew. Simple, comforting, and naturally dairy-free.",
+      ingredients: [
+        "1 cup shiro powder (spiced chickpea flour)",
+        "1 medium onion, finely diced",
+        "3 cloves garlic, minced",
+        "1-inch piece ginger, minced",
+        "2 tbsp niter kibbeh or vegetable oil",
+        "1 tbsp tomato paste",
+        "1 tsp berbere spice (optional, for extra heat)",
+        "3 cups water, divided",
+        "Salt to taste",
+        "1 fresh tomato, diced (optional garnish)"
+      ],
+      steps: "1. Heat the oil in a pot over medium heat. Add onion and cook until soft and translucent, about 5 minutes.\n2. Stir in garlic and ginger; cook 1-2 minutes until fragrant.\n3. Add tomato paste and berbere, stirring to coat the onions.\n4. Whisk the shiro powder into 1 cup of water until smooth, forming a slurry with no lumps.\n5. Pour the slurry into the pot along with the remaining 2 cups of water, stirring constantly to prevent clumping.\n6. Simmer on low heat, stirring frequently, for 10-15 minutes until thickened to a smooth, porridge-like consistency.\n7. Season with salt to taste. Top with diced fresh tomato if desired.\n8. Serve warm with injera for scooping."
+    },
+    {
+      country: "Ethiopia",
+      dish: "Kitfo (Spiced Minced Beef)",
+      description: "Finely minced lean beef warmed gently in spiced butter and mitmita chili — Ethiopia's answer to steak tartare, traditionally served with fresh cheese and greens.",
+      ingredients: [
+        "1.5 lb very fresh, lean beef tenderloin, finely minced",
+        "1/3 cup niter kibbeh (spiced clarified butter), melted",
+        "2 tbsp mitmita (Ethiopian chili spice blend)",
+        "1 tsp korarima (Ethiopian cardamom), ground",
+        "Salt to taste",
+        "Ayib (Ethiopian cottage cheese) or farmer's cheese, for serving",
+        "Gomen (collard greens), cooked, for serving"
+      ],
+      steps: "1. Use the freshest, highest-quality beef available and have your butcher mince it, or mince it yourself just before serving.\n2. In a small pan, warm the niter kibbeh until just melted, not hot.\n3. In a bowl, combine the minced beef with mitmita, korarima, and salt.\n4. Pour the warm niter kibbeh over the beef and mix gently until evenly coated — the butter should warm the meat slightly, not cook it.\n5. Taste and adjust mitmita and salt to your preferred spice level.\n6. Serve immediately, mounded on a plate, with ayib and cooked gomen alongside, and warm injera.\n7. For a cooked version (\"leb leb\"), lightly saute the mixture in the pan for 2-3 minutes over medium heat instead of serving raw."
+    },
+    {
+      country: "Morocco",
+      dish: "Lamb Tagine with Apricots & Almonds",
+      description: "Slow-braised lamb in warm Moroccan spices with sweet dried apricots and toasted almonds — a classic tagine built for sharing.",
+      ingredients: [
+        "2.5 lb lamb shoulder, cut into large chunks",
+        "2 tbsp olive oil",
+        "1 large onion, sliced",
+        "4 cloves garlic, minced",
+        "1 tsp ground cumin",
+        "1 tsp ground cinnamon",
+        "1 tsp ground ginger",
+        "1/2 tsp turmeric",
+        "1/4 tsp saffron threads",
+        "2 cups chicken or beef stock",
+        "1 cup dried apricots",
+        "1/2 cup sliced almonds, toasted",
+        "2 tbsp honey",
+        "Fresh cilantro, chopped, for garnish",
+        "Salt and pepper to taste"
+      ],
+      steps: "1. Season the lamb with salt and pepper. Heat olive oil in a tagine or heavy pot and brown the lamb in batches. Set aside.\n2. In the same pot, cook the onion until softened, about 5 minutes.\n3. Stir in garlic, cumin, cinnamon, ginger, turmeric, and saffron; cook 1 minute until fragrant.\n4. Return the lamb to the pot and pour in the stock. Bring to a simmer.\n5. Cover and cook low and slow for 1.5-2 hours, until the lamb is fork-tender.\n6. Stir in the dried apricots and honey during the last 20 minutes of cooking.\n7. Taste and adjust seasoning. Top with toasted almonds and fresh cilantro before serving.\n8. Serve with couscous or warm flatbread."
+    },
+    {
+      country: "Thailand",
+      dish: "Thai Green Curry with Chicken",
+      description: "A fragrant, coconut-based curry built on green chilies, lemongrass, and Thai basil — bright, spicy, and ready in well under an hour.",
+      ingredients: [
+        "1.5 lb boneless chicken thighs, sliced",
+        "3 tbsp green curry paste",
+        "2 cans (13.5 oz each) coconut milk",
+        "1 tbsp fish sauce",
+        "1 tbsp brown sugar",
+        "1 Thai eggplant or small eggplant, cubed (optional)",
+        "1 red bell pepper, sliced",
+        "1 cup Thai basil leaves",
+        "2 kaffir lime leaves, torn",
+        "1 red chili, sliced, for garnish",
+        "Jasmine rice, for serving"
+      ],
+      steps: "1. Scoop the thick cream from the top of one can of coconut milk into a hot wok or pot. Fry it with the green curry paste over medium heat for 2-3 minutes until fragrant and the oil separates.\n2. Add the chicken and stir to coat in the paste. Cook for 3-4 minutes.\n3. Pour in the remaining coconut milk, fish sauce, and brown sugar. Stir to combine.\n4. Add the eggplant and bell pepper. Simmer for 10-12 minutes until the chicken is cooked through and vegetables are tender.\n5. Stir in the kaffir lime leaves and most of the Thai basil, reserving a few leaves for garnish.\n6. Taste and balance with more fish sauce (saltier) or sugar (sweeter) as needed.\n7. Garnish with reserved basil and sliced red chili. Serve hot over jasmine rice."
+    },
+    {
+      country: "India",
+      dish: "Butter Chicken (Murgh Makhani)",
+      description: "Tender marinated chicken simmered in a velvety, tomato-butter sauce — one of the most-loved dishes on Indian menus worldwide.",
+      ingredients: [
+        "2 lb boneless chicken thighs, cubed",
+        "1 cup plain yogurt",
+        "2 tbsp lemon juice",
+        "2 tbsp garam masala, divided",
+        "1 tbsp ground cumin",
+        "1 tbsp paprika",
+        "4 cloves garlic, minced, divided",
+        "1-inch piece ginger, minced, divided",
+        "4 tbsp butter",
+        "1 onion, finely diced",
+        "1 can (14 oz) crushed tomatoes",
+        "1 cup heavy cream",
+        "1 tsp sugar",
+        "Fresh cilantro, chopped, for garnish",
+        "Salt to taste"
+      ],
+      steps: "1. In a bowl, combine yogurt, lemon juice, 1 tbsp garam masala, cumin, paprika, half the garlic, and half the ginger. Add the chicken and marinate at least 1 hour, ideally overnight.\n2. Thread or spread the marinated chicken on a sheet pan and broil or grill until charred at the edges and mostly cooked through, about 8-10 minutes.\n3. Melt butter in a large pot over medium heat. Add onion and cook until soft, about 5 minutes.\n4. Stir in the remaining garlic and ginger; cook 1 minute.\n5. Add the remaining 1 tbsp garam masala and crushed tomatoes. Simmer 10 minutes, stirring occasionally.\n6. Blend the sauce until smooth (using an immersion blender or regular blender), then return to the pot.\n7. Stir in the cream and sugar. Add the charred chicken and simmer 10 minutes until the chicken is fully cooked and the sauce is rich and thickened.\n8. Season with salt to taste. Garnish with fresh cilantro and serve with basmati rice or naan."
+    }
+  ];
+
+  showToast('Adding starter recipes...');
+  try {
+    let orderBase = Date.now();
+    for (const s of starters) {
+      await addDoc(collection(db,'worldRecipes'), {
+        country: s.country,
+        dish: s.dish,
+        description: s.description,
+        ingredients: s.ingredients,
+        steps: s.steps,
+        photoUrl: '',
+        order: orderBase++,
+        createdAt: serverTimestamp()
+      });
+    }
+    showToast('7 starter recipes added! Add photos via Edit.');
+    loadWorldRecipes();
+  } catch(e) { showToast('Could not add starter recipes', 'error'); }
 }
 </script>
 </body>
