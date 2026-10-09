@@ -17060,7 +17060,12 @@ function renderWorldRecipeGrid(dishes) {
 }
 
 function worldRecipeCard(d) {
-  const photo = d.photoUrl ? `<img src="${d.photoUrl}" style="width:100%;height:130px;object-fit:cover;border-radius:16px 16px 0 0;">` : '<div style="width:100%;height:130px;background:var(--cream);border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:center;font-size:2rem;">🍽️</div>';
+  const photo = d.photoUrl
+    ? `<img src="${d.photoUrl}" style="width:100%;height:130px;object-fit:cover;border-radius:16px 16px 0 0;">`
+    : `<div style="width:100%;height:130px;border-radius:16px 16px 0 0;background:radial-gradient(circle at 50% 35%,#F0EAD8 0%,var(--cream) 60%,#EFEAE0 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;opacity:0.45;"><circle cx="15" cy="12" r="7"/><path d="M4 3v6a2 2 0 002 2 2 2 0 002-2V3"/><path d="M6 11v10"/><path d="M15 15v4"/></svg>
+        <span style="font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;">No photo yet</span>
+      </div>`;
   return `<div class="card" style="padding:0;overflow:hidden;">
     ${photo}
     <div style="padding:14px;">
@@ -17082,6 +17087,101 @@ const WORLD_RECIPE_COUNTRIES = [
   "Mexico","Peru","Brazil","Jamaica","Cuba","United States","Other"
 ];
 
+// ============================================
+// COOKBOOK SCAN — client-side OCR (Tesseract.js), no API key needed
+// ============================================
+let _tesseractLoadPromise = null;
+function loadTesseractLib() {
+  if (window.Tesseract) return Promise.resolve();
+  if (_tesseractLoadPromise) return _tesseractLoadPromise;
+  _tesseractLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Could not load the scanner library'));
+    document.head.appendChild(script);
+  });
+  return _tesseractLoadPromise;
+}
+
+// Cookbook OCR splitter: finds where the ingredient list ends and the step-by-step
+// instructions begin, rather than classifying each line in isolation (which misfires
+// on short-but-plain ingredient lines like "Salt and pepper to taste").
+const STEP_START_RE = /^[\s]*([0-9]{1,2}[.)]|step\s*\d+[:.)]?)\s*/i;
+const QTY_START_RE = /^[\s]*[0-9¼½¾⅓⅔⅛]/;
+
+function isCookbookNoiseLine(line) {
+  if (/^serves?\s*:?\s*\d+/i.test(line)) return true;
+  if (/^(yield|yields|makes)\s*:?\s*\d+/i.test(line)) return true;
+  if (/^(prep|cook|total|bake)\s*time/i.test(line)) return true;
+  if (/^page\s*\d+/i.test(line)) return true;
+  if (/^(ingredients?|directions?|instructions?|method|preparation)\s*:?$/i.test(line)) return true;
+  if (/^(from|by|adapted from|source)[:\s]/i.test(line)) return true;
+  // Short ALL-CAPS line — almost always a title/heading, not content
+  if (line.length > 3 && line === line.toUpperCase() && /[A-Z]/.test(line) && line.split(/\s+/).length <= 6) return true;
+  return false;
+}
+
+function looksLikeStepText(line) {
+  const stripped = line.replace(STEP_START_RE, '');
+  if (QTY_START_RE.test(stripped)) return false; // still starts with a bare quantity -> ingredient
+  const wordCount = stripped.split(/\s+/).filter(Boolean).length;
+  return wordCount >= 6 || stripped.length >= 50;
+}
+
+function parseCookbookOCR(rawText) {
+  const rawLines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = rawLines.filter(l => l.length >= 2 && !isCookbookNoiseLine(l));
+
+  // Require two consecutive step-like lines to confirm the transition into the steps
+  // section — avoids a single stray long line (like a subtitle) triggering a false split.
+  let splitIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (looksLikeStepText(lines[i]) && (i === lines.length - 1 || looksLikeStepText(lines[i+1]))) {
+      splitIdx = i;
+      break;
+    }
+  }
+  if (splitIdx === -1) splitIdx = lines.length;
+
+  const ingredients = lines.slice(0, splitIdx).map(l => l.replace(/^[-•*]\s*/, ''));
+  const stepLines = lines.slice(splitIdx).map(l => l.replace(STEP_START_RE, '').trim());
+  const steps = stepLines.map((l, i) => `${i+1}. ${l}`).join('\n');
+
+  return { ingredients, steps };
+}
+
+window.scanCookbookPage = async function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('wr-scan-status');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⏳ Loading scanner…'; }
+  try {
+    await loadTesseractLib();
+    if (statusEl) statusEl.textContent = '🔎 Reading the page… this can take 15–30 seconds.';
+    const result = await window.Tesseract.recognize(file, 'eng');
+    const rawText = result?.data?.text || '';
+    if (!rawText.trim()) {
+      if (statusEl) statusEl.textContent = '⚠️ Could not read any text — try a clearer, well-lit photo.';
+      return;
+    }
+    const { ingredients, steps } = parseCookbookOCR(rawText);
+    const ingredientsEl = document.getElementById('wr-ingredients');
+    const stepsEl = document.getElementById('wr-steps');
+    if (ingredientsEl) {
+      const existingText = ingredientsEl.value.trim();
+      ingredientsEl.value = (existingText ? existingText + '\n' : '') + ingredients.join('\n');
+    }
+    if (stepsEl) {
+      const existingText = stepsEl.value.trim();
+      stepsEl.value = (existingText ? existingText + '\n' : '') + steps;
+    }
+    if (statusEl) statusEl.textContent = '✅ Scanned! Review Ingredients & Steps below — the split between the two is a best guess, so fix anything that landed in the wrong box.';
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ Scan failed: ' + (e.message || 'please try again with a clearer photo.');
+  }
+}
+
 window.showAddWorldRecipe = async function(id) {
   let existing = null;
   if (id) {
@@ -17095,8 +17195,16 @@ window.showAddWorldRecipe = async function(id) {
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;padding-top:max(20px,env(safe-area-inset-top,20px));overflow-y:auto;-webkit-overflow-scrolling:touch;backdrop-filter:blur(4px);';
   modal.innerHTML = `
     <div style="background:#fff;border-radius:20px;width:100%;max-width:520px;padding:28px;margin:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);">
-      <h2 style="font-family:var(--font-display);margin-bottom:16px;">${existing ? 'Edit Dish' : 'Add Dish'}</h2>
+      <h2 style="font-family:var(--font-display);margin-bottom:6px;">${existing ? 'Edit Dish' : 'Add Dish'}</h2>
       <input type="hidden" id="wr-id" value="${existing ? existing.id : ''}">
+
+      <div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:12px;padding:14px 16px;margin:14px 0 18px;">
+        <div style="font-size:0.85rem;font-weight:700;color:#C17F3A;margin-bottom:4px;">📷 Scan from Cookbook</div>
+        <div style="font-size:0.78rem;color:var(--ink-soft);margin-bottom:10px;">Take a photo of a cookbook page — it reads the text and fills in Ingredients &amp; Steps below so you just clean it up.</div>
+        <input id="wr-scan-input" type="file" accept="image/*" capture="environment" onchange="scanCookbookPage(this)">
+        <div id="wr-scan-status" style="font-size:0.78rem;color:var(--ink-muted);margin-top:8px;display:none;"></div>
+      </div>
+
       <label class="form-label">Country</label>
       <select id="wr-country-select" class="form-input" style="margin-bottom:10px;" onchange="document.getElementById('wr-country-other').style.display = this.value==='Other' ? 'block' : 'none';">
         <option value="">Select a country…</option>
