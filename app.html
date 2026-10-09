@@ -17314,7 +17314,8 @@ window.scanWizardUploadDishPhoto = async function(input) {
     const overlay = document.getElementById('wr-modal-overlay');
     if (overlay) overlay.innerHTML = scanWizardStepHTML();
   } catch(e) {
-    if (statusEl) statusEl.textContent = '⚠️ Could not upload photo — try again.';
+    console.error('World Recipe dish photo upload failed:', e);
+    if (statusEl) statusEl.textContent = '⚠️ Could not upload photo: ' + (e.message || 'unknown error');
   }
 }
 
@@ -17433,7 +17434,10 @@ window.uploadWorldRecipePhoto = async function(input) {
     document.getElementById('wr-photo-url').value = url;
     if (img) img.src = url;
     showToast('Photo uploaded!');
-  } catch(e) { showToast('Photo ready!'); }
+  } catch(e) {
+    console.error('World Recipe photo upload failed:', e);
+    showToast('Photo upload failed: ' + (e.message || 'unknown error'), 'error');
+  }
 }
 
 window.saveWorldRecipe = async function() {
