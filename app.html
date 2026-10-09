@@ -17151,6 +17151,39 @@ function parseCookbookOCR(rawText) {
   return { ingredients, steps };
 }
 
+// Boosts OCR accuracy on an ordinary photo (no edge-detection/auto-crop — that needs a
+// native scanner app; see the hint text in the modal). Converts to grayscale and pushes
+// contrast so faded or unevenly-lit book pages read more like scanned text.
+function enhancePhotoForOCR(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const CONTRAST = 1.6; // >1 sharpens the line between text and page
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+          const boosted = Math.min(255, Math.max(0, (gray - 128) * CONTRAST + 128));
+          data[i] = data[i+1] = data[i+2] = boosted;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        canvas.toBlob(blob => resolve(blob || file), 'image/png');
+      } catch(e) {
+        resolve(file); // fall back to the original photo if canvas processing fails
+      }
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 window.scanCookbookPage = async function(input) {
   const file = input.files[0];
   if (!file) return;
@@ -17158,8 +17191,10 @@ window.scanCookbookPage = async function(input) {
   if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⏳ Loading scanner…'; }
   try {
     await loadTesseractLib();
+    if (statusEl) statusEl.textContent = '🪄 Enhancing the photo…';
+    const enhanced = await enhancePhotoForOCR(file);
     if (statusEl) statusEl.textContent = '🔎 Reading the page… this can take 15–30 seconds.';
-    const result = await window.Tesseract.recognize(file, 'eng');
+    const result = await window.Tesseract.recognize(enhanced, 'eng');
     const rawText = result?.data?.text || '';
     if (!rawText.trim()) {
       if (statusEl) statusEl.textContent = '⚠️ Could not read any text — try a clearer, well-lit photo.';
@@ -17200,7 +17235,7 @@ window.showAddWorldRecipe = async function(id) {
 
       <div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:12px;padding:14px 16px;margin:14px 0 18px;">
         <div style="font-size:0.85rem;font-weight:700;color:#C17F3A;margin-bottom:4px;">📷 Scan from Cookbook</div>
-        <div style="font-size:0.78rem;color:var(--ink-soft);margin-bottom:10px;">Take a photo of a cookbook page — it reads the text and fills in Ingredients &amp; Steps below so you just clean it up.</div>
+        <div style="font-size:0.78rem;color:var(--ink-soft);margin-bottom:8px;">Reads text from a photo of a book page and fills in Ingredients &amp; Steps below. For best results, use your phone's built-in document scanner first (iPhone: Notes app → camera icon → Scan Documents; Android: Google Drive → + → Scan) — it flattens the page and sharpens the text — then upload that scan here instead of a plain photo.</div>
         <input id="wr-scan-input" type="file" accept="image/*" capture="environment" onchange="scanCookbookPage(this)">
         <div id="wr-scan-status" style="font-size:0.78rem;color:var(--ink-muted);margin-top:8px;display:none;"></div>
       </div>
