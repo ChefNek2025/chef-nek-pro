@@ -16994,16 +16994,23 @@ function renderWorldRecipes(main, userData) {
         <a href="/world.html" target="_blank" style="display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;">👁️ View public page</a>
         <button onclick="copyWorldRecipesLink()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 Copy link</button>
         <button onclick="loadStarterWorldRecipes()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid #F2A623;background:#FFF8ED;color:#C17F3A;font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">✨ Load Starter Recipes</button>
-        <button onclick="showAddWorldRecipe()" style="height:38px;padding:0 18px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add Dish</button>
+        <button onclick="showAddWorldRecipe()" style="height:38px;padding:0 16px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add Manually</button>
+        <button onclick="showScanAddWizard()" style="height:38px;padding:0 20px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 6px 18px rgba(29,158,117,0.35);">📷 Scan & Add Dish</button>
       </div>
     </div>
     <div class="page-body">
-      <p style="font-size:0.8rem;color:var(--ink-soft);margin-bottom:16px;">💡 "Load Starter Recipes" fills in 7 complete dishes (ingredients + steps) in one click — then just tap Edit on each to add your own photo.</p>
+      <p style="font-size:0.8rem;color:var(--ink-soft);margin-bottom:16px;">💡 "Scan & Add Dish" walks you through 3 quick taps: snap the food, snap the recipe page, type the name — done. "Load Starter Recipes" fills in 7 complete dishes in one click.</p>
       <div id="world-recipes-filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
       <div id="world-recipes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">Loading…</div>
     </div>
   `;
   loadWorldRecipes();
+}
+
+async function uploadPhotoToStorage(file) {
+  const sRef = storageRef(storage, 'photos/' + Date.now() + '_' + file.name);
+  await uploadBytes(sRef, file);
+  return await getDownloadURL(sRef);
 }
 
 window.copyWorldRecipesLink = function() {
@@ -17215,6 +17222,152 @@ window.scanCookbookPage = async function(input) {
   } catch(e) {
     if (statusEl) statusEl.textContent = '⚠️ Scan failed: ' + (e.message || 'please try again with a clearer photo.');
   }
+}
+
+// ============================================
+// SCAN & ADD WIZARD — CamScanner-style guided flow: snap the dish photo,
+// snap the recipe page(s) for OCR, then name it. 3 taps, no dense form up front.
+// ============================================
+window._scanWizard = { step: 1, photoUrl: '', ingredients: [], steps: '', ocrText: '' };
+
+window.showScanAddWizard = function() {
+  document.getElementById('wr-modal-overlay')?.remove();
+  window._scanWizard = { step: 1, photoUrl: '', ingredients: [], steps: '', ocrText: '' };
+  const modal = document.createElement('div');
+  modal.id = 'wr-modal-overlay';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;padding-top:max(20px,env(safe-area-inset-top,20px));overflow-y:auto;-webkit-overflow-scrolling:touch;backdrop-filter:blur(4px);';
+  modal.innerHTML = scanWizardStepHTML();
+  document.body.appendChild(modal);
+}
+
+function scanWizardStepHTML() {
+  const w = window._scanWizard;
+  const dots = [1,2,3].map(n => `<div style="width:8px;height:8px;border-radius:50%;background:${n<=w.step?'var(--green)':'var(--border)'};"></div>`).join('');
+  let body = '';
+  if (w.step === 1) {
+    body = `
+      <h2 style="font-family:var(--font-display);margin-bottom:4px;">📸 Step 1 of 3: Photo of the Dish</h2>
+      <p style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:16px;">Snap or upload a photo of the finished dish. This is what clients will see on the showcase page.</p>
+      <div id="scanwiz-dish-preview" style="display:${w.photoUrl?'block':'none'};margin-bottom:12px;"><img src="${w.photoUrl}" style="max-width:100%;max-height:180px;border-radius:12px;"></div>
+      <input id="scanwiz-dish-photo" type="file" accept="image/*" capture="environment" onchange="scanWizardUploadDishPhoto(this)">
+      <div id="scanwiz-dish-status" style="font-size:0.78rem;color:var(--ink-muted);margin-top:8px;"></div>
+      <div style="display:flex;gap:10px;margin-top:22px;">
+        <button onclick="document.getElementById('wr-modal-overlay')?.remove()" style="flex:1;height:44px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;">Cancel</button>
+        <button onclick="scanWizardGoto(2)" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">${w.photoUrl ? 'Next →' : 'Skip photo →'}</button>
+      </div>`;
+  } else if (w.step === 2) {
+    body = `
+      <h2 style="font-family:var(--font-display);margin-bottom:4px;">📖 Step 2 of 3: Scan the Recipe Page(s)</h2>
+      <p style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:10px;">Snap the ingredients &amp; preparation page(s) from your cookbook. You can select more than one page at once.</p>
+      <div style="background:#FFF8ED;border:1.5px solid #F2A623;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:0.76rem;color:#8A5A1F;">💡 Tip: For a cleaner scan, use your phone's built-in document scanner first (iPhone: Notes → camera icon → Scan Documents; Android: Google Drive → + → Scan), then pick that scan here.</div>
+      <input id="scanwiz-page-photos" type="file" accept="image/*" capture="environment" multiple onchange="scanWizardScanPages(this)">
+      <div id="scanwiz-page-status" style="font-size:0.78rem;color:var(--ink-muted);margin-top:10px;"></div>
+      <div style="display:flex;gap:10px;margin-top:22px;">
+        <button onclick="scanWizardGoto(1)" style="flex:1;height:44px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;">← Back</button>
+        <button onclick="scanWizardGoto(3)" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">${w.ocrText ? 'Next →' : 'Skip scan →'}</button>
+      </div>`;
+  } else {
+    body = `
+      <h2 style="font-family:var(--font-display);margin-bottom:4px;">✏️ Step 3 of 3: Name It &amp; Review</h2>
+      <p style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:14px;">Pick the country, name the dish, and double check the scanned text below — fix anything that landed in the wrong box.</p>
+      <label class="form-label">Country</label>
+      <select id="scanwiz-country" class="form-input" style="margin-bottom:10px;" onchange="document.getElementById('scanwiz-country-other').style.display = this.value==='Other' ? 'block' : 'none';">
+        <option value="">Select a country…</option>
+        ${WORLD_RECIPE_COUNTRIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+      </select>
+      <input id="scanwiz-country-other" class="form-input" placeholder="Type country name" style="margin-bottom:14px;display:none;">
+      <label class="form-label">Dish Name</label>
+      <input id="scanwiz-dish-name" class="form-input" placeholder="Doro Wat" style="margin-bottom:14px;">
+      <label class="form-label">Description (optional)</label>
+      <textarea id="scanwiz-desc" class="form-input" rows="2" style="height:auto;padding:12px 16px;margin-bottom:14px;" placeholder="A rich, spiced Ethiopian chicken stew..."></textarea>
+      <label class="form-label">Ingredients (one per line)</label>
+      <textarea id="scanwiz-ingredients" class="form-input" rows="4" style="height:auto;padding:12px 16px;margin-bottom:14px;">${(w.ingredients||[]).join('\n')}</textarea>
+      <label class="form-label">Steps</label>
+      <textarea id="scanwiz-steps" class="form-input" rows="4" style="height:auto;padding:12px 16px;margin-bottom:14px;">${w.steps || ''}</textarea>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button onclick="scanWizardGoto(2)" style="flex:1;height:44px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;">← Back</button>
+        <button onclick="scanWizardSave()" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">✅ Save Dish</button>
+      </div>`;
+  }
+  return `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:520px;padding:28px;margin:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);">
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:18px;">${dots}</div>
+      ${body}
+    </div>`;
+}
+
+window.scanWizardGoto = function(step) {
+  window._scanWizard.step = step;
+  const overlay = document.getElementById('wr-modal-overlay');
+  if (overlay) overlay.innerHTML = scanWizardStepHTML();
+}
+
+window.scanWizardUploadDishPhoto = async function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('scanwiz-dish-status');
+  if (statusEl) statusEl.textContent = '⏳ Uploading photo…';
+  try {
+    const url = await uploadPhotoToStorage(file);
+    window._scanWizard.photoUrl = url;
+    if (statusEl) statusEl.textContent = '✅ Photo ready!';
+    const overlay = document.getElementById('wr-modal-overlay');
+    if (overlay) overlay.innerHTML = scanWizardStepHTML();
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ Could not upload photo — try again.';
+  }
+}
+
+window.scanWizardScanPages = async function(input) {
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  const statusEl = document.getElementById('scanwiz-page-status');
+  if (statusEl) statusEl.textContent = '⏳ Loading scanner…';
+  try {
+    await loadTesseractLib();
+    let combinedText = '';
+    for (let i = 0; i < files.length; i++) {
+      if (statusEl) statusEl.textContent = `🔎 Reading page ${i+1} of ${files.length}… this can take 15–30 seconds per page.`;
+      const enhanced = await enhancePhotoForOCR(files[i]);
+      const result = await window.Tesseract.recognize(enhanced, 'eng');
+      combinedText += (result?.data?.text || '') + '\n';
+    }
+    if (!combinedText.trim()) {
+      if (statusEl) statusEl.textContent = '⚠️ Could not read any text — try clearer, well-lit photos.';
+      return;
+    }
+    const { ingredients, steps } = parseCookbookOCR(combinedText);
+    window._scanWizard.ocrText = combinedText;
+    window._scanWizard.ingredients = ingredients;
+    window._scanWizard.steps = steps;
+    if (statusEl) statusEl.textContent = `✅ Scanned ${files.length} page${files.length>1?'s':''}! You'll review the text in the next step.`;
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ Scan failed: ' + (e.message || 'please try again.');
+  }
+}
+
+window.scanWizardSave = async function() {
+  const countrySel = document.getElementById('scanwiz-country')?.value || '';
+  const country = countrySel === 'Other' ? (document.getElementById('scanwiz-country-other')?.value.trim() || '') : countrySel;
+  const dish = document.getElementById('scanwiz-dish-name')?.value.trim();
+  if (!country || !dish) { showToast('Country and dish name are required', 'error'); return; }
+  const ingredients = (document.getElementById('scanwiz-ingredients')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const data = {
+    country,
+    dish,
+    description: document.getElementById('scanwiz-desc')?.value.trim() || '',
+    ingredients,
+    steps: document.getElementById('scanwiz-steps')?.value.trim() || '',
+    photoUrl: window._scanWizard.photoUrl || '',
+    order: Date.now(),
+    createdAt: serverTimestamp()
+  };
+  try {
+    await addDoc(collection(db,'worldRecipes'), data);
+    document.getElementById('wr-modal-overlay')?.remove();
+    showToast('Dish added!');
+    loadWorldRecipes();
+  } catch(e) { showToast('Could not save dish', 'error'); }
 }
 
 window.showAddWorldRecipe = async function(id) {
