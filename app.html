@@ -17307,6 +17307,7 @@ window.scanWizardUploadDishPhoto = async function(input) {
   if (!file) return;
   const statusEl = document.getElementById('scanwiz-dish-status');
   if (statusEl) statusEl.textContent = '⏳ Uploading photo…';
+  window._scanWizard.photoUploading = true;
   try {
     const url = await uploadPhotoToStorage(file);
     window._scanWizard.photoUrl = url;
@@ -17316,6 +17317,8 @@ window.scanWizardUploadDishPhoto = async function(input) {
   } catch(e) {
     console.error('World Recipe dish photo upload failed:', e);
     if (statusEl) statusEl.textContent = '⚠️ Could not upload photo: ' + (e.message || 'unknown error');
+  } finally {
+    window._scanWizard.photoUploading = false;
   }
 }
 
@@ -17348,6 +17351,7 @@ window.scanWizardScanPages = async function(input) {
 }
 
 window.scanWizardSave = async function() {
+  if (window._scanWizard.photoUploading) { showToast('Still uploading the dish photo — wait a moment and click Save again', 'error'); return; }
   const countrySel = document.getElementById('scanwiz-country')?.value || '';
   const country = countrySel === 'Other' ? (document.getElementById('scanwiz-country-other')?.value.trim() || '') : countrySel;
   const dish = document.getElementById('scanwiz-dish-name')?.value.trim();
@@ -17368,7 +17372,10 @@ window.scanWizardSave = async function() {
     document.getElementById('wr-modal-overlay')?.remove();
     showToast('Dish added!');
     loadWorldRecipes();
-  } catch(e) { showToast('Could not save dish', 'error'); }
+  } catch(e) {
+    console.error('World Recipe save failed:', e);
+    showToast('Could not save dish: ' + (e.message || 'unknown error'), 'error');
+  }
 }
 
 window.showAddWorldRecipe = async function(id) {
@@ -17414,11 +17421,13 @@ window.showAddWorldRecipe = async function(id) {
       <div id="wr-photo-preview" style="display:${existing?.photoUrl?'block':'none'};margin-top:8px;"><img id="wr-photo-preview-img" src="${existing?.photoUrl||''}" style="max-width:100%;max-height:140px;border-radius:8px;"></div>
       <div style="display:flex;gap:10px;margin-top:18px;">
         <button onclick="document.getElementById('wr-modal-overlay')?.remove()" style="flex:1;height:44px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--font-body);font-size:0.875rem;font-weight:600;cursor:pointer;">Cancel</button>
-        <button onclick="saveWorldRecipe()" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Save Dish</button>
+        <button id="wr-save-btn" onclick="saveWorldRecipe()" style="flex:1;height:44px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">Save Dish</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
 }
+
+window._wrPhotoUploading = false;
 
 window.uploadWorldRecipePhoto = async function(input) {
   const file = input.files[0];
@@ -17428,6 +17437,9 @@ window.uploadWorldRecipePhoto = async function(input) {
   const reader = new FileReader();
   reader.onload = e => { if (img) img.src = e.target.result; if (preview) preview.style.display = 'block'; };
   reader.readAsDataURL(file);
+  window._wrPhotoUploading = true;
+  const saveBtn = document.getElementById('wr-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Uploading photo…'; saveBtn.style.opacity = '0.6'; }
   showToast('Uploading photo...');
   try {
     const url = await uploadPhotoToStorage(file);
@@ -17437,10 +17449,15 @@ window.uploadWorldRecipePhoto = async function(input) {
   } catch(e) {
     console.error('World Recipe photo upload failed:', e);
     showToast('Photo upload failed: ' + (e.message || 'unknown error'), 'error');
+  } finally {
+    window._wrPhotoUploading = false;
+    const btn = document.getElementById('wr-save-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Dish'; btn.style.opacity = '1'; }
   }
 }
 
 window.saveWorldRecipe = async function() {
+  if (window._wrPhotoUploading) { showToast('Still uploading the photo — wait a moment and click Save again', 'error'); return; }
   const id = document.getElementById('wr-id')?.value;
   const countrySel = document.getElementById('wr-country-select')?.value || '';
   const country = countrySel === 'Other' ? (document.getElementById('wr-country-other')?.value.trim() || '') : countrySel;
@@ -17466,7 +17483,10 @@ window.saveWorldRecipe = async function() {
     document.getElementById('wr-modal-overlay')?.remove();
     showToast(id ? 'Dish updated!' : 'Dish added!');
     loadWorldRecipes();
-  } catch(e) { showToast('Could not save dish', 'error'); }
+  } catch(e) {
+    console.error('World Recipe save failed:', e);
+    showToast('Could not save dish: ' + (e.message || 'unknown error'), 'error');
+  }
 }
 
 window.deleteWorldRecipe = async function(id) {
