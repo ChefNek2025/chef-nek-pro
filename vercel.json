@@ -1,5 +1,21 @@
 {
-  "rewrites": [
-    { "source": "/app", "destination": "/app.html" }
+  "version": 2,
+  "routes": [
+    { "src": "/app", "dest": "/app.html" },
+    { "src": "/hire", "dest": "/hire.html" }
+  ],
+  "headers": [
+    {
+      "source": "/app.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/world.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
   ]
 }

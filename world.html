@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Recipes — Chef Nek Pro</title>
+<meta name="description" content="A flip-through showcase of Ethiopian and world cuisine, built with Chef Nek Pro.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --forest:#0B2818;
+  --forest2:#122E1C;
+  --moss:#1A4A2E;
+  --green:#1D9E75;
+  --green2:#16856A;
+  --cream:#FDF8F0;
+  --cream2:#F5EFE6;
+  --gold:#D4920A;
+  --gold-light:#FFF4D6;
+  --white:#FFFEF9;
+  --ink:#1A1A14;
+  --ink2:#2D2D24;
+  --muted:#6B6860;
+  --border:#E5E0D8;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--forest);color:var(--ink);overflow-x:hidden;min-height:100vh;}
+img{display:block;max-width:100%}
+
+/* ── TOP BAR ── */
+.topbar{position:sticky;top:0;z-index:200;background:var(--forest);padding:16px 6%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);}
+.brand{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:#fff;text-decoration:none;}
+.brand span{color:var(--green);}
+.topbar-tag{font-size:0.78rem;color:rgba(255,255,255,0.55);display:none;}
+@media(min-width:640px){.topbar-tag{display:block;}}
+.topbar-cta{height:38px;padding:0 18px;background:var(--green);color:#fff;border:none;border-radius:100px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;white-space:nowrap;}
+.topbar-cta:hover{background:var(--green2);}
+
+/* ── HERO STRIP ── */
+.hero-strip{text-align:center;padding:36px 6% 10px;}
+.hero-strip .eyebrow{font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:10px;}
+.hero-strip h1{font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,5vw,3rem);color:#fff;line-height:1.1;}
+.hero-strip h1 em{font-style:italic;color:var(--green);}
+.hero-strip p{color:rgba(255,255,255,0.6);font-size:0.95rem;margin-top:10px;max-width:520px;margin-left:auto;margin-right:auto;}
+
+/* ── BOOK VIEWER ── */
+.book-wrap{max-width:980px;margin:28px auto 60px;padding:0 4%;}
+.book{background:var(--cream);border-radius:28px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.45);position:relative;}
+.book-photo-wrap{position:relative;width:100%;aspect-ratio:16/10;background:var(--cream2);overflow:hidden;}
+.book-photo-wrap img{width:100%;height:100%;object-fit:cover;}
+.book-photo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:4rem;background:linear-gradient(135deg,var(--cream2),var(--cream));}
+.book-country-tag{position:absolute;top:18px;left:18px;background:rgba(11,40,24,0.85);color:#fff;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:7px 14px;border-radius:100px;backdrop-filter:blur(6px);}
+.book-page-indicator{position:absolute;top:18px;right:18px;background:rgba(11,40,24,0.85);color:#fff;font-size:0.72rem;font-weight:700;padding:7px 14px;border-radius:100px;backdrop-filter:blur(6px);}
+
+.book-body{padding:28px 32px 36px;}
+.book-dish-title{font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(1.5rem,3.5vw,2.1rem);color:var(--ink);margin-bottom:8px;}
+.book-desc{color:var(--muted);font-size:0.95rem;line-height:1.6;margin-bottom:24px;max-width:640px;}
+
+.book-cols{display:grid;grid-template-columns:1fr;gap:28px;}
+@media(min-width:680px){.book-cols{grid-template-columns:1fr 1.3fr;}}
+.book-col h3{font-family:'Inter',sans-serif;font-size:0.78rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--green2);font-weight:800;margin-bottom:12px;}
+.book-ingredients{list-style:none;display:flex;flex-direction:column;gap:9px;}
+.book-ingredients li{font-size:0.9rem;color:var(--ink2);padding-left:18px;position:relative;line-height:1.4;}
+.book-ingredients li::before{content:'';position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--gold);}
+.book-steps{font-size:0.92rem;color:var(--ink2);line-height:1.75;white-space:pre-wrap;}
+
+/* ── NAV ARROWS ── */
+.book-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:22px;}
+.nav-arrow{width:52px;height:52px;border-radius:50%;border:none;background:var(--green);color:#fff;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.15s,background 0.2s;box-shadow:0 10px 30px rgba(29,158,117,0.4);}
+.nav-arrow:hover{background:var(--green2);transform:translateY(-2px);}
+.nav-arrow:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;transform:none;}
+.book-counter{color:rgba(255,255,255,0.7);font-size:0.85rem;font-weight:600;min-width:70px;text-align:center;}
+.book-dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px;max-width:400px;margin-left:auto;margin-right:auto;}
+.book-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);cursor:pointer;transition:background 0.2s,transform 0.2s;}
+.book-dot.active{background:var(--green);transform:scale(1.3);}
+
+/* ── EMPTY / LOADING ── */
+.book-empty{text-align:center;padding:80px 30px;color:var(--muted);}
+.book-empty .icon{font-size:3rem;margin-bottom:12px;}
+
+/* ── CTA FOOTER ── */
+.cta-footer{background:var(--cream);text-align:center;padding:60px 6% 70px;}
+.cta-footer h2{font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.4rem,3.5vw,2.1rem);color:var(--ink);margin-bottom:12px;}
+.cta-footer p{color:var(--muted);font-size:0.95rem;max-width:480px;margin:0 auto 22px;}
+.cta-footer a{display:inline-flex;height:52px;padding:0 32px;background:var(--green);color:#fff;border-radius:100px;font-size:0.92rem;font-weight:700;text-decoration:none;align-items:center;box-shadow:0 10px 30px rgba(29,158,117,0.4);transition:background 0.2s,transform 0.2s;}
+.cta-footer a:hover{background:var(--green2);transform:translateY(-2px);}
+
+/* swipe affordance hint */
+.swipe-hint{text-align:center;color:rgba(255,255,255,0.35);font-size:0.75rem;margin-top:10px;display:none;}
+@media(max-width:680px){.swipe-hint{display:block;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="brand">Chef Nek <span>Pro</span></a>
+  <div class="topbar-tag">World Recipes — a cookbook built on the platform itself</div>
+  <a href="/" class="topbar-cta">Get Started Free</a>
+</div>
+
+<div class="hero-strip">
+  <div class="eyebrow">A Taste of the World</div>
+  <h1>Ethiopian & World <em>Recipes</em></h1>
+  <p>Flip through dishes from Ethiopia and around the globe — built and managed right inside Chef Nek Pro.</p>
+</div>
+
+<div class="book-wrap">
+  <div class="book" id="book">
+    <div style="padding:80px 30px;text-align:center;color:var(--muted);">Loading recipes…</div>
+  </div>
+  <div class="book-nav" id="book-nav" style="display:none;">
+    <button class="nav-arrow" id="book-prev" onclick="goPrev()" aria-label="Previous dish">‹</button>
+    <div class="book-counter" id="book-counter">1 / 1</div>
+    <button class="nav-arrow" id="book-next" onclick="goNext()" aria-label="Next dish">›</button>
+  </div>
+  <div class="book-dots" id="book-dots"></div>
+  <div class="swipe-hint">👈 Swipe to flip the page 👉</div>
+</div>
+
+<div class="cta-footer">
+  <h2>Want this for your restaurant?</h2>
+  <p>Chef Nek Pro helps kitchens manage recipes, inventory, staff, and marketing — all in one place. This showcase was built with the same tools you'd get.</p>
+  <a href="/">See the Platform</a>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCbX-lJSCX2XU4UKOA-6RvvOdBiU_CFTl0",
+  authDomain: "chef-nek-pro-dad86.firebaseapp.com",
+  projectId: "chef-nek-pro-dad86",
+  storageBucket: "chef-nek-pro-dad86.firebasestorage.app",
+  messagingSenderId: "469202547359",
+  appId: "1:469202547359:web:214359c14023908961e8aa"
+};
+
+const app = initializeApp(firebaseConfig, 'world');
+const db = getFirestore(app);
+
+let dishes = [];
+let current = 0;
+
+function esc(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderBook() {
+  const bookEl = document.getElementById('book');
+  const navEl = document.getElementById('book-nav');
+  const dotsEl = document.getElementById('book-dots');
+  const counterEl = document.getElementById('book-counter');
+
+  if (!dishes.length) {
+    bookEl.innerHTML = '<div class="book-empty"><div class="icon">🍽️</div>Recipes coming soon — check back shortly!</div>';
+    navEl.style.display = 'none';
+    dotsEl.innerHTML = '';
+    return;
+  }
+
+  navEl.style.display = 'flex';
+  const d = dishes[current];
+  const photo = d.photoUrl
+    ? `<img src="${esc(d.photoUrl)}" alt="${esc(d.dish)}">`
+    : `<div class="book-photo-placeholder">🍽️</div>`;
+  const ingredients = (d.ingredients || []).map(i => `<li>${esc(i)}</li>`).join('');
+
+  bookEl.innerHTML = `
+    <div class="book-photo-wrap">
+      ${photo}
+      <div class="book-country-tag">${esc(d.country)}</div>
+      <div class="book-page-indicator">${current+1} / ${dishes.length}</div>
+    </div>
+    <div class="book-body">
+      <div class="book-dish-title">${esc(d.dish)}</div>
+      ${d.description ? `<p class="book-desc">${esc(d.description)}</p>` : ''}
+      <div class="book-cols">
+        <div class="book-col">
+          <h3>Ingredients</h3>
+          <ul class="book-ingredients">${ingredients || '<li>Not listed</li>'}</ul>
+        </div>
+        <div class="book-col">
+          <h3>How to Make It</h3>
+          <div class="book-steps">${esc(d.steps) || 'Steps coming soon.'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  counterEl.textContent = `${current+1} / ${dishes.length}`;
+  document.getElementById('book-prev').disabled = current === 0;
+  document.getElementById('book-next').disabled = current === dishes.length - 1;
+
+  dotsEl.innerHTML = dishes.map((_, i) =>
+    `<div class="book-dot ${i===current?'active':''}" onclick="goTo(${i})"></div>`
+  ).join('');
+}
+
+window.goPrev = function() { if (current > 0) { current--; renderBook(); } }
+window.goNext = function() { if (current < dishes.length - 1) { current++; renderBook(); } }
+window.goTo = function(i) { current = i; renderBook(); }
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') goPrev();
+  if (e.key === 'ArrowRight') goNext();
+});
+
+// Swipe navigation
+let touchStartX = null;
+document.getElementById('book').addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+document.getElementById('book').addEventListener('touchend', e => {
+  if (touchStartX === null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (dx > 50) goPrev();
+  else if (dx < -50) goNext();
+  touchStartX = null;
+}, {passive:true});
+
+async function loadDishes() {
+  try {
+    const fetchPromise = getDocs(query(collection(db, 'worldRecipes'), orderBy('order', 'asc')));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
+    const snap = await Promise.race([fetchPromise, timeoutPromise]);
+    dishes = snap.docs.map(d => d.data());
+  } catch(e) {
+    dishes = [];
+  }
+  renderBook();
+}
+
+loadDishes();
+</script>
+</body>
+</html>
