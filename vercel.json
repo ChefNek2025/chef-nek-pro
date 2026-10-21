@@ -1,8 +1,7 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/app", "dest": "/app.html" },
-    { "src": "/hire", "dest": "/hire.html" }
+  "rewrites": [
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/hire", "destination": "/hire.html" }
   ],
   "headers": [
     {
