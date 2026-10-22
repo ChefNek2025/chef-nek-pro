@@ -1842,27 +1842,107 @@ const ALL_INGREDIENTS = Object.entries(INGR_CATEGORIES).flatMap(([cat, items]) =
   items.map(name => ({ name, cat }))
 );
 
+// ============================================
+// RECIPE COST ENGINE — Food-Cost Copilot Phase 0, step 2.
+// Computes a recipe's ingredient cost live from linked inventory items
+// (see the unit conversion engine above renderInventory), so Food Cost
+// never needs separate manual entry again. Ingredients not linked to a
+// priced inventory item simply contribute no cost — nothing breaks for
+// existing recipes that predate this feature.
+// ============================================
+window._invItemsCache = [];
+window._invItemsById = {};
+
+async function loadInvItemsForCosting(rid) {
+  if (!rid) return;
+  try {
+    const snap = await getDocs(query(collection(db,'invItems'), where('restaurantId','==',rid)));
+    window._invItemsCache = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    window._invItemsById = {};
+    window._invItemsCache.forEach(i => window._invItemsById[i.id] = i);
+  } catch(e) { console.error('Could not load inventory for costing', e); }
+}
+
+// The Recipe Book's unit dropdown predates the costing engine and uses a few
+// different spellings (lbs, L, piece/whole/slice) than the canonical unit
+// keys inventory costing uses (lb, l, each). This bridges the two without
+// touching the existing dropdown options.
+function normalizeUnitForCosting(u) {
+  if (!u) return u;
+  const map = { lbs:'lb', l:'l', piece:'each', pieces:'each', whole:'each', slice:'each' };
+  const key = String(u).trim();
+  return map[key] || map[key.toLowerCase()] || key.toLowerCase();
+}
+
+// Cost of one ingredient row. Returns null if it isn't linked to a priced
+// inventory item, or the units can't be bridged (e.g. "to taste", "pinch").
+function calcIngredientCost(ing) {
+  if (!ing || !ing.inventoryItemId) return null;
+  const item = window._invItemsById[ing.inventoryItemId];
+  if (!item) return null;
+  const costPerBase = calcCostPerBaseUnit(item);
+  if (costPerBase === null) return null;
+  const amountInBase = convertUnits(ing.amount, normalizeUnitForCosting(ing.unit), item.baseUnit, item);
+  if (amountInBase === null) return null;
+  return amountInBase * costPerBase;
+}
+
+// Totals a recipe's ingredient cost. pricedCount/totalCount let the UI show
+// "3 of 5 ingredients priced" instead of pretending the total is complete.
+function calcRecipeCost(ingredients) {
+  let total = 0, pricedCount = 0;
+  (ingredients||[]).forEach(ing => {
+    const c = calcIngredientCost(ing);
+    if (c !== null) { total += c; pricedCount++; }
+  });
+  return { total, pricedCount, totalCount: (ingredients||[]).length };
+}
+
+function parsePriceNumber(str) {
+  const n = parseFloat(String(str||'').replace(/[^0-9.]/g,''));
+  return isNaN(n) ? null : n;
+}
+
 window.searchIngredients = function(query) {
   const dropdown = document.getElementById('ingr-dropdown');
   if (!dropdown) return;
   if (!query || query.length < 1) { dropdown.style.display = 'none'; return; }
 
   const q = query.toLowerCase();
-  const matches = ALL_INGREDIENTS.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
+  // Real, priced inventory items come first — these are what actually drive
+  // automatic food cost. The static reference list (below) is still offered
+  // for anything not yet in inventory, or just for quick notes.
+  const invMatches = (window._invItemsCache||[]).filter(i => (i.name||'').toLowerCase().includes(q)).slice(0, 8);
+  const staticMatches = ALL_INGREDIENTS.filter(i => i.name.toLowerCase().includes(q)).slice(0, 12);
 
-  if (!matches.length) {
+  if (!invMatches.length && !staticMatches.length) {
     dropdown.style.display = 'none';
     return;
   }
 
-  dropdown.innerHTML = matches.map(i => `
+  const invHTML = invMatches.map(i => {
+    const cost = calcCostPerBaseUnit(i);
+    const safeName = i.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `
+    <div onclick="selectIngredient('${safeName}','',${JSON.stringify(i.id)})"
+      style="padding:10px 14px;cursor:pointer;font-size:0.875rem;color:var(--ink);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#F3FBF7;"
+      onmouseover="this.style.background='#E8F7F0'"
+      onmouseout="this.style.background='#F3FBF7'">
+      <span style="font-weight:600;">📦 ${i.name}</span>
+      ${cost !== null ? `<span style="font-size:0.68rem;color:#0F6E56;background:#E8F7F0;padding:2px 8px;border-radius:100px;font-weight:700;">$${cost.toFixed(3)}/${UNIT_LABELS[i.baseUnit]||i.baseUnit}</span>` : `<span style="font-size:0.65rem;color:var(--ink-muted);">in inventory, not priced yet</span>`}
+    </div>`;
+  }).join('');
+
+  const staticHTML = staticMatches.map(i => `
     <div onclick="selectIngredient('${i.name}','${i.cat}')"
       style="padding:10px 14px;cursor:pointer;font-size:0.875rem;color:var(--ink);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;"
       onmouseover="this.style.background='var(--cream)'"
       onmouseout="this.style.background='#fff'">
       <span style="font-weight:500;">${i.name}</span>
       <span style="font-size:0.68rem;color:var(--ink-muted);background:var(--cream);padding:2px 8px;border-radius:100px;">${i.cat}</span>
-    </div>`).join('') +
+    </div>`).join('');
+
+  dropdown.innerHTML = invHTML + staticHTML +
     `<div onclick="selectIngredient(document.getElementById('ingr-search').value,'')"
       style="padding:10px 14px;cursor:pointer;font-size:0.82rem;color:var(--green);font-weight:700;border-top:1px solid var(--border);"
       onmouseover="this.style.background='var(--cream)'"
@@ -1873,10 +1953,23 @@ window.searchIngredients = function(query) {
   dropdown.style.display = 'block';
 };
 
-window.selectIngredient = function(name, cat) {
+window.selectIngredient = function(name, cat, inventoryItemId) {
   const input = document.getElementById('ingr-search');
   if (input) input.value = name;
   input._selectedName = name;
+  input._selectedInvId = inventoryItemId || null;
+  // Linked to a priced inventory item — default the unit dropdown to match
+  // its costing unit so the conversion is exact, not just close.
+  if (inventoryItemId) {
+    const item = window._invItemsById[inventoryItemId];
+    const unitSel = document.getElementById('ingr-unit');
+    if (item && item.baseUnit && unitSel) {
+      const reverseMap = { lb:'lbs', l:'L', each:'whole' };
+      const wantValue = reverseMap[item.baseUnit] || item.baseUnit;
+      const opt = Array.from(unitSel.options).find(o => o.value === wantValue || o.value === item.baseUnit);
+      if (opt) unitSel.value = opt.value;
+    }
+  }
   const dropdown = document.getElementById('ingr-dropdown');
   if (dropdown) dropdown.style.display = 'none';
   document.getElementById('ingr-amount')?.focus();
@@ -1927,11 +2020,14 @@ window.addIngrToRecipe = function() {
   if (!name) { showToast('Search and select an ingredient first', 'error'); return; }
   if (!amount) { showToast('Add an amount', 'error'); return; }
 
-  const ingredient = { name, amount, unit };
+  // Only carry the inventory link if the typed name still matches what was
+  // picked from the dropdown — editing the text after picking detaches it.
+  const inventoryItemId = (searchInput?._selectedName === name) ? (searchInput?._selectedInvId || null) : null;
+  const ingredient = { name, amount, unit, inventoryItemId };
   window._recipeIngredients.push(ingredient);
 
   // Reset
-  if (searchInput) { searchInput.value = ''; searchInput._selectedName = ''; }
+  if (searchInput) { searchInput.value = ''; searchInput._selectedName = ''; searchInput._selectedInvId = null; }
   if (document.getElementById('ingr-amount')) document.getElementById('ingr-amount').value = '';
   const dropdown = document.getElementById('ingr-dropdown');
   if (dropdown) dropdown.style.display = 'none';
@@ -1950,16 +2046,44 @@ function renderIngrList() {
   if (!list) return;
   if (!window._recipeIngredients.length) {
     list.innerHTML = '<div style="font-size:0.78rem;color:var(--ink-muted);font-style:italic;padding:8px 0;">No ingredients added yet</div>';
+    updateRecipeCostPreview();
     return;
   }
-  list.innerHTML = window._recipeIngredients.map((ing, idx) => `
+  list.innerHTML = window._recipeIngredients.map((ing, idx) => {
+    const cost = calcIngredientCost(ing);
+    return `
     <div style="display:flex;align-items:center;gap:10px;background:var(--cream);border-radius:8px;padding:8px 12px;border:1px solid var(--border);">
       <div style="flex:1;">
-        <span style="font-size:0.875rem;font-weight:600;color:var(--ink);">${ing.name}</span>
+        <span style="font-size:0.875rem;font-weight:600;color:var(--ink);">${ing.inventoryItemId ? '📦 ' : ''}${ing.name}</span>
         <span style="font-size:0.82rem;color:var(--ink-muted);margin-left:8px;">${ing.amount} ${ing.unit}</span>
+        ${cost !== null ? `<span style="font-size:0.75rem;color:#0F6E56;font-weight:700;margin-left:8px;">$${cost.toFixed(2)}</span>` : (ing.inventoryItemId ? `<span style="font-size:0.68rem;color:var(--ink-muted);margin-left:8px;">needs costing in Inventory</span>` : '')}
       </div>
       <button onclick="removeIngr(${idx})" style="width:26px;height:26px;border-radius:6px;border:none;background:#FCEBEB;color:#A32D2D;cursor:pointer;font-size:0.8rem;flex-shrink:0;">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  updateRecipeCostPreview();
+}
+
+// Live running cost + food-cost % shown under the ingredient builder, using
+// the current selling price field if one's been entered. Shared by the Add
+// Recipe form (recipe-price) — the edit form doesn't rebuild ingredients, so
+// it isn't wired in there.
+function updateRecipeCostPreview() {
+  const el = document.getElementById('recipe-cost-preview');
+  if (!el) return;
+  const { total, pricedCount, totalCount } = calcRecipeCost(window._recipeIngredients);
+  if (totalCount === 0) { el.innerHTML = ''; return; }
+  const priceStr = document.getElementById('recipe-price')?.value || '';
+  const sellingPrice = parsePriceNumber(priceStr);
+  let marginHTML = '';
+  if (sellingPrice && pricedCount === totalCount) {
+    const pct = (total / sellingPrice) * 100;
+    const color = pct <= 28 ? '#0A6B3A' : pct <= 35 ? '#B5860A' : '#A32D2D';
+    marginHTML = `<span style="margin-left:10px;color:${color};font-weight:700;">${pct.toFixed(1)}% food cost</span>`;
+  }
+  el.innerHTML = `<div style="font-size:0.82rem;color:var(--ink);margin-top:6px;">💲 Ingredient cost: <strong>$${total.toFixed(2)}</strong>`
+    + (pricedCount < totalCount ? ` <span style="color:var(--ink-muted);font-size:0.72rem;">(${pricedCount} of ${totalCount} priced)</span>` : '')
+    + marginHTML + `</div>`;
 }
 
 function renderRecipesInner(main, userData) {
@@ -2007,7 +2131,7 @@ function renderRecipesInner(main, userData) {
             <button onclick="openCalcModal('recipe-calories')" style="height:42px;padding:0 12px;border-radius:8px;background:#FFF0E5;border:1.5px solid #F4C09A;color:#C05C00;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">🔥 Calculate</button>
           </div>
           <div style="display:flex;gap:6px;align-items:center;">
-              <input type="text" id="recipe-price" class="form-input-small" placeholder="Price (e.g. $13.99)">
+              <input type="text" id="recipe-price" class="form-input-small" placeholder="Price (e.g. $13.99)" oninput="updateRecipeCostPreview()">
               <input type="text" id="recipe-photo" class="form-input-small" placeholder="Photo URL or upload below" style="flex:1;">
               <label for="recipe-photo-file" style="height:42px;padding:0 12px;background:var(--green);color:#fff;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;white-space:nowrap;">
                 Upload photo
@@ -2088,6 +2212,7 @@ function renderRecipesInner(main, userData) {
           <div id="recipe-ingredients-list" style="display:flex;flex-direction:column;gap:6px;min-height:40px;">
             <div style="font-size:0.78rem;color:var(--ink-muted);font-style:italic;padding:8px 0;">No ingredients added yet — pick from categories above</div>
           </div>
+          <div id="recipe-cost-preview"></div>
         </div>
         <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <select id="recipe-restaurant" style="height:42px;padding:0 14px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:0.875rem;background:var(--cream);color:var(--ink);outline:none;flex:1;">
@@ -2105,6 +2230,11 @@ function renderRecipesInner(main, userData) {
     </div>
   `;
   loadRecipes(userData);
+  // Inventory costing loads in parallel with recipes; once it's in, refresh
+  // the list so food-cost badges appear without needing a manual reload.
+  loadInvItemsForCosting(currentRestaurantId() || userData.uid).then(() => {
+    if (allRecipes.length) renderRecipeList(allRecipes);
+  });
   if (isAdmin) {
     loadRestaurantsForSelect('recipe-restaurant');
     // Pre-select currently viewed client
@@ -2114,6 +2244,12 @@ function renderRecipesInner(main, userData) {
         if (sel) sel.value = window._viewingRestaurantId;
       }, 600);
     }
+    // Admin picking a different client restaurant: reload that restaurant's
+    // priced inventory so ingredient costing matches the dish being built.
+    const restSel = document.getElementById('recipe-restaurant');
+    if (restSel) restSel.addEventListener('change', () => {
+      if (restSel.value) loadInvItemsForCosting(restSel.value);
+    });
   }
 }
 
@@ -2171,6 +2307,25 @@ function renderRecipeList(recipes) {
   }
 }
 
+// Computes the badge live from currently-loaded inventory costing, so it
+// reflects price changes in Inventory without re-saving the recipe.
+function foodCostBadge(r) {
+  if (!r.ingredients?.length) return '';
+  const { total, pricedCount, totalCount } = calcRecipeCost(r.ingredients);
+  if (pricedCount === 0) return '';
+  const sellingPrice = parsePriceNumber(r.price);
+  if (!sellingPrice) {
+    return pricedCount === totalCount
+      ? `<span style="font-size:0.72rem;background:var(--cream);color:var(--ink-muted);padding:3px 10px;border-radius:100px;font-weight:600;">💲 $${total.toFixed(2)} ingredient cost</span>`
+      : '';
+  }
+  const pct = (total / sellingPrice) * 100;
+  const complete = pricedCount === totalCount;
+  const color = pct <= 28 ? '#0A6B3A' : pct <= 35 ? '#B5860A' : '#A32D2D';
+  const bg = pct <= 28 ? '#E0F5EC' : pct <= 35 ? '#FFF8E1' : '#FCEBEB';
+  return `<span style="font-size:0.72rem;background:${bg};color:${color};padding:3px 10px;border-radius:100px;font-weight:700;white-space:nowrap;">${pct.toFixed(0)}% food cost${complete?'':' (partial)'}</span>`;
+}
+
 function recipeCard(r) {
   const id = r.id;
   const safePhoto = (r.photoUrl||'').replace(/`/g,'');
@@ -2188,6 +2343,7 @@ function recipeCard(r) {
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           ${r.price ? `<div style="font-family:var(--font-display);font-size:1.3rem;font-weight:900;color:var(--green);white-space:nowrap;">${r.price}</div>` : ''}
           ${r.calories ? `<div style="display:flex;align-items:center;gap:4px;background:#FFF0E5;border:1px solid #F4C09A;border-radius:100px;padding:3px 12px;"><span style="font-size:0.75rem;font-weight:700;color:#C05C00;">🔥 ${r.calories}</span></div>` : ''}
+          ${foodCostBadge(r)}
         </div>
       </div>
       <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
