@@ -1923,8 +1923,9 @@ window.searchIngredients = function(query) {
   const invHTML = invMatches.map(i => {
     const cost = calcCostPerBaseUnit(i);
     const safeName = i.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const safeId = String(i.id).replace(/'/g,"\\'");
     return `
-    <div onclick="selectIngredient('${safeName}','',${JSON.stringify(i.id)})"
+    <div onclick="selectIngredient('${safeName}','','${safeId}')"
       style="padding:10px 14px;cursor:pointer;font-size:0.875rem;color:var(--ink);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#F3FBF7;"
       onmouseover="this.style.background='#E8F7F0'"
       onmouseout="this.style.background='#F3FBF7'">
