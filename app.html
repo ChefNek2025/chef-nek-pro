@@ -12838,7 +12838,7 @@ window.submitReview = async function(staffId, staffName, rid) {
 
   try {
     
-    await setDoc(fsDoc(db, 'staffReviews', staffId + '_' + rid), {
+    await setDoc(doc(db, 'staffReviews', staffId + '_' + rid), {
       staffId, staffName, restaurantId: rid,
       score, stars, notes, appreciation, badges, rewards,
       rewardStatus: rewards.length > 0 ? 'pending_selection' : 'none',
@@ -12890,7 +12890,7 @@ window.openAppreciationModal = function(staffId, staffName, rid) {
 
 window.giveQuickBadge = async function(staffId, staffName, rid, badge) {
   try {
-        const reviewRef = fsDoc(db, 'staffReviews', staffId + '_' + rid);
+    const reviewRef = doc(db, 'staffReviews', staffId + '_' + rid);
     const existing = await getDoc(reviewRef);
     const current = existing.exists() ? (existing.data().badges || []) : [];
     if (!current.includes(badge)) {
