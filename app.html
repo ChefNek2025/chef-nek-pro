@@ -16240,6 +16240,47 @@ window.suppOrderForSupplier = function(rid, supId) {
   suppShowOrderModal(rid, '', supId, items);
 };
 
+window.suppReorderSend = async function(supId, channel) {
+  const P = window._reorderPlan; if (!P) return;
+  const sup = P.suppliers.find(x => x.id === supId); if (!sup) return;
+  const items = rbItemsFor(supId).filter(i => parseFloat(i.qty) > 0);
+  if (!items.length) { showToast('Set a quantity for at least one item','error'); return; }
+  const total = items.reduce((a,i)=>a+(parseFloat(i.price)||0)*(parseFloat(i.qty)||0),0);
+  const order = { supplierName: sup.name||'', items, deliveryDate:'', notes:'', total: total.toFixed(2) };
+  const msg = suppBuildOrderMessage(order);
+  let url;
+  if (channel === 'wa') {
+    let num = (sup.whatsapp || sup.phone || '').replace(/\D/g,'');
+    if (num.length === 10) num = '1' + num;
+    if (!num) { showToast('No WhatsApp number for this supplier','error'); return; }
+    url = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+  } else {
+    if (!sup.email) { showToast('No email for this supplier','error'); return; }
+    const subject = 'Purchase Order — ' + (window._userData?.restaurantName || 'Restaurant');
+    url = 'mailto:' + sup.email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg);
+  }
+  // Open first, inside the tap, so the browser doesn't block it
+  window.open(url, '_blank');
+  try {
+    await addDoc(collection(db,'purchaseOrders'), {
+      supplierId: sup.id, supplierName: sup.name||'', supplierPhone: sup.phone||'', supplierWhatsapp: sup.whatsapp||'', supplierEmail: sup.email||'',
+      items, deliveryDate:'', notes:'', total: total.toFixed(2),
+      restaurantId: P.rid, status:'sent',
+      orderDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      createdBy: localStorage.getItem('cnp-staff-name')||'Admin', createdAt: serverTimestamp()
+    });
+    P.plan = P.plan.filter(i => i.supId !== supId);
+    showToast(`✅ Order for ${sup.name} ready to send — saved as Sent`);
+    if (!P.plan.length) {
+      sessionStorage.removeItem('cnp-reorder-items');
+      document.getElementById('reorder-board')?.remove();
+      window._reorderPlan = null;
+      window._suppTab = 'orders';
+      suppRenderTab(P.rid, document.querySelector('.page-body'));
+    } else { rbRender(); }
+  } catch(e) { console.error(e); showToast('Message opened, but the order was not saved: '+e.message,'error'); }
+};
+
 window.suppReorderReview = function(supId) {
   const P = window._reorderPlan; if (!P) return;
   const items = rbItemsFor(supId);
@@ -16327,7 +16368,8 @@ function rbRender() {
   const supCols = P.suppliers.map(s => {
     const mine = P.plan.map((it,i)=>({it,i})).filter(x=>x.it.supId===s.id);
     const hue = [...(s.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
-    const footer = mine.length ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;"><span id="rb-tot-${s.id}" style="font-size:0.7rem;color:var(--ink-muted);"></span><button onclick="suppReorderReview('${s.id}')" style="height:32px;padding:0 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Review &amp; send →</button></div>` : '';
+    const btn = (bg, label, fn) => `<button onclick="${fn}" style="flex:1 1 auto;height:34px;padding:0 10px;border-radius:8px;border:none;background:${bg};color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">${label}</button>`;
+    const footer = mine.length ? `<div style="display:flex;flex-direction:column;gap:6px;"><span id="rb-tot-${s.id}" style="font-size:0.7rem;color:var(--ink-muted);"></span><div style="display:flex;gap:6px;flex-wrap:wrap;">${(s.whatsapp||s.phone)?btn('#25D366','💬 WhatsApp',`suppReorderSend('${s.id}','wa')`):''}${s.email?btn('#2563EB','📧 Email',`suppReorderSend('${s.id}','email')`):''}${btn('#6B7280','✏️ Review',`suppReorderReview('${s.id}')`)}</div>${(!s.whatsapp&&!s.phone&&!s.email)?'<span style="font-size:0.68rem;color:#C62828;">Add a phone or email to this supplier to send directly.</span>':''}</div>` : '';
     return col(s.id, s.name||'Supplier', `${mine.length} item${mine.length===1?'':'s'}`, hue, mine.map(x=>card(x.it,x.i)).join(''), footer);
   }).join('');
 
