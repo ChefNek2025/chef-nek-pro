@@ -5357,7 +5357,8 @@ async function loadInvCategories(userData) {
       invAllItems.push(...items);
       const lowItems = items.filter(i => i.currentQty <= i.alertAt);
       const criticalItems = items.filter(i => i.currentQty === 0);
-      lowItems.forEach(i => lowStockAlerts.push({ name: i.name, cat: cat.name, qty: i.currentQty, unit: i.unit }));
+      lowItems.forEach(i => lowStockAlerts.push({ id: i.id, name: i.name, cat: cat.name, qty: i.currentQty, unit: i.unit, alertAt: i.alertAt, pref: i.preferredSupplierId || '' }));
+      window._lowStockAlerts = lowStockAlerts;
 
       const catColor = cat.color || '#1D9E75';
       const catBg = cat.colorBg || 'rgba(29,158,117,0.08)';
@@ -5551,9 +5552,9 @@ async function loadInvCategories(userData) {
               ${lowStockAlerts.map(i=>`<div style="font-size:0.8125rem;color:#854F0B;">• ${i.name} <span style="opacity:0.7;">(${i.cat}) — ${i.qty} ${i.unit||''} left</span></div>`).join('')}
             </div>
           </div>
-          <button onclick="sendLowStockToSupplier(${JSON.stringify(lowStockAlerts).replace(/"/g,'&quot;')})" 
+          <button onclick="sendLowStockToSupplier(window._lowStockAlerts)" 
             style="width:100%;height:40px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;">
-            🚛 Send Low Stock Items to Supplier Order
+            🚛 Sort Low Items by Supplier
           </button>
         </div>`;
     } else if (alertZone) {
@@ -15388,6 +15389,7 @@ async function renderSuppliers(main, userData) {
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div><h1 class="page-title">📦 Suppliers</h1><p class="page-sub">Manage suppliers, place orders & track deliveries</p></div>
       <div style="display:flex;gap:8px;">
+        <button onclick="suppLoadLowAndOpen('${rid}')" style="height:38px;padding:0 16px;background:#FFF3D6;border:1.5px solid #F2A623;color:#C17F3A;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;">🚛 Reorder Board</button>
         <button onclick="suppShowOrderModal('${rid}')" style="height:38px;padding:0 16px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;">🛒 New Order</button>
         <button onclick="suppShowAddModal('${rid}')" style="height:38px;padding:0 18px;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(232,93,38,0.3);">+ Add Supplier</button>
       </div>
@@ -15412,65 +15414,16 @@ async function renderSuppliers(main, userData) {
   });
   body.appendChild(tabBar);
 
-  // Check if coming from inventory with low stock items
-  const reorderItems = sessionStorage.getItem('cnp-reorder-items');
-  if (reorderItems) {
-    try {
-      const items = JSON.parse(reorderItems);
-
-      // Group items by category
-      const grouped = {};
-      items.forEach(i => {
-        const cat = i.cat || 'Other';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(i);
-      });
-
-      const banner = document.createElement('div');
-      banner.style.cssText = 'background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:18px;';
-
-      const catHTML = Object.entries(grouped).map(([cat, catItems]) => `
-        <div style="margin-bottom:12px;">
-          <div style="font-size:0.72rem;font-weight:800;color:#C17F3A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📂 ${cat}</div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            ${catItems.map(i => `
-              <label style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #F2A623;border-radius:10px;padding:8px 12px;cursor:pointer;">
-                <input type="checkbox" checked data-item='${JSON.stringify(i).replace(/'/g,'&#39;')}' 
-                  style="width:16px;height:16px;accent-color:#F2A623;flex-shrink:0;">
-                <div style="flex:1;">
-                  <div style="font-size:0.82rem;font-weight:700;color:#854F0B;">${i.name}</div>
-                  <div style="font-size:0.72rem;color:var(--ink-muted);">${i.qty} ${i.unit||''} left — needs reorder</div>
-                </div>
-                <span style="font-size:0.68rem;background:#FFF0CC;color:#C17F3A;padding:2px 8px;border-radius:100px;font-weight:700;">LOW</span>
-              </label>`).join('')}
-          </div>
-        </div>`).join('');
-
-      banner.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-          <div>
-            <div style="font-size:0.875rem;font-weight:800;color:#C17F3A;">🚛 Low Stock Items from Inventory</div>
-            <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">${items.length} items need reordering — uncheck any you don't want to order</div>
-          </div>
-          <button onclick="this.closest('div').parentElement.remove();sessionStorage.removeItem('cnp-reorder-items')" 
-            style="height:28px;padding:0 12px;border-radius:8px;border:1px solid #F2A623;background:transparent;color:#C17F3A;font-size:0.72rem;cursor:pointer;font-family:var(--font-body);">✕ Dismiss</button>
-        </div>
-        <div id="reorder-cats">${catHTML}</div>
-        <button onclick="suppOrderCheckedItems('${rid}')"
-          style="width:100%;height:42px;border-radius:10px;border:none;background:#F2A623;color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:pointer;margin-top:4px;">
-          📋 Create Supplier Order with Selected Items
-        </button>`;
-      body.insertBefore(banner, tabBar.nextSibling);
-    } catch(e) {
-      sessionStorage.removeItem('cnp-reorder-items');
-    }
-  }
+  // Coming from Inventory with low-stock items? Open the Reorder Board after the page is built.
+  let pendingReorder = null;
+  try { pendingReorder = JSON.parse(sessionStorage.getItem('cnp-reorder-items') || 'null'); } catch(e) { sessionStorage.removeItem('cnp-reorder-items'); }
   const content = document.createElement('div');
   content.id = 'supp-content';
   body.appendChild(content);
   main.appendChild(body);
 
   suppRenderTab(rid, body);
+  if (pendingReorder && pendingReorder.length) suppOpenReorderBoard(rid, pendingReorder);
 }
 
 async function suppRenderTab(rid, body) {
@@ -15500,18 +15453,18 @@ async function suppLoadSuppliers(rid, content) {
 
     content.innerHTML = '';
 
-    // Low stock alerts
+    // Low stock alerts (inventory items at or below their alert level)
     try {
-      const invSnap = await getDocs(query(collection(db,'inventory'), where('restaurantId','==',rid)));
-      const lowItems = invSnap.docs.map(d=>d.data()).filter(i=>i.quantity !== undefined && i.minQuantity !== undefined && i.quantity <= i.minQuantity);
+      const invSnap = await getDocs(query(collection(db,'invItems'), where('restaurantId','==',rid)));
+      const lowItems = invSnap.docs.map(d=>d.data()).filter(i=>i.currentQty !== undefined && i.alertAt !== undefined && i.currentQty <= i.alertAt);
       if (lowItems.length > 0) {
         const alertBar = document.createElement('div');
-        alertBar.style.cssText = 'background:#FFF5F5;border:1.5px solid #FFCDD2;border-radius:14px;padding:14px 16px;margin-bottom:16px;cursor:pointer;';
-        alertBar.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+        alertBar.style.cssText = 'background:#FFF5F5;border:1.5px solid #FFCDD2;border-radius:14px;padding:14px 16px;margin-bottom:16px;';
+        alertBar.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <div style="font-size:1.2rem;">⚠️</div>
-          <div><div style="font-size:0.875rem;font-weight:700;color:#C62828;">${lowItems.length} item${lowItems.length>1?'s':''} running low — time to reorder</div>
-          <div style="font-size:0.75rem;color:#E57373;margin-top:2px;">${lowItems.map(i=>i.name).join(', ')}</div></div>
-          <button onclick="suppShowOrderModal('${rid}','${lowItems.map(i=>i.name).join(',')}')" style="margin-left:auto;height:32px;padding:0 14px;border:none;background:#E53935;color:#fff;border-radius:8px;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">🛒 Order Now</button>
+          <div style="flex:1;min-width:180px;"><div style="font-size:0.875rem;font-weight:700;color:#C62828;">${lowItems.length} item${lowItems.length>1?'s':''} running low — time to reorder</div>
+          <div style="font-size:0.75rem;color:#E57373;margin-top:2px;">${lowItems.map(i=>rbEsc(i.name)).join(', ')}</div></div>
+          <button onclick="suppLoadLowAndOpen('${rid}')" style="height:32px;padding:0 14px;border:none;background:#E53935;color:#fff;border-radius:8px;font-family:var(--font-body);font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">🚛 Open Reorder Board</button>
         </div>`;
         content.appendChild(alertBar);
       }
@@ -15561,7 +15514,7 @@ async function suppLoadSuppliers(rid, content) {
             ${sup.whatsapp?`<a href="https://wa.me/${sup.whatsapp.replace(/\D/g,'')}" target="_blank" style="width:34px;height:34px;border-radius:9px;background:#E8F8EF;border:1px solid #C8EEE0;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="WhatsApp">💬</a>`:''}
             ${sup.email?`<a href="mailto:${sup.email}" style="width:34px;height:34px;border-radius:9px;background:#EEF4FF;border:1px solid #BFDBFE;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:0.9rem;" title="Email">📧</a>`:''}
             <button onclick="suppManageCatalog('${sup.id}','${sup.name}','${rid}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:#F0FAF5;border:1px solid #C8EEE0;color:var(--green);font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">📋 Catalog</button>
-            <button onclick="suppShowOrderModal('${rid}','','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">🛒 Order</button>
+            <button onclick="suppOrderForSupplier('${rid}','${sup.id}')" style="height:34px;padding:0 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">🛒 Order</button>
             <button onclick="suppDeleteSupplier('${sup.id}','${rid}')" style="width:34px;height:34px;border-radius:9px;border:none;background:#FFF0F0;color:#E53935;font-size:0.8rem;cursor:pointer;" title="Delete">🗑️</button>
           </div>`;
         content.appendChild(card);
@@ -16192,6 +16145,226 @@ window.suppDeleteCatalogItem = async function(itemId, suppId, rid) {
   catch(e) { showToast('Error','error'); }
 }
 
+// ============================================
+// SMART REORDER BOARD — drag low-stock items to the right supplier
+// ============================================
+const rbEsc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rbNorm = s => String(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+
+window.suppLoadLowAndOpen = async function(rid) {
+  try {
+    const catSnap = await getDocs(query(collection(db,'invCategories'), where('restaurantId','==',rid)));
+    const catNames = {}; catSnap.docs.forEach(d => catNames[d.id] = d.data().name);
+    const snap = await getDocs(query(collection(db,'invItems'), where('restaurantId','==',rid)));
+    const low = snap.docs.map(d=>({id:d.id,...d.data()}))
+      .filter(i => i.currentQty !== undefined && i.alertAt !== undefined && i.currentQty <= i.alertAt)
+      .map(i => ({ id:i.id, name:i.name, cat:catNames[i.categoryId]||'', qty:i.currentQty, unit:i.unit, alertAt:i.alertAt, pref:i.preferredSupplierId||'' }));
+    if (!low.length) { showToast('🎉 Nothing is low right now'); return; }
+    await suppOpenReorderBoard(rid, low);
+  } catch(e) { console.error(e); showToast('Could not load low-stock items','error'); }
+};
+
+window.suppOpenReorderBoard = async function(rid, items) {
+  try {
+    const [sSnap, cSnap] = await Promise.all([
+      getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid))),
+      getDocs(query(collection(db,'supplierItems'), where('restaurantId','==',rid)))
+    ]);
+    const suppliers = sSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    if (!suppliers.length) { showToast('Add your suppliers first, then come back to assign items','error'); suppShowAddModal(rid); return; }
+    const catalog = cSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const findCatalog = (name, supId) => {
+      const n = rbNorm(name); if (!n) return null;
+      const m = catalog.filter(c => { const cn = rbNorm(c.name); return cn && (!supId || c.supplierId===supId) && (cn===n || cn.includes(n) || n.includes(cn)); });
+      m.sort((a,b)=>(parseFloat(a.currentPrice)||1e9)-(parseFloat(b.currentPrice)||1e9));
+      return m[0]||null;
+    };
+    const plan = items.map(i => {
+      const par = Math.max(parseFloat(i.alertAt)||0, 0), have = parseFloat(i.qty)||0;
+      return { ...i, orderQty: Math.max(Math.ceil(par*2 - have), 1), supId:'', auto:false };
+    });
+    window._reorderPlan = { rid, suppliers, plan, findCatalog };
+    suppReorderAutoAssign(true);
+    rbRender();
+  } catch(e) { console.error(e); showToast('Could not open the reorder board','error'); }
+};
+
+window.suppReorderAutoAssign = function(silent) {
+  const P = window._reorderPlan; if (!P) return;
+  let n = 0;
+  P.plan.forEach(it => {
+    if (it.supId) return;
+    if (it.pref && P.suppliers.some(s=>s.id===it.pref)) { it.supId = it.pref; it.auto = true; n++; return; }
+    const m = P.findCatalog(it.name);
+    if (m && P.suppliers.some(s=>s.id===m.supplierId)) { it.supId = m.supplierId; it.auto = true; n++; }
+  });
+  if (!silent) { rbRender(); showToast(n ? `✨ Assigned ${n} item${n>1?'s':''} from your catalogs and past choices` : 'No matches found — drag items to a supplier'); }
+};
+
+window.suppReorderMove = function(idx, supId) {
+  const P = window._reorderPlan; if (!P || !P.plan[idx]) return;
+  const it = P.plan[idx];
+  it.supId = supId; it.auto = false;
+  if (supId && it.id) setDoc(doc(db,'invItems',it.id), { preferredSupplierId: supId }, { merge:true }).catch(()=>{});
+  rbRender();
+};
+
+window.suppReorderSetQty = function(idx, val) {
+  const P = window._reorderPlan; if (!P || !P.plan[idx]) return;
+  P.plan[idx].orderQty = val;
+  rbTotals();
+};
+
+function rbItemsFor(supId) {
+  const P = window._reorderPlan; if (!P) return [];
+  return P.plan.filter(i => i.supId === supId).map(i => {
+    const c = P.findCatalog(i.name, supId);
+    return { name:i.name, qty:String(i.orderQty||''), unit:i.unit||c?.unit||'', price: c && parseFloat(c.currentPrice) ? String(parseFloat(c.currentPrice)) : '' };
+  });
+}
+
+function rbTotals() {
+  const P = window._reorderPlan; if (!P) return;
+  P.suppliers.forEach(s => {
+    const el = document.getElementById('rb-tot-'+s.id); if (!el) return;
+    const its = rbItemsFor(s.id);
+    const t = its.reduce((a,i)=>a+(parseFloat(i.price)||0)*(parseFloat(i.qty)||0),0);
+    const priced = its.filter(i=>i.price).length;
+    el.textContent = its.length ? (priced ? `Est. $${t.toFixed(2)}${priced<its.length?' + unpriced':''}` : 'No prices yet') : '';
+  });
+}
+
+window.suppOrderForSupplier = function(rid, supId) {
+  const P = window._reorderPlan;
+  const items = P && P.rid===rid ? rbItemsFor(supId) : [];
+  suppShowOrderModal(rid, '', supId, items);
+};
+
+window.suppReorderReview = function(supId) {
+  const P = window._reorderPlan; if (!P) return;
+  const items = rbItemsFor(supId);
+  if (!items.length) { showToast('Drag some items into this supplier first','error'); return; }
+  suppShowOrderModal(P.rid, '', supId, items);
+};
+
+window.suppReorderSaveAll = async function() {
+  const P = window._reorderPlan; if (!P) return;
+  const groups = P.suppliers.map(s => ({ s, items: rbItemsFor(s.id).filter(i=>parseFloat(i.qty)>0) })).filter(g=>g.items.length);
+  const left = P.plan.filter(i=>!i.supId).length;
+  if (!groups.length) { showToast('Assign at least one item to a supplier','error'); return; }
+  if (left && !confirm(`${left} item${left>1?'s are':' is'} not assigned and will be left out. Save the other orders?`)) return;
+  const btn = document.getElementById('rb-saveall'); if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  try {
+    for (const g of groups) {
+      const total = g.items.reduce((a,i)=>a+(parseFloat(i.price)||0)*(parseFloat(i.qty)||0),0);
+      await addDoc(collection(db,'purchaseOrders'), {
+        supplierId:g.s.id, supplierName:g.s.name||'', supplierPhone:g.s.phone||'', supplierWhatsapp:g.s.whatsapp||'', supplierEmail:g.s.email||'',
+        items:g.items, deliveryDate:'', notes:'', total:total.toFixed(2),
+        restaurantId:P.rid, status:'pending',
+        orderDate:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+        createdBy:localStorage.getItem('cnp-staff-name')||'Admin', createdAt:serverTimestamp()
+      });
+    }
+    sessionStorage.removeItem('cnp-reorder-items');
+    document.getElementById('reorder-board')?.remove();
+    window._reorderPlan = null;
+    showToast(`✅ ${groups.length} order${groups.length>1?'s':''} saved — review and send them from Orders`);
+    window._suppTab = 'orders';
+    suppRenderTab(P.rid, document.querySelector('.page-body'));
+  } catch(e) {
+    console.error(e); showToast('Error: '+e.message,'error');
+    if (btn) { btn.disabled = false; btn.textContent = '📋 Save all as orders'; }
+  }
+};
+
+window.suppReorderDismiss = function() {
+  sessionStorage.removeItem('cnp-reorder-items');
+  document.getElementById('reorder-board')?.remove();
+};
+
+function rbRender() {
+  const P = window._reorderPlan; if (!P) return;
+  const body = document.querySelector('.page-body'); if (!body) return;
+  let board = document.getElementById('reorder-board');
+  if (!board) {
+    board = document.createElement('div'); board.id = 'reorder-board';
+    body.insertBefore(board, body.children[1] || null);
+  }
+  board.style.cssText = 'background:linear-gradient(135deg,#FFF8ED,#FFF3D6);border:1.5px solid #F2A623;border-radius:14px;padding:16px 18px;margin-bottom:18px;';
+  const unassigned = P.plan.map((it,i)=>({it,i})).filter(x=>!x.it.supId);
+  const assignedCount = P.plan.length - unassigned.length;
+
+  const opts = cur => `<option value="">Unassigned</option>` + P.suppliers.map(s=>`<option value="${s.id}" ${s.id===cur?'selected':''}>${rbEsc(s.name)}</option>`).join('');
+  const card = (it,i) => {
+    const c = it.supId ? P.findCatalog(it.name, it.supId) : null;
+    const price = c && parseFloat(c.currentPrice) ? `$${parseFloat(c.currentPrice).toFixed(2)}/${rbEsc(c.unit||it.unit||'unit')}` : '';
+    return `<div class="rb-card" draggable="true" data-idx="${i}" style="background:#fff;border:1px solid #F2A623;border-radius:10px;padding:9px 10px;cursor:grab;touch-action:manipulation;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span aria-hidden="true" style="color:#C17F3A;font-size:0.9rem;">⠿</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.82rem;font-weight:700;color:#854F0B;overflow-wrap:anywhere;">${rbEsc(it.name)}${it.auto?' <span title="Matched automatically" style="font-size:0.6rem;background:#EDFAF4;color:#1D9E75;border-radius:100px;padding:1px 6px;font-weight:700;">auto</span>':''}</div>
+          <div style="font-size:0.7rem;color:var(--ink-muted);">${rbEsc(it.qty)} ${rbEsc(it.unit||'')} left${it.cat?' · '+rbEsc(it.cat):''}${price?' · '+price:''}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:7px;">
+        <label style="font-size:0.66rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;">Order</label>
+        <input type="number" min="0" step="any" value="${rbEsc(it.orderQty)}" oninput="suppReorderSetQty(${i},this.value)" aria-label="Quantity to order for ${rbEsc(it.name)}" style="width:62px;height:32px;border-radius:8px;border:1.5px solid var(--border);padding:0 8px;font-family:var(--font-body);font-size:0.8rem;">
+        <span style="font-size:0.72rem;color:var(--ink-muted);">${rbEsc(it.unit||'')}</span>
+        <select onchange="suppReorderMove(${i},this.value)" aria-label="Move ${rbEsc(it.name)} to supplier" style="flex:1 1 100px;min-width:0;height:32px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-family:var(--font-body);font-size:0.72rem;">${opts(it.supId)}</select>
+      </div>
+    </div>`;
+  };
+  const col = (key, title, sub, hue, cards, footer) => `
+    <div class="rb-col" data-sup="${key}" style="background:${hue?`hsl(${hue},60%,97%)`:'#fff'};border:1.5px dashed ${hue?`hsl(${hue},45%,70%)`:'#E0B25A'};border-radius:12px;padding:10px;min-height:120px;display:flex;flex-direction:column;gap:8px;transition:background .15s,border-color .15s;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${hue?`<div style="width:28px;height:28px;border-radius:8px;background:hsl(${hue},60%,86%);color:hsl(${hue},60%,30%);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0;">${rbEsc(title[0]||'?').toUpperCase()}</div>`:'<div style="font-size:1.1rem;">📥</div>'}
+        <div style="min-width:0;"><div style="font-size:0.82rem;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">${rbEsc(title)}</div><div style="font-size:0.68rem;color:var(--ink-muted);">${sub}</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1;">${cards || `<div style="font-size:0.74rem;color:var(--ink-muted);text-align:center;padding:14px 4px;">${hue?'Drop items here':'All items assigned ✅'}</div>`}</div>
+      ${footer||''}
+    </div>`;
+
+  const supCols = P.suppliers.map(s => {
+    const mine = P.plan.map((it,i)=>({it,i})).filter(x=>x.it.supId===s.id);
+    const hue = [...(s.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
+    const footer = mine.length ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;"><span id="rb-tot-${s.id}" style="font-size:0.7rem;color:var(--ink-muted);"></span><button onclick="suppReorderReview('${s.id}')" style="height:32px;padding:0 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#E85D26,#C44B1E);color:#fff;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;">Review &amp; send →</button></div>` : '';
+    return col(s.id, s.name||'Supplier', `${mine.length} item${mine.length===1?'':'s'}`, hue, mine.map(x=>card(x.it,x.i)).join(''), footer);
+  }).join('');
+
+  board.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:0.9rem;font-weight:800;color:#C17F3A;">🚛 Reorder Board — ${P.plan.length} low item${P.plan.length===1?'':'s'}</div>
+        <div style="font-size:0.75rem;color:var(--ink-muted);margin-top:2px;">Drag each item to the supplier you buy it from (or use the dropdown on a card). I remember your choice for next time.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="suppReorderAutoAssign()" style="height:34px;padding:0 12px;border-radius:8px;border:1.5px solid #F2A623;background:#fff;color:#C17F3A;font-family:var(--font-body);font-size:0.74rem;font-weight:700;cursor:pointer;">✨ Auto-assign</button>
+        <button onclick="suppReorderDismiss()" style="height:34px;padding:0 12px;border-radius:8px;border:1px solid #F2A623;background:transparent;color:#C17F3A;font-family:var(--font-body);font-size:0.74rem;cursor:pointer;">✕ Dismiss</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;">
+      ${col('', 'Needs a supplier', `${unassigned.length} left`, 0, unassigned.map(x=>card(x.it,x.i)).join(''))}
+      ${supCols}
+    </div>
+    <button id="rb-saveall" onclick="suppReorderSaveAll()" ${assignedCount?'':'disabled'} style="width:100%;height:44px;border-radius:10px;border:none;background:${assignedCount?'#F2A623':'#E6D3AE'};color:#fff;font-family:var(--font-body);font-size:0.875rem;font-weight:700;cursor:${assignedCount?'pointer':'not-allowed'};margin-top:12px;">📋 Save all as orders (${assignedCount} item${assignedCount===1?'':'s'})</button>`;
+
+  // Drag & drop (mouse / trackpad). Touch screens use the dropdown on each card.
+  board.querySelectorAll('.rb-card').forEach(el => {
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', el.dataset.idx); e.dataTransfer.effectAllowed = 'move'; el.style.opacity = '.45'; });
+    el.addEventListener('dragend', () => { el.style.opacity = ''; });
+  });
+  board.querySelectorAll('.rb-col').forEach(c => {
+    c.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; c.style.background = '#FFF3D6'; });
+    c.addEventListener('dragleave', e => { if (!c.contains(e.relatedTarget)) c.style.background = ''; });
+    c.addEventListener('drop', e => {
+      e.preventDefault();
+      const idx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (!isNaN(idx)) suppReorderMove(idx, c.dataset.sup || '');
+    });
+  });
+  rbTotals();
+}
+
 window.suppOrderCheckedItems = async function(rid) {
   const checked = [...document.querySelectorAll('#reorder-cats input[type=checkbox]:checked')];
   if (!checked.length) { showToast('Select at least one item', 'error'); return; }
@@ -16209,7 +16382,7 @@ window.suppShowOrderModalWithItems = async function(rid, items) {
   await suppShowOrderModal(rid, itemText);
 };
 
-window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='') {
+window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems='', supplierId='', prefillItems=[]) {
   // Load suppliers for dropdown
   const snap = await getDocs(query(collection(db,'suppliers'), where('restaurantId','==',rid)));
   const suppliers = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -16380,13 +16553,18 @@ window.suppShowOrderModal = async function suppShowOrderModal(rid, lowStockItems
   selEl?.addEventListener('change', () => loadCatalogChips(selEl.value));
 
   // Add initial items from low stock if any
-  const initItems = lowStockItems ? lowStockItems.split(',') : [''];
-  initItems.forEach(name => suppAddOrderItem(name.trim()));
+  if (Array.isArray(prefillItems) && prefillItems.length) {
+    prefillItems.forEach(i => suppAddOrderItem(i.name, i.qty, i.unit, i.price));
+  } else {
+    const initItems = lowStockItems ? lowStockItems.split(',') : [''];
+    initItems.forEach(name => suppAddOrderItem(name.trim()));
+  }
 }
 
 window.suppAddOrderItem = function(name='', qty='', unit='', price='') {
   const container = document.getElementById('po-items');
   if (!container) return;
+  [name, qty, unit, price] = [name, qty, unit, price].map(v => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
   const row = document.createElement('div');
   row.className = 'po-item-row';
   row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center;';
