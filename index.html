@@ -270,6 +270,56 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
 .feat-tag{color:var(--cc);background:color-mix(in srgb,var(--cc) 12%,#fff);border-color:color-mix(in srgb,var(--cc) 35%,transparent)}
 .features-grid .feat-card:nth-child(12n+1){--cc:#1D9E75}.features-grid .feat-card:nth-child(12n+2){--cc:#3b82f6}.features-grid .feat-card:nth-child(12n+3){--cc:#a855f7}.features-grid .feat-card:nth-child(12n+4){--cc:#f59e0b}.features-grid .feat-card:nth-child(12n+5){--cc:#10b981}.features-grid .feat-card:nth-child(12n+6){--cc:#f97316}.features-grid .feat-card:nth-child(12n+7){--cc:#d4920a}.features-grid .feat-card:nth-child(12n+8){--cc:#8b5cf6}.features-grid .feat-card:nth-child(12n+9){--cc:#ef4444}.features-grid .feat-card:nth-child(12n+10){--cc:#0ea5e9}.features-grid .feat-card:nth-child(12n+11){--cc:#ec4899}.features-grid .feat-card:nth-child(12n+12){--cc:#14b8a6}
 @media(prefers-reduced-motion:reduce){.hero-bg-img,.hero-orb,.hero-float span,.hero-title .accent,.btn-green::after,.scroll-cue span,.strip-item{animation:none!important}.hero-float{display:none}.feat-card:hover{transform:none}}
+
+/* ═════ FIXES + INTERACTIVE SECTIONS ═════ */
+html{scroll-padding-top:70px}
+/* story: never clip the text, photo parallax */
+.story-img{height:auto;min-height:680px;display:flex;align-items:center;padding:120px 0 110px;overflow:hidden}
+.story-img img{position:absolute;inset:-8% 0;width:100%;height:116%;object-fit:cover;transform:translate3d(0,var(--py,0px),0) scale(1.06);will-change:transform}
+.story-text{position:relative;top:auto;left:auto;transform:none;margin-left:6%;max-width:600px;z-index:2}
+.story-headline{font-size:clamp(3rem,7vw,5.8rem)}
+.story-headline .ln{display:block;opacity:0;transform:translateX(-40px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),color .25s;transition-delay:calc(var(--i)*.14s + .15s);cursor:default}
+.story-text.visible .ln{opacity:1;transform:none}
+.story-text.visible .ln:hover{transform:translateX(14px);transition-delay:0s}
+.story-headline .ln.g{text-shadow:0 0 36px rgba(29,158,117,.5)}
+.story-headline .ln.gd{text-shadow:0 0 36px rgba(212,146,10,.5)}
+.story-glow{position:absolute;width:520px;height:520px;left:-120px;top:10%;border-radius:50%;background:radial-gradient(closest-side,rgba(29,158,117,.4),transparent);filter:blur(30px);animation:orbdrift 12s ease-in-out infinite alternate;pointer-events:none}
+.story-quote{display:inline-block;padding:6px 16px;border-radius:100px;background:rgba(29,158,117,.16);border:1px solid rgba(29,158,117,.4);color:#9fe8cf}
+.story-chips{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 30px}
+.story-chips span{padding:9px 16px;border-radius:100px;font-size:.78rem;font-weight:600;color:#fff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);transition:transform .25s,background .25s,border-color .25s}
+.story-chips span:hover{transform:translateY(-4px) scale(1.05);background:rgba(29,158,117,.35);border-color:#1D9E75}
+@media(max-width:768px){.story-img{padding:0}.story-img img{position:absolute;height:100%;inset:0}.story-text{margin:0;padding:80px 6%}.story-glow{display:none}}
+.testimonial-avatar{animation:avring 2.8s ease-out infinite}
+@keyframes avring{0%{box-shadow:0 0 0 0 rgba(29,158,117,.55)}100%{box-shadow:0 0 0 16px rgba(29,158,117,0)}}
+.testimonial-inner{transition:transform .4s}
+.testimonial-inner:hover{transform:translateY(-4px)}
+
+/* scanner: tilting phone, live scan, hover rows */
+.ai-phone-wrap{perspective:900px}
+.phone{transition:transform .2s ease-out,box-shadow .3s;transform:rotateY(calc(var(--ry,0)*1deg)) rotateX(calc(var(--rx,0)*1deg))}
+.phone:hover{box-shadow:0 50px 110px rgba(0,0,0,.65),0 0 110px rgba(29,158,117,.35)}
+.p-macro{transition:transform .25s,background .25s}
+.p-macro:hover{transform:translateY(-4px);background:rgba(29,158,117,.2)}
+.ai-feat{transition:transform .3s,background .3s,border-color .3s;border-radius:16px}
+.ai-feat:hover{transform:translateX(10px);background:rgba(255,255,255,.06)}
+.ai-feat-icon{transition:transform .3s}
+.ai-feat:hover .ai-feat-icon{transform:scale(1.15) rotate(-8deg)}
+
+/* schedule: live highlights */
+.sched-card{transition:transform .4s,box-shadow .4s}
+.sched-card:hover{transform:translateY(-6px);box-shadow:0 34px 80px rgba(29,158,117,.2)}
+.sched-tbl tbody tr{transition:background .2s}
+.sched-tbl tbody tr:hover{background:#F2FAF6}
+.sched-tbl .sh-block,.sched-tbl .sh-off{transition:transform .2s,box-shadow .2s}
+.sched-tbl .sh-block:hover{transform:scale(1.08);box-shadow:0 8px 18px -6px rgba(29,158,117,.5);background:#D8F5E8}
+.sched-tbl .sh-off:hover{transform:scale(1.08);box-shadow:0 8px 18px -6px rgba(229,57,53,.35)}
+.sched-pt{padding:12px 14px;margin:-12px -14px;border-radius:16px;transition:transform .3s,background .3s}
+.sched-pt:hover{transform:translateX(10px);background:#fff;box-shadow:0 14px 34px -18px rgba(26,26,20,.25)}
+.sched-pt:hover .sched-pt-num{transform:scale(1.18) rotate(-10deg)}
+.sched-pt-num{transition:transform .3s}
+.today-h{animation:todaypulse 2.4s ease-in-out infinite}
+@keyframes todaypulse{50%{background:#C9F2DF}}
+@media(prefers-reduced-motion:reduce){.story-glow,.testimonial-avatar,.today-h{animation:none!important}.story-headline .ln{opacity:1;transform:none;transition:none}}
 </style>
 </head>
 <body>
@@ -561,10 +611,12 @@ footer{background:#060D0A;padding:48px 6%;display:flex;align-items:center;justif
   <div class="story-img">
     <img src="https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=1600&q=85&fit=crop" alt="Chef in professional kitchen">
     <div class="story-img-overlay"></div>
+    <div class="story-glow"></div>
     <div class="story-text reveal">
       <p class="story-quote">From Struggling to Thriving</p>
-      <h2 class="story-headline">Built By A<br><span class="g">Real Chef</span><br>For Real<br><span class="gd">Kitchens.</span></h2>
+      <h2 class="story-headline"><span class="ln" style="--i:0">Built By A</span><span class="ln g" style="--i:1">Real Chef</span><span class="ln" style="--i:2">For Real</span><span class="ln gd" style="--i:3">Kitchens.</span></h2>
       <p class="story-body">Chef Nek Pro wasn't designed in a startup office by people who've never seen a busy Friday night. It was <strong>built in the kitchen</strong>, by someone who has lived the chaos of late deliveries, no-shows, and paper prep lists that get soaked in sauce. <strong>This is the tool we always needed.</strong></p>
+      <div class="story-chips"><span>🔥 Built on the line</span><span>🤝 Used by real teams</span><span>📍 Made in the DMV</span></div>
       <button class="btn-green" onclick="window.location.href='/app'" style="border-radius:100px;">Get into my kitchen →</button>
     </div>
   </div>
@@ -832,6 +884,36 @@ window.submitStaffRequest = async function() {
     el.addEventListener('pointermove',function(e){var r=el.getBoundingClientRect();el.style.setProperty('--mx',(((e.clientX-r.left)/r.width-.5)*2).toFixed(3));el.style.setProperty('--sx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');el.style.setProperty('--sy',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');});
     el.addEventListener('pointerleave',function(){el.style.setProperty('--mx',0);});
   });
+})();
+</script>
+
+<script>
+(function(){
+  var fine=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches;
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* story photo parallax */
+  var sImg=document.querySelector('.story-img img'),sBox=document.querySelector('.story-img');
+  if(sImg&&sBox&&!reduce){
+    var tk=false;function par(){tk=false;var r=sBox.getBoundingClientRect(),vh=window.innerHeight;if(r.bottom<0||r.top>vh)return;var p=(r.top+r.height/2-vh/2)/vh;sBox.style.setProperty('--py',(p*-60).toFixed(1)+'px');}
+    window.addEventListener('scroll',function(){if(!tk){tk=true;requestAnimationFrame(par);}},{passive:true});par();
+  }
+  /* phone tilts toward the cursor */
+  var ph=document.querySelector('.phone'),pw=document.querySelector('.ai-phone-wrap');
+  if(ph&&pw&&fine&&!reduce){
+    pw.addEventListener('pointermove',function(e){var r=pw.getBoundingClientRect();ph.style.setProperty('--ry',(((e.clientX-r.left)/r.width-.5)*26).toFixed(1));ph.style.setProperty('--rx',(-((e.clientY-r.top)/r.height-.5)*18).toFixed(1));});
+    pw.addEventListener('pointerleave',function(){ph.style.setProperty('--ry',0);ph.style.setProperty('--rx',0);});
+  }
+  /* count-up for the scanner results */
+  function count(el,to,suffix,dur){var t0=null;function f(t){if(!t0)t0=t;var k=Math.min(1,(t-t0)/dur);el.textContent=Math.round(to*(1-Math.pow(1-k,3)))+suffix;if(k<1)requestAnimationFrame(f);}requestAnimationFrame(f);}
+  var res=document.querySelector('.p-result');
+  if(res&&'IntersectionObserver' in window&&!reduce){
+    var cal=res.querySelector('.p-cal'),calTxt=cal&&cal.firstChild,macros=[].slice.call(res.querySelectorAll('.p-macro strong'));
+    var vals=macros.map(function(m){return parseInt(m.textContent,10);});
+    new IntersectionObserver(function(es,o){if(!es[0].isIntersecting)return;o.disconnect();
+      if(calTxt&&calTxt.nodeType===3){var t0=null;(function f(t){if(!t0)t0=t;var k=Math.min(1,(t-t0)/1400);calTxt.nodeValue=Math.round(520*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f);})(performance.now());}
+      macros.forEach(function(m,i){count(m,vals[i],'g',1400);});
+    },{threshold:.5}).observe(res);
+  }
 })();
 </script>
 </body>
