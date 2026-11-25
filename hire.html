@@ -36,6 +36,37 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
 .hero h1 span{color:var(--green)}
 .hero p{color:rgba(255,255,255,0.55);font-size:1rem;max-width:520px;margin:0 auto 40px;line-height:1.7}
 
+/* ── HERO SPLIT + NOW HIRING PANEL ── */
+.hero-grid>*{min-width:0}.hero-grid{position:relative;z-index:2;max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;text-align:left}
+.hero-grid .hero-left p{margin:0 0 32px;max-width:520px;color:rgba(255,255,255,.78)}
+.hero-grid .toggle-wrap{justify-content:flex-start}
+.hire-panel{background:rgba(255,255,255,.08);border:1.5px solid rgba(45,212,160,.45);border-radius:22px;padding:20px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 20px 60px rgba(0,0,0,.35),0 0 0 6px rgba(45,212,160,.06);animation:panelIn .8s .2s both cubic-bezier(.2,.8,.2,1)}
+@keyframes panelIn{from{opacity:0;transform:translateX(30px) scale(.97)}to{opacity:1;transform:none}}
+.hp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.hp-title{display:flex;align-items:center;gap:9px;color:#fff;font-family:var(--serif);font-size:1.25rem;font-weight:700}
+.hp-dot{width:10px;height:10px;border-radius:50%;background:#2DD4A0;box-shadow:0 0 0 0 rgba(45,212,160,.7);animation:hpPulse 1.8s infinite}
+@keyframes hpPulse{70%{box-shadow:0 0 0 10px rgba(45,212,160,0)}100%{box-shadow:0 0 0 0 rgba(45,212,160,0)}}
+.hp-count{background:#2DD4A0;color:#04281a;font-size:.72rem;font-weight:800;padding:4px 11px;border-radius:100px}
+.hp-list{display:flex;flex-direction:column;gap:9px;max-height:330px;overflow-y:auto;padding-right:2px}
+.hp-job{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.95);border-radius:14px;padding:12px 14px;color:#0F2A1E;animation:hpRow .5s both;transition:transform .2s,box-shadow .2s}
+.hp-job:hover{transform:translateX(-4px);box-shadow:0 8px 22px rgba(0,0,0,.25)}
+@keyframes hpRow{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.hp-ic{width:38px;height:38px;border-radius:11px;background:#EDFAF4;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.hp-mid{flex:1;min-width:0}
+.hp-r{font-weight:800;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-d{font-size:.74rem;color:#4b5f55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-pay{font-weight:800;color:#0A7A55;font-size:.82rem;white-space:nowrap}
+.hp-ap{height:32px;padding:0 14px;border:none;border-radius:9px;background:#1D9E75;color:#fff;font-weight:700;font-size:.76rem;cursor:pointer;font-family:inherit;flex-shrink:0}
+.hp-ap:hover{background:#0F7A5A}
+.hp-empty{color:rgba(255,255,255,.85);text-align:center;padding:26px 10px;font-size:.88rem;line-height:1.6}
+.hp-foot{display:flex;gap:8px;margin-top:14px}
+.hp-foot button{flex:1;height:40px;border-radius:11px;font-family:inherit;font-weight:700;font-size:.8rem;cursor:pointer;border:1.5px solid rgba(255,255,255,.3);background:transparent;color:#fff}
+.hp-foot button.pri{background:#fff;color:#0F2A1E;border-color:#fff}
+.hp-foot button:hover{transform:translateY(-2px)}
+@media(max-width:860px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center;gap:28px}.hero-grid .hero-left p{margin:0 auto 28px}.hero-grid .toggle-wrap{justify-content:center}.hire-panel{text-align:left}}
+@media(max-width:480px){.hp-ap{display:none}.hero{padding:70px 16px 50px}}
+@media(prefers-reduced-motion:reduce){.hire-panel,.hp-job,.hp-dot{animation:none!important}}
+
 /* ── TOGGLE TABS ── */
 .toggle-wrap{display:flex;justify-content:center;margin-bottom:0;position:relative;z-index:2}
 .toggle{display:inline-flex;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:4px;gap:4px}
@@ -260,6 +291,7 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
 <section class="hero" id="top">
   <canvas class="hero-bg" id="hbg" aria-hidden="true"></canvas>
   <div class="hero-float" aria-hidden="true"><span style="--x:6%;--d:0s;--s:2rem">🥕</span><span style="--x:22%;--d:-5s;--s:1.6rem">🍅</span><span style="--x:40%;--d:-9s;--s:1.9rem">🌿</span><span style="--x:62%;--d:-3s;--s:1.7rem">🧅</span><span style="--x:80%;--d:-7s;--s:2.2rem">🍋</span><span style="--x:93%;--d:-11s;--s:1.5rem">🥩</span></div>
+  <div class="hero-grid"><div class="hero-left">
   <div class="hero-eyebrow">🍳 DMV Kitchen Staffing — Powered by Chef Nek</div>
   <h1>The Smarter Way to<br>Staff Your <span>Kitchen</span></h1>
   <p>Chef Nek personally trains and certifies kitchen workers. Every placement comes with real skills, food safety knowledge, and platform training built in.</p>
@@ -270,6 +302,13 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
       <button class="toggle-btn active" onclick="switchTab('restaurant', this)">🍳 I Need Workers</button>
       <button class="toggle-btn" onclick="switchTab('worker', this)">👨‍🍳 I Want to Work</button>
     </div>
+  </div>
+  </div>
+  <aside class="hire-panel" aria-label="Open positions">
+    <div class="hp-head"><div class="hp-title"><span class="hp-dot"></span>Now Hiring</div><span class="hp-count" id="hp-count">…</span></div>
+    <div class="hp-list" id="hp-list"><div class="hp-empty">Loading open positions…</div></div>
+    <div class="hp-foot"><button class="pri" type="button" id="hp-work">👨‍🍳 I want a job</button><button type="button" id="hp-need">🍳 I need staff</button></div>
+  </aside>
   </div>
 </section>
 
@@ -644,6 +683,29 @@ async function loadWorkers() {
   } catch(e) { console.error(e); }
 }
 
+// ── Hero "Now Hiring" panel ───────────────────────
+function renderHeroJobs(jobs) {
+  const esc = v => String(v==null?'':v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const box = document.getElementById('hp-list'), cnt = document.getElementById('hp-count');
+  if (!box) return;
+  cnt.textContent = jobs.length ? jobs.length + (jobs.length===1?' open':' open') : 'Soon';
+  if (!jobs.length) { box.innerHTML = '<div class="hp-empty">🍳 New kitchen jobs are posted here as restaurants hire.<br>Join Chef Nek\'s training and be first in line.</div>'; return; }
+  const sorted = jobs.slice().sort((x,y) => ((y.createdAt&&y.createdAt.seconds)||0) - ((x.createdAt&&x.createdAt.seconds)||0));
+  box.innerHTML = '';
+  sorted.forEach((j,i) => {
+    const row = document.createElement('div');
+    row.className = 'hp-job'; row.style.animationDelay = (0.35 + i*0.08) + 's';
+    row.innerHTML = `<div class="hp-ic">🔪</div><div class="hp-mid"><div class="hp-r">${esc(j.restaurant)}</div><div class="hp-d">${esc(j.position)} · ${esc(j.area||'DMV Area')} · ${esc(j.type||'Full-time')}</div></div><div class="hp-pay">${esc(j.pay||'')}</div><button class="hp-ap" type="button">Apply</button>`;
+    row.querySelector('.hp-ap').addEventListener('click', () => applyToJob(j.id, j.restaurant));
+    box.appendChild(row);
+  });
+}
+document.getElementById('hp-work')?.addEventListener('click', () => applyToJob());
+document.getElementById('hp-need')?.addEventListener('click', () => {
+  switchTab('restaurant', document.querySelectorAll('.toggle-btn')[0]);
+  document.getElementById('request')?.scrollIntoView({behavior:'smooth'});
+});
+
 // ── Load open jobs ─────────────────────────────────
 async function loadJobs() {
   try {
@@ -652,6 +714,7 @@ async function loadJobs() {
     const jobs = snap.docs.map(d => ({id: d.id, ...d.data()}));
     const list = document.getElementById('jobs-list');
 
+    renderHeroJobs(jobs);
     if (!jobs.length) {
       list.innerHTML = `<div style="background:var(--cream);border-radius:14px;padding:32px;text-align:center;color:var(--muted);">
         <div style="font-size:1.5rem;margin-bottom:8px;">📋</div>
@@ -664,6 +727,7 @@ async function loadJobs() {
     const esc = v => String(v==null?'':v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     list.innerHTML = '';
     jobs.sort((x,y) => ((y.createdAt&&y.createdAt.seconds)||0) - ((x.createdAt&&x.createdAt.seconds)||0));
+    renderHeroJobs(jobs);
     jobs.forEach(j => {
       const card = document.createElement('div');
       card.className = 'job-card';
@@ -678,7 +742,7 @@ async function loadJobs() {
       card.querySelector('.job-apply').addEventListener('click', () => applyToJob(j.id, j.restaurant));
       list.appendChild(card);
     });
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error(e); renderHeroJobs([]); }
 }
 
 loadWorkers();
@@ -819,7 +883,7 @@ window.submitContactRequest = async () => {
 
 window.applyToJob = (jobId, restaurant) => {
   switchTab('worker', document.querySelectorAll('.toggle-btn')[1]);
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  setTimeout(() => (document.getElementById('apply') || document.body).scrollIntoView({behavior: 'smooth'}), 60);
 };
 </script>
 
