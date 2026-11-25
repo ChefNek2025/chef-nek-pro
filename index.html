@@ -534,6 +534,28 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 @keyframes statpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
 @keyframes rise{to{background-position:0 -14px}}
 @media(prefers-reduced-motion:reduce){.st1,.st2,.st3,.st2::before,.st3::before{animation:none!important}}
+
+/* ───── Feature strip: coloured pills ───── */
+.strip{padding:26px 0}
+.track{gap:18px}.track div{gap:18px}
+[data-theme] .track span{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:99px;font-size:12.5px;font-weight:600;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,color-mix(in srgb,var(--hc) 55%,#0b1020),color-mix(in srgb,var(--hc) 18%,#0b1020));border:1.5px solid var(--hc);box-shadow:0 10px 26px -10px color-mix(in srgb,var(--hc) 80%,transparent),0 0 20px -6px color-mix(in srgb,var(--hc) 60%,transparent);animation:chipbob 3.4s ease-in-out infinite}
+[data-theme="light"] .track span{color:#1a1a1a;background:linear-gradient(135deg,color-mix(in srgb,var(--hc) 38%,#fff),color-mix(in srgb,var(--hc) 14%,#fff))}
+.track span:nth-child(2n){animation-delay:-.8s}.track span:nth-child(3n){animation-delay:-1.6s}.track span:nth-child(4n){animation-delay:-2.4s}
+@keyframes chipbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.strip:hover .track{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.track span{animation:none!important}}
+.track span:nth-child(1){--hc:#fbbf24}
+.track span:nth-child(2){--hc:#34d399}
+.track span:nth-child(3){--hc:#fb923c}
+.track span:nth-child(4){--hc:#d4af37}
+.track span:nth-child(5){--hc:#60a5fa}
+.track span:nth-child(6){--hc:#a78bfa}
+.track span:nth-child(7){--hc:#c084fc}
+.track span:nth-child(8){--hc:#4ade80}
+.track span:nth-child(9){--hc:#f87171}
+.track span:nth-child(10){--hc:#38bdf8}
+.track span:nth-child(11){--hc:#f472b6}
+.track span:nth-child(12){--hc:#2dd4bf}
 </style>
 </head>
 <body>
