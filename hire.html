@@ -661,18 +661,22 @@ async function loadJobs() {
       return;
     }
 
+    const esc = v => String(v==null?'':v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     list.innerHTML = '';
+    jobs.sort((x,y) => ((y.createdAt&&y.createdAt.seconds)||0) - ((x.createdAt&&x.createdAt.seconds)||0));
     jobs.forEach(j => {
-      list.innerHTML += `<div class="job-card">
-        <div>
-          <div class="job-restaurant">${j.restaurant}</div>
-          <div class="job-details">${j.position} · ${j.area || 'DMV Area'} · ${j.type || 'Full-time'}</div>
+      const card = document.createElement('div');
+      card.className = 'job-card';
+      card.innerHTML = `<div>
+          <div class="job-restaurant">${esc(j.restaurant)}</div>
+          <div class="job-details">${esc(j.position)} · ${esc(j.area || 'DMV Area')} · ${esc(j.type || 'Full-time')}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:16px;">
-          <div class="job-pay">${j.pay || 'Competitive'}</div>
-          <button class="job-apply" onclick="applyToJob('${j.id}', '${j.restaurant}')">Apply</button>
-        </div>
-      </div>`;
+          <div class="job-pay">${esc(j.pay || 'Competitive')}</div>
+          <button class="job-apply" type="button">Apply</button>
+        </div>`;
+      card.querySelector('.job-apply').addEventListener('click', () => applyToJob(j.id, j.restaurant));
+      list.appendChild(card);
     });
   } catch(e) { console.error(e); }
 }

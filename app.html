@@ -6448,7 +6448,7 @@ async function renderHireTrain(main, userData) {
   window._htTab = window._htTab || 'pipeline';
   const tabBar = document.createElement('div');
   tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;';
-  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'},{id:'reviews',label:'⭐ Reviews'}].forEach(t=>{
+  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'},{id:'jobs',label:'💼 Open Positions'},{id:'reviews',label:'⭐ Reviews'}].forEach(t=>{
     const btn = document.createElement('button');
     btn.id = 'ht-tab-'+t.id;
     btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;'
@@ -6467,7 +6467,7 @@ async function renderHireTrain(main, userData) {
 }
 
 async function htRenderTab(body) {
-  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'},{id:'reviews'}].forEach(t=>{
+  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'},{id:'jobs'},{id:'reviews'}].forEach(t=>{
     const btn = document.getElementById('ht-tab-'+t.id);
     if (!btn) return;
     btn.style.background  = window._htTab===t.id?'var(--ink)':'transparent';
@@ -6477,6 +6477,7 @@ async function htRenderTab(body) {
   const el = document.getElementById('ht-content');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  if (window._htTab==='jobs') { await htRenderJobs(el); return; }
   const snap = await getDocs(collection(db,'htApplicants'));
   const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
@@ -6732,6 +6733,14 @@ function htApplicantCard(a, showActions) {
     actions.appendChild(callBtn);
   }
 
+  if (isReq) {
+    const pubBtn = document.createElement('button');
+    pubBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:1.5px solid #D4920A;background:#FFF4D6;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;color:#8A5A00;';
+    pubBtn.textContent='📢 Publish position';
+    pubBtn.onclick=()=>{ window._htJobDraft={restaurant:a.restaurantName||'',position:a.position||'',area:'DMV Area',type:'Full-time',pay:''}; window._htTab='jobs'; htRenderTab(document.querySelector('.page-body')); window.scrollTo({top:0,behavior:'smooth'}); };
+    actions.appendChild(pubBtn);
+  }
+
   const editBtn = document.createElement('button');
   editBtn.style.cssText='height:34px;padding:0 12px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--ink-muted);';
   editBtn.textContent='Edit';
@@ -6755,6 +6764,99 @@ function htApplicantCard(a, showActions) {
   card.appendChild(actions);
   return card;
 }
+
+
+// ─────────────────────────────────────────────
+// OPEN POSITIONS (shown publicly on the Hire page)
+// ─────────────────────────────────────────────
+const HT_JOB_POSITIONS = ['Line Cook','Prep Cook','Sous Chef','Kitchen Manager','Pastry Cook','Dishwasher','FOH Staff','Multiple Positions'];
+const HT_JOB_TYPES = ['Full-time','Part-time','Weekends','Temporary'];
+
+window.htRenderJobs = async function(el) {
+  el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  let jobs = [];
+  try {
+    const snap = await getDocs(collection(db,'htJobPosts'));
+    jobs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  } catch(e) { el.innerHTML = '<div style="padding:24px;color:#C62828;font-size:0.85rem;">Could not load positions: '+htEsc(e.message||e)+'</div>'; return; }
+  el.innerHTML = '';
+
+  const draft = window._htJobDraft || {};
+  const editing = !!draft.id;
+  const inp = 'width:100%;height:42px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.85rem;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;';
+  const lab = 'display:block;font-size:0.65rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;';
+
+  const form = document.createElement('div');
+  form.style.cssText = 'background:#fff;border:1.5px solid '+(editing?'#D4920A':'var(--border)')+';border-radius:16px;padding:20px;margin-bottom:22px;';
+  const posOpts = (HT_JOB_POSITIONS.indexOf(draft.position)<0 && draft.position ? [draft.position] : []).concat(HT_JOB_POSITIONS);
+  form.innerHTML =
+    '<div style="font-size:0.95rem;font-weight:800;color:var(--ink);margin-bottom:4px;">'+(editing?'✏️ Edit position':'📢 Post an open position')+'</div>'
+   +'<div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:16px;">Live positions appear on your public Hire page under "I Want to Work".</div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px;">'
+   +'<div><label style="'+lab+'">Restaurant *</label><input id="hj-rest" style="'+inp+'" placeholder="e.g. Island Grill DC"></div>'
+   +'<div><label style="'+lab+'">Position *</label><select id="hj-pos" style="'+inp+'"><option value="">Select…</option>'+posOpts.map(o=>'<option>'+htEsc(o)+'</option>').join('')+'</select></div>'
+   +'<div><label style="'+lab+'">Area</label><input id="hj-area" style="'+inp+'" placeholder="e.g. Silver Spring, MD"></div>'
+   +'<div><label style="'+lab+'">Type</label><select id="hj-type" style="'+inp+'">'+HT_JOB_TYPES.map(o=>'<option>'+htEsc(o)+'</option>').join('')+'</select></div>'
+   +'<div><label style="'+lab+'">Pay</label><input id="hj-pay" style="'+inp+'" placeholder="e.g. $18–20/hr"></div>'
+   +'</div>'
+   +'<div id="hj-err" style="display:none;color:#C62828;font-size:0.78rem;margin-bottom:10px;"></div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;"><button id="hj-save" style="height:42px;padding:0 22px;border-radius:10px;border:none;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.85rem;font-weight:700;cursor:pointer;">'+(editing?'Save changes':'Post position')+'</button>'
+   +(editing||draft.restaurant?'<button id="hj-cancel" style="height:42px;padding:0 16px;border-radius:10px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-size:0.82rem;font-weight:600;cursor:pointer;color:var(--ink-muted);">Cancel</button>':'')
+   +'</div>';
+  el.appendChild(form);
+  form.querySelector('#hj-rest').value = draft.restaurant||'';
+  form.querySelector('#hj-pos').value  = draft.position||'';
+  form.querySelector('#hj-area').value = draft.area||'DMV Area';
+  form.querySelector('#hj-type').value = draft.type||'Full-time';
+  form.querySelector('#hj-pay').value  = draft.pay||'';
+
+  const rerender = () => { window._htJobDraft = null; htRenderJobs(el); };
+  const cancel = form.querySelector('#hj-cancel');
+  if (cancel) cancel.onclick = rerender;
+  form.querySelector('#hj-save').onclick = async () => {
+    const v = id => form.querySelector(id).value.trim();
+    const errEl = form.querySelector('#hj-err');
+    const data = { restaurant:v('#hj-rest'), position:v('#hj-pos'), area:v('#hj-area')||'DMV Area', type:v('#hj-type')||'Full-time', pay:v('#hj-pay'), updatedAt:serverTimestamp() };
+    if (!data.restaurant || !data.position) { errEl.style.display='block'; errEl.textContent='Please enter the restaurant and choose a position.'; return; }
+    const btn = form.querySelector('#hj-save'); btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      if (editing) { await setDoc(doc(db,'htJobPosts',draft.id), data, {merge:true}); showToast('Position updated'); }
+      else { await addDoc(collection(db,'htJobPosts'), Object.assign({active:true, createdAt:serverTimestamp()}, data)); showToast('Position posted — it is now live on the Hire page'); }
+      rerender();
+    } catch(e) { btn.disabled=false; btn.textContent=editing?'Save changes':'Post position'; errEl.style.display='block'; errEl.textContent='Could not save: '+(e.message||e); }
+  };
+
+  const head = document.createElement('div');
+  head.style.cssText = 'font-size:0.8rem;font-weight:800;color:var(--ink);margin-bottom:10px;';
+  head.textContent = 'Your positions ('+jobs.length+')';
+  el.appendChild(head);
+
+  if (!jobs.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:0.85rem;background:#fff;border:1.5px dashed var(--border);border-radius:14px;';
+    empty.innerHTML = '<div style="font-size:2rem;margin-bottom:8px;">💼</div>No positions yet. Post one above, or use “📢 Publish position” on a restaurant request in the Pipeline.';
+    el.appendChild(empty);
+    return;
+  }
+
+  jobs.forEach(j => {
+    const live = j.active !== false;
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;'+(live?'':'opacity:0.65;');
+    card.innerHTML =
+      '<div style="flex:1;min-width:180px;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><div style="font-size:0.95rem;font-weight:700;color:var(--ink);">'+htEsc(j.restaurant||'Restaurant')+'</div>'
+     +'<span style="font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:100px;'+(live?'background:#EDFAF4;color:#0A5C3F;border:1px solid #1D9E75;':'background:#F1F1EE;color:#666;border:1px solid #ccc;')+'">'+(live?'● LIVE':'CLOSED')+'</span></div>'
+     +'<div style="font-size:0.78rem;color:var(--ink-muted);margin-top:3px;">'+htEsc(j.position||'')+' · '+htEsc(j.area||'DMV Area')+' · '+htEsc(j.type||'Full-time')+(j.pay?' · <strong style="color:var(--green);">'+htEsc(j.pay)+'</strong>':'')+'</div></div>';
+    const acts = document.createElement('div');
+    acts.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+    const mk = (txt, css, fn) => { const b=document.createElement('button'); b.style.cssText='height:34px;padding:0 12px;border-radius:9px;font-family:var(--font-body);font-size:0.72rem;font-weight:700;cursor:pointer;'+css; b.textContent=txt; b.onclick=fn; acts.appendChild(b); };
+    mk(live?'Close':'Reopen','border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);', async()=>{ await setDoc(doc(db,'htJobPosts',j.id),{active:!live,updatedAt:serverTimestamp()},{merge:true}); showToast(live?'Position closed':'Position is live again'); htRenderJobs(el); });
+    mk('Edit','border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);', ()=>{ window._htJobDraft=Object.assign({},j); htRenderJobs(el); window.scrollTo({top:0,behavior:'smooth'}); });
+    mk('🗑️','border:none;background:#FFF0F0;color:#E53935;width:34px;padding:0;', async()=>{ if(!confirm('Delete this position?'))return; await deleteDoc(doc(db,'htJobPosts',j.id)); showToast('Deleted'); htRenderJobs(el); });
+    card.appendChild(acts);
+    el.appendChild(card);
+  });
+};
 
 window.htShowApplicantModal = function(existing) {
   const isEdit = !!existing;
