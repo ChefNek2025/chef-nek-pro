@@ -353,7 +353,7 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 .f-card.visible{transition-delay:0s}
 .f-card::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(360px circle at var(--sx,50%) var(--sy,0%),color-mix(in srgb,var(--cc) 24%,transparent),transparent 58%)}
 .f-card:hover::before{opacity:1}
-.f-card:hover{transform:translateY(-6px);border-color:color-mix(in srgb,var(--cc) 60%,transparent);box-shadow:0 28px 64px -26px color-mix(in srgb,var(--cc) 60%,transparent)}
+.f-card.reveal.visible:hover,.f-card:hover{transform:translate(calc(var(--mx,0)*16px),-6px) rotate(calc(var(--mx,0)*1.2deg));transition:transform .25s ease-out,border-color .3s,box-shadow .3s,opacity .7s;border-color:color-mix(in srgb,var(--cc) 60%,transparent);box-shadow:0 28px 64px -26px color-mix(in srgb,var(--cc) 60%,transparent)}
 .f-card>*{position:relative}
 .f-num{color:var(--cc)}
 .f-ico{width:54px;height:54px;border-radius:17px;font-size:1.55rem;background:color-mix(in srgb,var(--cc) 17%,transparent);border:1px solid color-mix(in srgb,var(--cc) 38%,transparent);position:relative;transition:transform .3s}
@@ -369,7 +369,7 @@ footer{border-top:1px solid var(--line);padding:40px 0}
   56%{transform:translate(5px,-6px) rotate(.7deg)}
   70%{transform:translate(-3px,-6px) rotate(-.4deg)}
   100%{transform:translateY(-6px)}}
-@media(prefers-reduced-motion:no-preference){.f-card:hover,.f-card:active{animation:wobble .9s ease-in-out}}
+
 .f-note{margin-top:22px;text-align:center;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3)}
 
 /* mini live previews */
@@ -450,6 +450,40 @@ footer{border-top:1px solid var(--line);padding:40px 0}
   .sc-in,.stage::before,.f-ico::after,.scanl,.scan-line,.v-sched i,.typing i,.ck.tick::before,.st em,.v-staff .av,.therm i,.v-map i.on,.tg.flip,.tg.flip::after,.alert::after{animation:none!important}
   .ring .v,.mb i::after,.st b::after,.rc{animation:none!important}
 }
+
+/* ───── Hero cards: each its own colour, background and motion ───── */
+.sc-in{border-color:color-mix(in srgb,var(--hc) 45%,transparent);animation:none;background:linear-gradient(160deg,color-mix(in srgb,var(--hc) 16%,#101826),#0d1320 70%)}
+[data-theme="light"] .sc-in{background:linear-gradient(160deg,color-mix(in srgb,var(--hc) 14%,#fff),#fff 70%)}
+.sc-in::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.55;z-index:0}
+.sc-in>*{position:relative;z-index:1}
+.sc-in .sc-h b.mono,.sc-h span{color:color-mix(in srgb,var(--hc) 70%,var(--fg-3))}
+/* A: dotted grid, orbits in a circle (360°) */
+.sc-a .sc-in{animation:orbit 9s linear infinite}
+.sc-a .sc-in::before{background:radial-gradient(color-mix(in srgb,var(--hc) 45%,transparent) 1px,transparent 1.5px) 0 0/14px 14px}
+@keyframes orbit{0%{transform:translate(0,-10px)}25%{transform:translate(10px,0)}50%{transform:translate(0,10px)}75%{transform:translate(-10px,0)}100%{transform:translate(0,-10px)}}
+/* B: warning stripes, swings like a pendulum */
+.sc-b .sc-in{animation:swing 5s ease-in-out infinite;transform-origin:50% -30%}
+.sc-b .sc-in::before{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--hc) 22%,transparent) 0 8px,transparent 8px 18px)}
+@keyframes swing{0%,100%{transform:rotate(-3.5deg)}50%{transform:rotate(3.5deg)}}
+/* C: horizontal wave lines, glides left and right */
+.sc-c .sc-in{animation:glide 6s ease-in-out infinite}
+.sc-c .sc-in::before{background:repeating-linear-gradient(0deg,transparent 0 9px,color-mix(in srgb,var(--hc) 24%,transparent) 9px 10px);animation:lines 4s linear infinite}
+@keyframes glide{0%,100%{transform:translateX(-14px)}50%{transform:translateX(14px)}}
+@keyframes lines{to{background-position:0 20px}}
+/* D: breathing gold glow, gentle bob and tilt */
+.sc-d .sc-in{animation:bobtilt 7s ease-in-out infinite}
+.sc-d .sc-in::before{background:radial-gradient(circle at 80% 20%,color-mix(in srgb,var(--hc) 40%,transparent),transparent 60%);animation:breathe 4s ease-in-out infinite}
+@keyframes bobtilt{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-14px) rotate(1.5deg)}}
+/* E: scanner pulses and does a full 360 flip loop */
+.sc-e .sc-in{animation:spin360 10s ease-in-out infinite}
+.sc-e .sc-in::before{background:conic-gradient(from 0deg,transparent,color-mix(in srgb,var(--hc) 35%,transparent),transparent 40%);animation:sweep 3s linear infinite}
+@keyframes spin360{0%,70%{transform:rotateY(0)}85%{transform:rotateY(360deg)}100%{transform:rotateY(360deg)}}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.sc-e .sc-in::before{inset:-60%}
+.sc-b .live-pill,.sc-c .live-pill{color:var(--hc)}
+.sc-c .av{background:color-mix(in srgb,var(--hc) 22%,transparent);color:var(--hc)}
+.sc-d .fc-row b{color:var(--hc)}
+@media(prefers-reduced-motion:reduce){.sc-in,.sc-in::before{animation:none!important}}
 </style>
 </head>
 <body>
@@ -517,7 +551,7 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 
     <div class="stage" id="stage" role="img" aria-label="Preview of the Chef Nek Pro kitchen dashboard with sample data: prep progress, low-stock alert, today's shifts, food cost and the AI scanner">
       <span class="stage-tag mono">Live preview · sample data</span>
-      <div class="sc sc-a" data-depth="1"><div class="sc-in" style="--d:0s">
+      <div class="sc sc-a" style="--hc:#4ade80" data-depth="1"><div class="sc-in" style="--d:0s">
         <div class="sc-h"><span>Prep progress</span><b class="live-pill"><i></i>Live</b></div>
         <div class="prep-row">
           <svg class="ring" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" class="bg"/><circle cx="40" cy="40" r="34" class="v"/></svg>
@@ -528,23 +562,23 @@ footer{border-top:1px solid var(--line);padding:40px 0}
         <div class="mb"><span>Pastry</span><i style="--w:100%"></i></div>
       </div></div>
 
-      <div class="sc sc-b" data-depth="1.7"><div class="sc-in alert" style="--d:-1.4s">
+      <div class="sc sc-b" style="--hc:#fb923c" data-depth="1.7"><div class="sc-in alert" style="--d:-1.4s">
         <div class="sc-h"><span>Inventory alert</span><b class="warn-pill">Low stock</b></div>
         <div class="al-name">🥩 Burger patties</div><div class="al-sub">6 pcs left · reorder soon</div>
       </div></div>
 
-      <div class="sc sc-c" data-depth="1.3"><div class="sc-in" style="--d:-2.6s">
+      <div class="sc sc-c" style="--hc:#60a5fa" data-depth="1.3"><div class="sc-in" style="--d:-2.6s">
         <div class="sc-h"><span>Shifts today</span><b class="mono">3 on</b></div>
         <div class="sh-row"><span class="av">CN<i></i></span><span class="av">MJ<i></i></span><span class="av g">AT</span><em>8am – 7pm</em></div>
       </div></div>
 
-      <div class="sc sc-d" data-depth="0.8"><div class="sc-in" style="--d:-3.8s">
+      <div class="sc sc-d" style="--hc:#d4af37" data-depth="0.8"><div class="sc-in" style="--d:-3.8s">
         <div class="sc-h"><span>Food cost · Grilled Salmon</span></div>
         <div class="fc-row"><b>24.5%</b><span class="pill-ok">On target</span></div>
         <div class="fc-sub">$5.40 cost · $22.00 price</div>
       </div></div>
 
-      <div class="sc sc-e" data-depth="2.1"><div class="sc-in scan" style="--d:-5s">
+      <div class="sc sc-e" style="--hc:#c084fc" data-depth="2.1"><div class="sc-in scan" style="--d:-5s">
         <span class="scan-ico">📷</span><div><b>Grilled Salmon</b><small>520 kcal · 48g protein</small></div>
         <span class="scan-line"></span>
       </div></div>
@@ -1018,7 +1052,8 @@ footer{border-top:1px solid var(--line);padding:40px 0}
   /* Feature cards: coloured light follows the cursor */
   if(fineP){
     [].forEach.call(document.querySelectorAll('.f-card'),function(el){
-      el.addEventListener('pointermove',function(e){var r=el.getBoundingClientRect();el.style.setProperty('--sx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');el.style.setProperty('--sy',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');});
+      el.addEventListener('pointerleave',function(){el.style.setProperty('--mx',0);});
+      el.addEventListener('pointermove',function(e){var r=el.getBoundingClientRect();el.style.setProperty('--mx',(((e.clientX-r.left)/r.width-.5)*2).toFixed(3));el.style.setProperty('--sx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');el.style.setProperty('--sy',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');});
     });
   }
 })();
