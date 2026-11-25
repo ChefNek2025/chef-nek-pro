@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>try{if(localStorage.getItem("cnp-theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chef Nek Hire & Train — Kitchen Staffing Platform</title>
@@ -155,6 +156,86 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
   .training-grid{grid-template-columns:1fr}
   .stats-bar{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ═════ NAV: quick form links, dark mode, motion ═════ */
+nav{gap:14px;flex-wrap:wrap}
+.nav-links a{color:rgba(255,255,255,.9);font-weight:600;position:relative;padding:8px 4px;transition:color .2s}
+.nav-links a::after{content:'';position:absolute;left:0;right:0;bottom:2px;height:2px;border-radius:2px;background:var(--green);transform:scaleX(0);transition:transform .25s}
+.nav-links a:hover::after,.nav-links a.active::after{transform:scaleX(1)}
+.nav-go{padding:8px 14px!important;border-radius:100px;background:rgba(29,158,117,.18);border:1px solid rgba(29,158,117,.5)}
+.nav-go::after{display:none}
+.nav-go:hover,.nav-go.active{background:var(--green);color:#fff;transform:translateY(-1px)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.theme-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);cursor:pointer;display:grid;place-items:center;font-size:1rem;transition:transform .25s,background .25s}
+.theme-btn:hover{transform:rotate(-15deg) scale(1.08);background:rgba(29,158,117,.35)}
+.theme-btn .ico-sun{display:none}
+[data-theme="dark"] .theme-btn .ico-moon{display:none}[data-theme="dark"] .theme-btn .ico-sun{display:inline}
+@media(max-width:640px){.toggle-btn{padding:0 14px;font-size:.8rem;white-space:nowrap}.hero-eyebrow{font-size:.64rem;letter-spacing:.08em}.nav-links{display:flex;order:3;width:100%;gap:8px;justify-content:center}.nav-links a:not(.nav-go){display:none}.nav-go{padding:8px 12px!important;font-size:.76rem}}
+.nav-cta{transition:transform .2s,box-shadow .2s}.nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(29,158,117,.45)}
+#progress{position:fixed;top:0;left:0;height:3px;width:100%;transform:scaleX(0);transform-origin:left;background:linear-gradient(90deg,#1D9E75,#E8C84E);z-index:300}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+#request,#apply,#how{scroll-margin-top:90px}
+
+/* hero motion */
+.hero-bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.hero>*:not(.hero-bg):not(.hero-float){position:relative;z-index:2}
+.hero-float{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.hero-float span{position:absolute;bottom:-60px;left:var(--x);font-size:var(--s);opacity:0;filter:drop-shadow(0 8px 14px rgba(0,0,0,.45));animation:foodrise 18s linear infinite;animation-delay:var(--d)}
+@keyframes foodrise{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:.8}85%{opacity:.6}100%{transform:translateY(-75vh) rotate(300deg);opacity:0}}
+.hero h1 span{background:linear-gradient(100deg,#1D9E75,#5DCAA5,#1D9E75);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shine 5s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+.hero h1,.hero p,.hero-eyebrow,.toggle-wrap{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+.hero h1{animation-delay:.1s}.hero p{animation-delay:.2s}.toggle-wrap{animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.hero-eyebrow{color:#2DD4A0}
+.hero p{color:rgba(255,255,255,.88)}
+.toggle-btn{color:rgba(255,255,255,.9)}
+.toggle-btn.active{color:var(--ink);box-shadow:0 8px 22px -8px rgba(0,0,0,.5)}
+.toggle-btn:not(.active):hover{background:rgba(255,255,255,.14);transform:translateY(-2px)}
+.stat-label,.profile-sub{color:rgba(255,255,255,.78)}
+.profile-label{color:rgba(255,255,255,.85)}
+
+/* interactive cards */
+.worker-card,.training-card,.job-card,.how-card{position:relative;overflow:hidden;transition:transform .25s ease-out,border-color .25s,box-shadow .25s,background .25s}
+.worker-card::after,.training-card::after,.how-card::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--sx,50%) var(--sy,0%),rgba(29,158,117,.2),transparent 62%)}
+.worker-card:hover::after,.training-card:hover::after,.how-card:hover::after{opacity:1}
+.worker-card:hover,.training-card:hover,.how-card:hover{transform:translateY(-6px) rotateX(calc(var(--rx,0)*1deg)) rotateY(calc(var(--ry,0)*1deg))}
+.workers-grid>*{animation:cardin .6s cubic-bezier(.2,.7,.2,1) both}
+.workers-grid>*:nth-child(2){animation-delay:.08s}.workers-grid>*:nth-child(3){animation-delay:.16s}.workers-grid>*:nth-child(4){animation-delay:.24s}
+@keyframes cardin{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+.rv{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+.how-card .how-num{transition:transform .3s}.how-card:hover .how-num{transform:scale(1.25) rotate(-6deg)}
+.submit-btn,.worker-btn,.job-apply{position:relative;overflow:hidden}
+.submit-btn::after,.worker-btn::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);animation:btnshine 3.8s ease-in-out infinite}
+@keyframes btnshine{0%,60%{left:-60%}100%{left:130%}}
+.form-input,.form-select,.form-textarea,.profile-input,.profile-select,.profile-textarea{transition:border-color .2s,box-shadow .2s,transform .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{box-shadow:0 0 0 4px rgba(29,158,117,.18);transform:translateY(-1px)}
+.profile-input:focus,.profile-select:focus,.profile-textarea:focus{box-shadow:0 0 0 4px rgba(29,158,117,.3)}
+.success-icon{animation:pop .7s cubic-bezier(.2,1.6,.3,1) both}
+@keyframes pop{from{transform:scale(0) rotate(-30deg)}to{transform:none}}
+.stat-val{transition:transform .3s}.stat-item:hover .stat-val{transform:scale(1.15)}
+
+/* readability */
+.muted,.worker-pos,.job-details,.section-sub,.how-desc,.training-desc,.success-sub,.form-label{color:#5c5a52}
+
+/* dark mode */
+[data-theme="dark"]{--ink:#f4f7f3;--muted:#b9c6bc;--cream:#101d15;color-scheme:dark}
+[data-theme="dark"] body{background:#0c1610;color:var(--ink)}
+[data-theme="dark"] .muted,[data-theme="dark"] .worker-pos,[data-theme="dark"] .job-details,[data-theme="dark"] .section-sub,[data-theme="dark"] .how-desc,[data-theme="dark"] .training-desc,[data-theme="dark"] .success-sub,[data-theme="dark"] .form-label{color:#b9c6bc}
+[data-theme="dark"] .worker-card,[data-theme="dark"] .training-card,[data-theme="dark"] .how-card,[data-theme="dark"] .modal-box{background:#13231a;border-color:#27402f}
+[data-theme="dark"] .training-card.selected{background:#16402e}
+[data-theme="dark"] .job-card{background:#13231a;border-color:#27402f}[data-theme="dark"] .job-card:hover{background:#17301f}
+[data-theme="dark"] .post-job-wrap,[data-theme="dark"] .how-wrap{background:#101d15}
+[data-theme="dark"] .tag{background:#1b2e22;color:#c6d3c9}
+[data-theme="dark"] .tag.green,[data-theme="dark"] .cert-badge{background:#17402e;color:#8fe8c3}
+[data-theme="dark"] .form-input,[data-theme="dark"] .form-select,[data-theme="dark"] .form-textarea{background:#1a2e22;color:#fff;border-color:rgba(255,255,255,.18)}
+[data-theme="dark"] .form-input::placeholder,[data-theme="dark"] .form-textarea::placeholder{color:rgba(255,255,255,.55)}
+[data-theme="dark"] .form-label,[data-theme="dark"] .modal-sub{color:#c6d3c9}
+[data-theme="dark"] .modal-close{background:#1b2e22;color:#fff}
+[data-theme="dark"] .err-box{background:#3a1a1c;border-color:#7a2a2d;color:#ff9a97}
+[data-theme="dark"] .section-title,[data-theme="dark"] .post-job-title,[data-theme="dark"] .jobs-title,[data-theme="dark"] .success-title,[data-theme="dark"] .how-title,[data-theme="dark"] .worker-name,[data-theme="dark"] .training-type,[data-theme="dark"] .job-restaurant,[data-theme="dark"] .modal-title{color:#fff}
+@media(prefers-reduced-motion:reduce){.hero-float,.hero-bg{display:none}.hero h1 span,.submit-btn::after,.worker-btn::after,.hero h1,.hero p,.hero-eyebrow,.toggle-wrap,.workers-grid>*,.success-icon{animation:none!important}.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -164,14 +245,21 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
   <a href="/" class="nav-logo">Chef Nek <span>Pro</span></a>
   <div class="nav-links">
     <a href="/">Home</a>
-    <a href="/app">Platform</a>
+    <a href="#request" class="nav-go" data-tab="restaurant"><span>🍳</span> I Need Workers</a>
+    <a href="#apply" class="nav-go" data-tab="worker"><span>👨‍🍳</span> I Want to Work</a>
     <a href="#how">How It Works</a>
   </div>
-  <a href="/app" class="nav-cta">Sign In →</a>
+  <div class="nav-right">
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Dark / light mode"><span class="ico-moon">🌙</span><span class="ico-sun">☀️</span></button>
+    <a href="/app" class="nav-cta">Sign In →</a>
+  </div>
 </nav>
 
+<div id="progress" aria-hidden="true"></div>
 <!-- HERO -->
-<section class="hero">
+<section class="hero" id="top">
+  <canvas class="hero-bg" id="hbg" aria-hidden="true"></canvas>
+  <div class="hero-float" aria-hidden="true"><span style="--x:6%;--d:0s;--s:2rem">🥕</span><span style="--x:22%;--d:-5s;--s:1.6rem">🍅</span><span style="--x:40%;--d:-9s;--s:1.9rem">🌿</span><span style="--x:62%;--d:-3s;--s:1.7rem">🧅</span><span style="--x:80%;--d:-7s;--s:2.2rem">🍋</span><span style="--x:93%;--d:-11s;--s:1.5rem">🥩</span></div>
   <div class="hero-eyebrow">🍳 DMV Kitchen Staffing — Powered by Chef Nek</div>
   <h1>The Smarter Way to<br>Staff Your <span>Kitchen</span></h1>
   <p>Chef Nek personally trains and certifies kitchen workers. Every placement comes with real skills, food safety knowledge, and platform training built in.</p>
@@ -213,7 +301,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
       <p class="section-sub">Tell us what you need — Chef Nek will find and train the right person for your kitchen.</p>
     </div>
 
-    <div class="post-job-wrap">
+    <div class="post-job-wrap" id="request">
       <div class="post-job-title">📋 Request a Certified Worker</div>
 
       <div id="job-success" class="success-box">
@@ -301,7 +389,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
   <div class="worker-wrap">
 
     <!-- Profile + Apply -->
-    <div class="profile-card">
+    <div class="profile-card" id="apply">
       <div class="profile-title">👨‍🍳 Apply for Chef Nek Training</div>
       <div class="profile-sub">Get certified and placed in a top DMV kitchen. Chef Nek trains you personally.</div>
 
@@ -499,6 +587,7 @@ window.switchTab = (tab, btn) => {
   document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   btn.classList.add('active');
+  document.querySelectorAll('.nav-go').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
 };
 
 // ── Training type selection ────────────────────────
@@ -728,6 +817,67 @@ window.applyToJob = (jobId, restaurant) => {
   switchTab('worker', document.querySelectorAll('.toggle-btn')[1]);
   window.scrollTo({top: 0, behavior: 'smooth'});
 };
+</script>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches, fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
+  /* theme */
+  var tb=document.getElementById('themeBtn');
+  function lab(){tb.setAttribute('aria-label',document.documentElement.getAttribute('data-theme')==='dark'?'Switch to light mode':'Switch to dark mode');}
+  lab();
+  tb.addEventListener('click',function(){var d=document.documentElement.getAttribute('data-theme')==='dark';if(d)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','dark');try{localStorage.setItem('cnp-theme',d?'light':'dark');}catch(e){}lab();});
+  /* nav quick links -> open the right tab and scroll to its form */
+  document.querySelectorAll('.nav-go').forEach(function(a){
+    a.addEventListener('click',function(e){
+      e.preventDefault();
+      var tab=a.dataset.tab, i=tab==='restaurant'?0:1, btn=document.querySelectorAll('.toggle-btn')[i];
+      if(window.switchTab&&btn){window.switchTab(tab,btn);}else{document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active');});document.querySelectorAll('.toggle-btn').forEach(function(x){x.classList.remove('active');});var ts=document.getElementById('tab-'+tab);if(ts)ts.classList.add('active');if(btn)btn.classList.add('active');document.querySelectorAll('.nav-go').forEach(function(x){x.classList.toggle('active',x.dataset.tab===tab);});}
+      var t=document.getElementById(tab==='restaurant'?'request':'apply');
+      setTimeout(function(){if(t)t.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});var f=t&&t.querySelector('input');if(f)setTimeout(function(){try{f.focus({preventScroll:true});}catch(x){}},650);},60);
+    });
+  });
+  var tab0=document.querySelector('.nav-go[data-tab="restaurant"]');if(tab0)tab0.classList.add('active');
+  /* scroll progress */
+  var pr=document.getElementById('progress'),tk=false;
+  function sp(){tk=false;var h=document.documentElement.scrollHeight-innerHeight;pr.style.transform='scaleX('+(h>0?Math.min(1,scrollY/h):0)+')';}
+  addEventListener('scroll',function(){if(!tk){tk=true;requestAnimationFrame(sp);}},{passive:true});sp();
+  /* reveal on scroll */
+  var rv=[].slice.call(document.querySelectorAll('.post-job-wrap,.profile-card,.training-card,.how-card,.stat-item,.rest-header,.jobs-title'));
+  rv.forEach(function(el,i){el.classList.add('rv');el.style.transitionDelay=((i%4)*0.08)+'s';});
+  if('IntersectionObserver' in window&&!reduce){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});rv.forEach(function(el){io.observe(el);});}
+  else rv.forEach(function(el){el.classList.add('in');});
+  /* card spotlight + tilt (delegated, works for dynamic cards) */
+  if(fine&&!reduce){
+    document.addEventListener('pointermove',function(e){
+      var c=e.target.closest&&e.target.closest('.worker-card,.training-card,.how-card');if(!c)return;
+      var r=c.getBoundingClientRect();
+      c.style.setProperty('--sx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');c.style.setProperty('--sy',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');
+      c.style.setProperty('--ry',(((e.clientX-r.left)/r.width-.5)*8).toFixed(1));c.style.setProperty('--rx',(-((e.clientY-r.top)/r.height-.5)*6).toFixed(1));
+    });
+    document.addEventListener('pointerout',function(e){var c=e.target.closest&&e.target.closest('.worker-card,.training-card,.how-card');if(c&&!c.contains(e.relatedTarget)){c.style.setProperty('--rx',0);c.style.setProperty('--ry',0);}});
+  }
+  /* hero particle network */
+  var hero=document.getElementById('top'),cv=document.getElementById('hbg');
+  if(hero&&cv&&cv.getContext&&!reduce){
+    var cx=cv.getContext('2d'),W=0,H=0,P=[],mo={x:-999,y:-999,on:false},run=true;
+    function size(){var r=hero.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0);P=[];for(var i=0;i<Math.max(22,Math.min(60,W/24));i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.6+.6});}
+    function draw(){
+      if(!run)return;cx.clearRect(0,0,W,H);
+      if(mo.on){var g=cx.createRadialGradient(mo.x,mo.y,0,mo.x,mo.y,240);g.addColorStop(0,'rgba(29,158,117,.22)');g.addColorStop(1,'rgba(29,158,117,0)');cx.fillStyle=g;cx.fillRect(mo.x-240,mo.y-240,480,480);}
+      for(var i=0;i<P.length;i++){var a=P[i];a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>W)a.vx*=-1;if(a.y<0||a.y>H)a.vy*=-1;
+        cx.globalAlpha=.7;cx.fillStyle='#5DCAA5';cx.beginPath();cx.arc(a.x,a.y,a.r,0,6.283);cx.fill();
+        for(var j=i+1;j<P.length;j++){var b=P[j],dx=a.x-b.x,dy=a.y-b.y,d=dx*dx+dy*dy;if(d<15000){cx.globalAlpha=(1-d/15000)*.25;cx.strokeStyle='#5DCAA5';cx.lineWidth=.8;cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();}}
+        if(mo.on){var mx=a.x-mo.x,my=a.y-mo.y,md=mx*mx+my*my;if(md<26000){cx.globalAlpha=(1-md/26000)*.6;cx.strokeStyle='#E8C84E';cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(mo.x,mo.y);cx.stroke();}}
+      }
+      cx.globalAlpha=1;requestAnimationFrame(draw);
+    }
+    size();addEventListener('resize',size);
+    if('IntersectionObserver' in window)new IntersectionObserver(function(es){var v=es[0].isIntersecting;if(v&&!run){run=true;requestAnimationFrame(draw);}else if(!v)run=false;}).observe(hero);
+    if(fine){hero.addEventListener('pointermove',function(e){var r=hero.getBoundingClientRect();mo.x=e.clientX-r.left;mo.y=e.clientY-r.top;mo.on=true;});hero.addEventListener('pointerleave',function(){mo.on=false;});}
+    requestAnimationFrame(draw);
+  }
+})();
 </script>
 </body>
 </html>
