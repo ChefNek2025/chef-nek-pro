@@ -6655,7 +6655,9 @@ function htRenderTrainingSchedule(el, all) {
   el.appendChild(addBtn);
 }
 
+function htEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function htApplicantCard(a, showActions) {
+  const isReq = a.requestType==='restaurant-request';
   const stage  = HT_STAGES.find(s=>s.id===(a.stage||'applied')) || HT_STAGES[0];
   const ini    = (a.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   const hue    = [...(a.name||'')].reduce((h,c)=>h+c.charCodeAt(0),0)%360;
@@ -6669,19 +6671,21 @@ function htApplicantCard(a, showActions) {
   top.innerHTML = '<div style="width:42px;height:42px;border-radius:50%;background:hsl('+hue+',50%,85%);border:2px solid hsl('+hue+',50%,65%);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;color:hsl('+hue+',50%,30%);flex-shrink:0;">'+ini+'</div>'
     +'<div style="flex:1;min-width:0;">'
     +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
-    +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+(a.name||'Unnamed')+'</div>'
+    +'<div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--ink);">'+htEsc(a.name||'Unnamed')+'</div>'
+    +(isReq?'<div style="font-size:0.65rem;font-weight:800;background:#FFF4D6;color:#8A5A00;border:1px solid #D4920A;padding:2px 8px;border-radius:100px;">🍽️ Restaurant request</div>':'<div style="font-size:0.65rem;font-weight:800;background:#EEF3FF;color:#2F4FA8;border:1px solid #9DB3F0;padding:2px 8px;border-radius:100px;">🎓 Training applicant</div>')
     +'<div style="font-size:0.65rem;font-weight:800;background:'+stage.bg+';color:'+stage.color+';border:1px solid '+stage.color+'40;padding:2px 8px;border-radius:100px;">'+stage.label+'</div>'
     +(a.certified?'<div style="font-size:0.65rem;font-weight:800;background:#EDFAF4;color:#0A5C3F;border:1px solid #1D9E75;padding:2px 8px;border-radius:100px;">✅ Certified</div>':'')
     +'</div>'
-    +'<div style="font-size:0.75rem;color:var(--ink-muted);">'+(a.phone||'')+(a.email?' · '+a.email:'')+'</div>'
+    +(isReq&&a.restaurantName?'<div style="font-size:0.85rem;font-weight:700;color:var(--ink);margin-bottom:2px;">'+htEsc(a.restaurantName)+'</div>':'')
+    +'<div style="font-size:0.78rem;color:var(--ink-muted);">'+(a.phone?'<a href="tel:'+htEsc(a.phone)+'" style="color:inherit;">'+htEsc(a.phone)+'</a>':'')+(a.email?' · <a href="mailto:'+htEsc(a.email)+'" style="color:#1D7A55;font-weight:600;">'+htEsc(a.email)+'</a>':(isReq?' · <span style="color:#C62828;">no email</span>':''))+'</div>'
     +'</div>';
   card.appendChild(top);
 
   // Info grid
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
-  [{label:'Position',val:a.position||'—'},{label:'Experience',val:a.experience||'—'},{label:'Training',val:a.trainingType==='inperson'?'In-Person':'Zoom Online'}].forEach(m=>{
-    grid.innerHTML += '<div style="background:var(--cream);border-radius:9px;padding:9px 11px;"><div style="font-size:0.62rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+m.val+'</div></div>';
+  (isReq?[{label:'Position needed',val:a.position||'—'},{label:'Workers',val:a.workerCount||'—'},{label:'Start',val:a.startDate||'—'}]:[{label:'Position',val:a.position||'—'},{label:'Experience',val:a.experience||'—'},{label:'Training',val:a.trainingType==='inperson'?'In-Person':'Zoom Online'}]).forEach(m=>{
+    grid.innerHTML += '<div style="background:var(--cream);border-radius:9px;padding:9px 11px;"><div style="font-size:0.62rem;font-weight:700;color:var(--ink-muted);margin-bottom:2px;">'+m.label+'</div><div style="font-size:0.78rem;font-weight:600;color:var(--ink);">'+htEsc(m.val)+'</div></div>';
   });
   card.appendChild(grid);
 

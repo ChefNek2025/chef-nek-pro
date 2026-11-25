@@ -239,6 +239,12 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
             <input id="j-phone" class="form-input" type="tel" placeholder="(202) 555-0100">
           </div>
           <div>
+            <label class="form-label">Email *</label>
+            <input id="j-email" class="form-input" type="email" autocomplete="email" placeholder="owner@restaurant.com">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div style="grid-column:1/-1">
             <label class="form-label">Position Needed *</label>
             <select id="j-position" class="form-select">
               <option value="">Select position...</option>
@@ -318,7 +324,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
           <div>
-            <label class="profile-label">Email</label>
+            <label class="profile-label">Email *</label>
             <input id="a-email" class="profile-input" type="email" placeholder="your@email.com">
           </div>
           <div>
@@ -590,13 +596,19 @@ window.submitJobRequest = async () => {
   const restaurant = document.getElementById('j-restaurant')?.value.trim();
   const name       = document.getElementById('j-name')?.value.trim();
   const phone      = document.getElementById('j-phone')?.value.trim();
+  const email      = document.getElementById('j-email')?.value.trim();
   const position   = document.getElementById('j-position')?.value;
   const errEl      = document.getElementById('j-err');
   const btn        = document.getElementById('j-submit');
 
-  if (!restaurant || !name || !phone || !position) {
+  if (!restaurant || !name || !phone || !email || !position) {
     errEl.style.display = 'block';
-    errEl.textContent = 'Please fill in all required fields.';
+    errEl.textContent = 'Please fill in all required fields, including email.';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Please enter a valid email address.';
     return;
   }
   errEl.style.display = 'none';
@@ -604,7 +616,7 @@ window.submitJobRequest = async () => {
 
   try {
     await addDoc(collection(db, 'htApplicants'), {
-      name, restaurantName: restaurant, phone, position,
+      name, restaurantName: restaurant, phone, email, position,
       workerCount: document.getElementById('j-count')?.value,
       startDate: document.getElementById('j-when')?.value,
       notes: document.getElementById('j-notes')?.value || '',
@@ -614,7 +626,7 @@ window.submitJobRequest = async () => {
     });
     await addDoc(collection(db, 'notifications'), {
       type: 'staff-request',
-      message: `🍳 NEW REQUEST: ${restaurant} needs ${position} — Contact: ${name} ${phone}`,
+      message: `🍳 NEW REQUEST: ${restaurant} needs ${position} — Contact: ${name} ${phone} ${email}`,
       restaurantId: 'admin', read: false, createdAt: serverTimestamp()
     });
     document.getElementById('job-form').style.display = 'none';
@@ -630,12 +642,18 @@ window.submitApplication = async () => {
   const name     = document.getElementById('a-name')?.value.trim();
   const phone    = document.getElementById('a-phone')?.value.trim();
   const position = document.getElementById('a-position')?.value;
+  const emailA   = document.getElementById('a-email')?.value.trim();
   const errEl    = document.getElementById('a-err');
   const btn      = document.getElementById('a-submit');
 
-  if (!name || !phone || !position) {
+  if (!name || !phone || !emailA || !position) {
     errEl.style.display = 'block';
-    errEl.textContent = 'Please fill in Name, Phone, and Position.';
+    errEl.textContent = 'Please fill in Name, Phone, Email, and Position.';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailA)) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Please enter a valid email address.';
     return;
   }
   errEl.style.display = 'none';
