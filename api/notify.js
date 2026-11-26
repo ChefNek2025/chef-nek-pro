@@ -1,5 +1,6 @@
 // Chef Nek Pro — New request alerts (email + WhatsApp)
-// Secrets live ONLY in Vercel Environment Variables.
+// Vercel Serverless Function: POST /api/notify
+// Secrets live ONLY in Vercel → Settings → Environment Variables.
 
 const hits = new Map();
 
@@ -58,7 +59,7 @@ module.exports = async function handler(req, res) {
         html, text,
         ...(f.email ? { reply_to: f.email } : {})
       })
-    }).then(r => ({ email: r.ok })).catch(() => ({ email: false })));
+    }).then(async r => { if (!r.ok) console.error('RESEND ERROR', r.status, await r.text()); return { email: r.ok }; }).catch(e => { console.error('RESEND FETCH FAILED', String(e)); return { email: false }; }));
   }
 
   if (E.TWILIO_ACCOUNT_SID && E.TWILIO_AUTH_TOKEN && E.TWILIO_WHATSAPP_FROM && E.WHATSAPP_TO) {
@@ -70,7 +71,9 @@ module.exports = async function handler(req, res) {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body
-    }).then(r => ({ whatsapp: r.ok })).catch(() => ({ whatsapp: false })));
+    }).then(async r => { if (!r.ok) console.error('TWILIO ERROR', r.status, await r.text()); return { whatsapp: r.ok }; }).catch(e => { console.error('TWILIO FETCH FAILED', String(e)); return { whatsapp: false }; }));
+  } else {
+    console.error('TWILIO SKIPPED: missing variable', { sid: !!E.TWILIO_ACCOUNT_SID, token: !!E.TWILIO_AUTH_TOKEN, from: !!E.TWILIO_WHATSAPP_FROM, to: !!E.WHATSAPP_TO });
   }
 
   const out = Object.assign({}, ...(await Promise.all(jobs)));
