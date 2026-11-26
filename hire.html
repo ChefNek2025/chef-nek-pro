@@ -786,6 +786,7 @@ window.submitJobRequest = async () => {
       message: `🍳 NEW REQUEST: ${restaurant} needs ${position} — Contact: ${name} ${phone} ${email}`,
       restaurantId: 'admin', read: false, createdAt: serverTimestamp()
     });
+    fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({kind:'restaurant-request',name,phone,email,restaurant,position,count:document.getElementById('j-count')?.value,when:document.getElementById('j-when')?.value,notes:document.getElementById('j-notes')?.value||'',source:'hire-page'})}).catch(()=>{});
     document.getElementById('job-form').style.display = 'none';
     document.getElementById('job-success').classList.add('show');
   } catch(e) {
@@ -835,6 +836,7 @@ window.submitApplication = async () => {
       message: `👨‍🍳 NEW APPLICANT: ${name} — ${position} — ${window._trainingType === 'inperson' ? 'In-Person' : 'Online'} training`,
       restaurantId: 'admin', read: false, createdAt: serverTimestamp()
     });
+    fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({kind:'worker-application',name,phone,email:document.getElementById('a-email')?.value||'',position,training:window._trainingType==='inperson'?'In-Person':'Online',source:'hire-page'})}).catch(()=>{});
     document.getElementById('apply-form').style.display = 'none';
     document.getElementById('apply-success').classList.add('show');
   } catch(e) {

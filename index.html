@@ -977,6 +977,8 @@ window.submitStaffRequest = async function() {
       });
     }
 
+    fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({kind:'restaurant-request',name,phone,email,restaurant,position,count,when,notes:notes||'',source:'landing-page'})}).catch(()=>{});
+
     // Show success
     document.getElementById('staff-form-fields').style.display = 'none';
     document.getElementById('staff-form-success').style.display = 'block';
