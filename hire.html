@@ -77,7 +77,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:16px 2
 .sm button.x{width:100%;height:40px;margin-top:8px;border:none;background:transparent;color:#5b6f64;font:inherit;font-weight:600;cursor:pointer}
 .sm .er{color:#C62828;font-size:.82rem;margin-top:10px;display:none}
 @media(max-width:860px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center;gap:28px}.hero-grid .hero-left p{margin:0 auto 28px}.hero-grid .toggle-wrap{justify-content:center}.hire-panel{text-align:left}}
-@media(max-width:480px){.hp-ap{display:none}.hero{padding:70px 16px 50px}}
+@media(max-width:480px){.hero{padding:70px 16px 50px}.hp-job{padding:10px 10px;gap:9px}.hp-ic{display:none}.hp-ap{height:34px;padding:0 12px}.hp-pay{font-size:.76rem}}
+.hp-job{cursor:pointer}.hp-job:focus-visible{outline:3px solid #2DD4A0;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.hire-panel,.hp-job,.hp-dot{animation:none!important}}
 
 /* ── TOGGLE TABS ── */
@@ -718,14 +719,16 @@ function drawHero() {
     const row = document.createElement('div');
     row.className = 'hp-job'; row.style.animationDelay = (0.35 + (i++)*0.08) + 's';
     row.innerHTML = `<div class="hp-ic shift">⏱️</div><div class="hp-mid"><div class="hp-r"><span class="hp-tag">SHIFT</span>${esc(sh.restaurant)}</div><div class="hp-d">${esc(sh.position)} · ${esc(dl(sh.date))} ${esc(t12(sh.start))}–${esc(t12(sh.end))} · ${esc(sh.area||'DMV Area')}</div></div><div class="hp-pay">${sh.pay?'$'+esc(Number(sh.pay).toFixed(2).replace(/\.00$/,''))+'/hr':''}</div><button class="hp-ap" type="button">Apply</button>`;
-    row.querySelector('.hp-ap').addEventListener('click', () => openShiftApply(sh));
+    row.tabIndex = 0; row.setAttribute('role','button'); row.setAttribute('aria-label','Apply for this shift at ' + (sh.restaurant||''));
+    const goS = () => openShiftApply(sh); row.addEventListener('click', goS); row.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); goS(); } });
     box.appendChild(row);
   });
   jobs.forEach(j => {
     const row = document.createElement('div');
     row.className = 'hp-job'; row.style.animationDelay = (0.35 + (i++)*0.08) + 's';
     row.innerHTML = `<div class="hp-ic">🔪</div><div class="hp-mid"><div class="hp-r"><span class="hp-tag job">JOB</span>${esc(j.restaurant)}</div><div class="hp-d">${esc(j.position)} · ${esc(j.area||'DMV Area')} · ${esc(j.type||'Full-time')}</div></div><div class="hp-pay">${esc(j.pay||'')}</div><button class="hp-ap" type="button">Apply</button>`;
-    row.querySelector('.hp-ap').addEventListener('click', () => applyToJob(j.id, j.restaurant));
+    row.tabIndex = 0; row.setAttribute('role','button'); row.setAttribute('aria-label','Apply for this job at ' + (j.restaurant||''));
+    const goJ = () => applyToJob(j.id, j.restaurant); row.addEventListener('click', goJ); row.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); goJ(); } });
     box.appendChild(row);
   });
 }
