@@ -756,7 +756,7 @@ document.getElementById('sm-go')?.addEventListener('click', async () => {
   const er = document.getElementById('sm-err'); er.style.display = 'none';
   if (name.length < 2) { er.textContent = 'Please enter your full name.'; er.style.display = 'block'; return; }
   if (phone.replace(/\D/g,'').length < 10) { er.textContent = 'Please enter a valid phone number.'; er.style.display = 'block'; return; }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { er.textContent = 'That email does not look right.'; er.style.display = 'block'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { er.textContent = 'Please enter a valid email address.'; er.style.display = 'block'; return; }
   const btn = document.getElementById('sm-go'); btn.disabled = true; btn.textContent = 'Sending...';
   try {
     await addDoc(collection(db, 'htShiftApps'), {shiftId: _applyShift.id, name, phone, email, note: '', createdAt: serverTimestamp()});
@@ -1025,7 +1025,7 @@ window.applyToJob = (jobId, restaurant) => {
   <div id="sm-form"><h3 id="sm-title">Apply for this shift</h3><p id="sm-info"></p>
     <label for="sm-name">Full name *</label><input id="sm-name" autocomplete="name">
     <label for="sm-phone">Phone *</label><input id="sm-phone" type="tel" autocomplete="tel" inputmode="tel">
-    <label for="sm-email">Email</label><input id="sm-email" type="email" autocomplete="email">
+    <label for="sm-email">Email *</label><input id="sm-email" type="email" autocomplete="email">
     <div class="er" id="sm-err"></div>
     <button class="go" id="sm-go" type="button">Send my application</button>
     <button class="x" id="sm-close" type="button">Cancel</button></div>

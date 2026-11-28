@@ -7031,7 +7031,7 @@ window.htRenderShifts = async function(el) {
     list.forEach(a => {
       const r = actRow(c); r.style.alignItems = 'center'; r.style.background = 'var(--cream)'; r.style.borderRadius = '10px'; r.style.padding = '8px 10px';
       const t = document.createElement('div'); t.style.cssText = 'flex:1;min-width:180px;font-size:0.82rem;';
-      t.innerHTML = '<b>' + htEsc(a.name) + '</b><br><span style="color:var(--ink-muted);font-size:0.74rem;">' + htEsc(a.phone) + (a.email ? ' · ' + htEsc(a.email) : '') + '</span>';
+      t.innerHTML = '<b>' + htEsc(a.name) + '</b><br><span style="color:var(--ink-muted);font-size:0.74rem;">' + htEsc(a.phone) + (a.email ? ' · <a href="mailto:' + htEsc(a.email) + '" style="color:#1D7A55;font-weight:600;">' + htEsc(a.email) + '</a>' : ' · <span style="color:#C62828;">no email</span>') + '</span>';
       r.appendChild(t);
       sBtn(r, '📞', ghost, () => { location.href = 'tel:' + String(a.phone).replace(/[^\d+]/g, ''); });
       sBtn(r, 'Choose', 'border:none;background:var(--green);color:#fff;', async () => { if (!confirm('Assign ' + a.name + ' to this shift?')) return; await scAssign(s, a); showToast('Assigned — now send the links'); redraw(); });
