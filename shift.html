@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Your Shift — Chef Nek Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--green:#1D9E75;--dark:#0A1F14;--ink:#0F2A1E;--muted:#5b6f64;--bg:#F2F8F5;--card:#fff;--line:rgba(0,0,0,.09);--red:#D9372B;--amber:#B8730A}
+@media(prefers-color-scheme:dark){:root{--ink:#E8F5EE;--muted:#9bb3a6;--bg:#08140E;--card:#10241A;--line:rgba(255,255,255,.12)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;line-height:1.5}
+.top{background:linear-gradient(135deg,#0A1F14,#0D3520);color:#fff;padding:18px 20px;text-align:center}
+.top b{font-size:1.05rem;letter-spacing:.01em}.top b span{color:#2DD4A0}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 60px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px}
+h1{font-size:1.35rem;margin-bottom:4px}
+.sub{color:var(--muted);font-size:.88rem;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.row:last-child{border-bottom:none}.row span:first-child{color:var(--muted)}.row span:last-child{font-weight:700;text-align:right}
+.badge{display:inline-block;font-size:.7rem;font-weight:800;padding:4px 11px;border-radius:100px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.b-go{background:#E3F7EE;color:#0A6B4B}.b-wait{background:#FFF3D6;color:#8A5A00}.b-done{background:#E7ECF8;color:#2A4A9C}.b-bad{background:#FDE7E5;color:#A32D2D}
+.rules{background:var(--bg);border-radius:12px;padding:14px 16px;font-size:.88rem;white-space:pre-wrap;max-height:320px;overflow:auto;margin:10px 0 14px;border:1px solid var(--line)}
+label{display:block;font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px}
+input[type=text],textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;background:var(--card);color:var(--ink)}
+textarea{min-height:80px;resize:vertical}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;margin:8px 0}.chk input{width:22px;height:22px;margin-top:2px;accent-color:var(--green);flex-shrink:0}
+.btn{display:block;width:100%;height:56px;border:none;border-radius:16px;font:inherit;font-weight:800;font-size:1.05rem;color:#fff;cursor:pointer;background:linear-gradient(135deg,#1D9E75,#16856A);margin-top:14px;box-shadow:0 8px 22px rgba(29,158,117,.3)}
+.btn.red{background:linear-gradient(135deg,#E53935,#C62828);box-shadow:0 8px 22px rgba(229,57,53,.3)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);box-shadow:none;height:48px;font-size:.92rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--red);font-size:.86rem;margin-top:10px;display:none}
+.note{font-size:.84rem;color:var(--muted);margin-top:10px}
+.timer{font-size:2.6rem;font-weight:800;text-align:center;letter-spacing:.03em;margin:6px 0}
+.dist{font-size:.9rem;text-align:center;margin-top:10px;font-weight:600}
+a.map{display:inline-block;color:var(--green);font-weight:700;text-decoration:none;margin-top:4px}
+.center{text-align:center}.big{font-size:2.6rem;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="top"><b>Chef Nek <span>Pro</span></b></div>
+<div class="wrap" id="app"><div class="card center"><div class="sub">Loading your shift…</div></div></div>
+
+<script type="module">
+/* ── data layer (Firestore, or a mock for tests) ───────────────── */
+let api;
+if (window.__SHIFT_MOCK) { api = window.__SHIFT_MOCK; }
+else {
+  const [{initializeApp}, fs] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
+  ]);
+  const app = initializeApp({
+    apiKey: "AIzaSyCbX-lJSCX2XU4UKOA-6RvvOdBiU_CFTl0",
+    authDomain: "chef-nek-pro-dad86.firebaseapp.com",
+    projectId: "chef-nek-pro-dad86",
+    storageBucket: "chef-nek-pro-dad86.firebasestorage.app"
+  }, 'shift');
+  const db = fs.getFirestore(app);
+  api = {
+    async get(col, key){ const s = await fs.getDoc(fs.doc(db, col, key)); return s.exists() ? s.data() : null; },
+    async update(col, key, data){ await fs.updateDoc(fs.doc(db, col, key), Object.assign({}, data, {updatedAt: fs.serverTimestamp()})); }
+  };
+}
+
+/* ── helpers ─────────────────────────────────────────────────── */
+const $app = document.getElementById('app');
+const qs = new URLSearchParams(location.search);
+const wKey = (qs.get('w') || '').trim(), oKey = (qs.get('o') || '').trim();
+const MODE = wKey ? 'worker' : oKey ? 'owner' : '';
+const COL = MODE === 'worker' ? 'htShiftW' : 'htShiftO';
+const KEY = MODE === 'worker' ? wKey : oKey;
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+function shiftTimes(d) {
+  const [y, m, dd] = String(d.date || '').split('-').map(Number);
+  const [sh, sm] = String(d.start || '0:0').split(':').map(Number);
+  const [eh, em] = String(d.end || '0:0').split(':').map(Number);
+  const s = new Date(y, (m || 1) - 1, dd || 1, sh || 0, sm || 0);
+  let e = new Date(y, (m || 1) - 1, dd || 1, eh || 0, em || 0);
+  if (e <= s) e = new Date(e.getTime() + 864e5);
+  return {s, e};
+}
+const t12 = h => { const [H, M] = String(h || '0:0').split(':').map(Number); return ((H % 12) || 12) + ':' + pad(M || 0) + ' ' + (H >= 12 ? 'PM' : 'AM'); };
+const dateLong = d => { const [y, m, dd] = String(d || '').split('-').map(Number); return isNaN(y) ? '' : new Date(y, m - 1, dd).toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'}); };
+const clockTxt = ms => ms ? new Date(ms).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '—';
+function meters(lat1, lon1, lat2, lon2) {
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const a = Math.sin(r(lat2 - lat1) / 2) ** 2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(r(lon2 - lon1) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function getPos() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error('Location is not available on this phone.'));
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0)}),
+      e => rej(new Error(e.code === 1 ? 'Location is blocked. Allow location for this page in your phone settings, then try again.' : 'Could not get your location. Go outside or near a window and try again.')),
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+  });
+}
+const mapLink = a => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a || '');
+const hoursBetween = (a, b) => Math.max(0, +(((b - a) / 36e5)).toFixed(2));
+const setErr = (id, msg) => { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; } };
+const view = html => { $app.innerHTML = html; };
+
+let D = null;
+
+async function load() {
+  if (!MODE) return view('<div class="card center"><div class="big">🔗</div><h1>Open your shift link</h1><p class="sub">This page needs the personal link Chef Nek sent you.</p></div>');
+  try { D = await api.get(COL, KEY); }
+  catch (e) { return view('<div class="card center"><div class="big">⚠️</div><h1>Could not load</h1><p class="sub">Check your internet and refresh. If it keeps happening, call Chef Nek.</p></div>'); }
+  if (!D) return view('<div class="card center"><div class="big">🔗</div><h1>Link not found</h1><p class="sub">This link is not valid or was removed. Ask Chef Nek for a new one.</p></div>');
+  MODE === 'worker' ? renderWorker() : renderOwner();
+}
+
+function summary(d, who) {
+  const rows = [
+    ['Restaurant', d.restaurant], ['Role', d.position], ['Date', dateLong(d.date)],
+    ['Time', t12(d.start) + ' – ' + t12(d.end)]
+  ];
+  if (who === 'worker') rows.push(['Pay', '$' + Number(d.rate || 0).toFixed(2) + ' / hour']);
+  if (who === 'owner') { rows.push(['Worker', d.workerName]); rows.push(['Rate', '$' + Number(d.restaurantRate || 0).toFixed(2) + ' / hour']); }
+  let h = '<div>' + rows.map(r => '<div class="row"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>').join('') + '</div>';
+  h += '<div class="row"><span>Address</span><span>' + esc(d.address) + '<br><a class="map" target="_blank" rel="noopener" href="' + esc(mapLink(d.address)) + '">Open in Maps ↗</a></span></div>';
+  return h;
+}
+
+/* ── agreement block (shared) ─────────────────────────────────── */
+function agreementHtml(title, text, btnLabel) {
+  return '<h1>' + esc(title) + '</h1><p class="sub">Please read, then accept to continue.</p>'
+    + '<div class="rules">' + esc(text) + '</div>'
+    + '<label class="chk"><input type="checkbox" id="agree"> <span>I have read and agree to these terms.</span></label>'
+    + '<label for="aname">Type your full name</label><input type="text" id="aname" autocomplete="name" placeholder="Full name">'
+    + '<div class="err" id="err"></div>'
+    + '<button class="btn" id="accept">' + esc(btnLabel) + '</button>';
+}
+function bindAgreement(extra) {
+  document.getElementById('accept').onclick = async () => {
+    const name = document.getElementById('aname').value.trim();
+    if (!document.getElementById('agree').checked) return setErr('err', 'Please tick the box to agree.');
+    if (name.length < 3) return setErr('err', 'Please type your full name.');
+    const btn = document.getElementById('accept'); btn.disabled = true; btn.textContent = 'Saving…';
+    try { await api.update(COL, KEY, Object.assign({status: 'agreed', agreedAt: Date.now(), agreedName: name}, extra || {})); await load(); }
+    catch (e) { btn.disabled = false; btn.textContent = 'Try again'; setErr('err', 'Could not save. Check your internet and try again.'); }
+  };
+}
+
+/* ── WORKER ───────────────────────────────────────────────────── */
+function renderWorker() {
+  const d = D, st = d.status || 'assigned';
+  if (st === 'cancelled') return view('<div class="card center"><div class="big">🚫</div><h1>Shift cancelled</h1><p class="sub">This shift was cancelled. Chef Nek will contact you.</p></div>');
+  if (st === 'assigned') {
+    return view('<div class="card"><span class="badge b-wait">New shift offer</span><h1>Hi ' + esc((d.workerName || '').split(' ')[0]) + ' 👋</h1><p class="sub">Chef Nek picked you for this shift.</p>' + summary(d, 'worker') + '</div>'
+      + '<div class="card">' + agreementHtml('Shift rules', d.rulesText || '', 'Accept this shift') + '</div>'), bindAgreement();
+  }
+  if (st === 'completed') {
+    const ci = d.clockIn || {}, co = d.clockOut || {};
+    return view('<div class="card center"><div class="big">✅</div><span class="badge b-done">Shift complete</span><h1>Thank you!</h1><p class="sub">Great work today.</p></div>'
+      + '<div class="card"><div class="row"><span>Clocked in</span><span>' + esc(clockTxt(ci.ts)) + '</span></div><div class="row"><span>Clocked out</span><span>' + esc(clockTxt(co.ts)) + '</span></div><div class="row"><span>Hours</span><span>' + esc(Number(d.hoursWorked || 0).toFixed(2)) + ' h</span></div><div class="row"><span>Pay</span><span>$' + esc((Number(d.hoursWorked || 0) * Number(d.rate || 0)).toFixed(2)) + '</span></div></div>'
+      + '<p class="note center">Chef Nek will pay you by Zelle or cash after the restaurant confirms your hours.</p>');
+  }
+  if (st === 'working') return renderWorking();
+  // agreed
+  const {s, e} = shiftTimes(d);
+  view('<div class="card"><span class="badge b-go">Accepted ✓</span><h1>Your shift</h1>' + summary(d, 'worker') + '</div>'
+    + '<div class="card"><h1>Clock in</h1><p class="sub">Clock-in opens when you are at the restaurant, from 60 minutes before your start time.</p>'
+    + '<div class="dist" id="dist"></div><div class="err" id="err"></div>'
+    + '<button class="btn" id="arrive">📍 I\'ve arrived — check my location</button>'
+    + '<button class="btn" id="clockin" style="display:none">🟢 Clock In</button>'
+    + '<div id="fallback" style="display:none"><label for="why">Can\'t clock in? Tell Chef Nek why</label><textarea id="why" placeholder="Example: GPS is not working inside the building"></textarea><button class="btn ghost" id="clockinNote">Clock in anyway (Chef Nek will review)</button></div></div>'
+    + '<p class="note center">Keep this page. Come back to it at the restaurant and when your shift ends.</p>');
+  let pos = null;
+  const startOpens = s.getTime() - 60 * 60000;
+  const doClockIn = async (flag, note) => {
+    const now = Date.now();
+    if (now < startOpens) return setErr('err', 'Clock-in opens at ' + new Date(startOpens).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) + '.');
+    if (now > e.getTime() + 2 * 3600000) return setErr('err', 'This shift time has passed. Please call Chef Nek.');
+    const ci = {ts: now, lat: pos ? pos.lat : null, lng: pos ? pos.lng : null, acc: pos ? pos.acc : null, dist: pos ? pos.dist : null, flagged: !!flag, note: note || ''};
+    try {
+      await api.update('htShiftW', KEY, {status: 'working', clockIn: ci});
+      if (d.ownerKey) { try { await api.update('htShiftO', d.ownerKey, {workerStatus: 'working', clockIn: {ts: ci.ts, flagged: ci.flagged}}); } catch (_) {} }
+      await load();
+    } catch (er) { setErr('err', 'Could not clock in. Check your internet and try again.'); }
+  };
+  document.getElementById('arrive').onclick = async function () {
+    setErr('err', ''); this.disabled = true; this.textContent = 'Checking location…';
+    try {
+      const p = await getPos();
+      const dist = Math.round(meters(p.lat, p.lng, d.lat, d.lng));
+      const radius = Number(d.radius || 150);
+      pos = Object.assign({}, p, {dist});
+      const ok = Math.max(0, dist - p.acc) <= radius;
+      const el = document.getElementById('dist');
+      if (ok) { el.innerHTML = '✅ You are at the restaurant (' + dist + ' m away)'; el.style.color = 'var(--green)'; this.style.display = 'none'; document.getElementById('clockin').style.display = 'block'; document.getElementById('fallback').style.display = 'none'; }
+      else { el.innerHTML = '📍 You are about ' + dist + ' m from the restaurant. Move closer, then try again.'; el.style.color = 'var(--amber)'; this.disabled = false; this.textContent = '📍 Check my location again'; document.getElementById('fallback').style.display = 'block'; }
+    } catch (er) { setErr('err', er.message); this.disabled = false; this.textContent = '📍 Try again'; document.getElementById('fallback').style.display = 'block'; }
+  };
+  document.getElementById('clockin').onclick = function () { this.disabled = true; doClockIn(false, ''); };
+  document.getElementById('clockinNote').onclick = function () {
+    const note = document.getElementById('why').value.trim();
+    if (note.length < 5) return setErr('err', 'Please write a short reason first.');
+    this.disabled = true; doClockIn(true, note);
+  };
+}
+
+function renderWorking() {
+  const d = D, ci = d.clockIn || {};
+  view('<div class="card"><span class="badge b-go">On shift</span><h1>You are clocked in</h1><p class="sub">Since ' + esc(clockTxt(ci.ts)) + ' at ' + esc(d.restaurant) + (ci.flagged ? ' · flagged for review' : '') + '</p>'
+    + '<div class="timer" id="timer">0:00:00</div></div>'
+    + '<div class="card"><div class="err" id="err"></div><button class="btn red" id="out">🔴 Clock Out</button>'
+    + '<p class="note center">Tap Clock Out only when your shift is finished and you are leaving.</p></div>');
+  const tick = () => { const s = Math.max(0, Math.floor((Date.now() - ci.ts) / 1000)); const el = document.getElementById('timer'); if (el) el.textContent = Math.floor(s / 3600) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60); };
+  tick(); const iv = setInterval(() => { if (!document.getElementById('timer')) return clearInterval(iv); tick(); }, 1000);
+  document.getElementById('out').onclick = async function () {
+    this.disabled = true; this.textContent = 'Saving…'; setErr('err', '');
+    let pos = null;
+    try { const p = await getPos(); pos = Object.assign({}, p, {dist: Math.round(meters(p.lat, p.lng, d.lat, d.lng))}); } catch (_) {}
+    const now = Date.now();
+    const co = {ts: now, lat: pos ? pos.lat : null, lng: pos ? pos.lng : null, acc: pos ? pos.acc : null, dist: pos ? pos.dist : null, flagged: pos ? (Math.max(0, pos.dist - pos.acc) > Number(d.radius || 150) * 3) : true};
+    const hrs = hoursBetween(ci.ts, now);
+    try {
+      await api.update('htShiftW', KEY, {status: 'completed', clockOut: co, hoursWorked: hrs});
+      if (d.ownerKey) { try { await api.update('htShiftO', d.ownerKey, {workerStatus: 'completed', clockIn: {ts: ci.ts, flagged: !!ci.flagged}, clockOut: {ts: co.ts}, hoursWorked: hrs}); } catch (_) {} }
+      await load();
+    } catch (er) { this.disabled = false; this.textContent = '🔴 Clock Out'; setErr('err', 'Could not clock out. Check your internet and tap again.'); }
+  };
+}
+
+/* ── OWNER ────────────────────────────────────────────────────── */
+function renderOwner() {
+  const d = D, st = d.status || 'assigned';
+  if (st === 'cancelled') return view('<div class="card center"><div class="big">🚫</div><h1>Shift cancelled</h1><p class="sub">This shift was cancelled.</p></div>');
+  if (st === 'assigned') {
+    return view('<div class="card"><span class="badge b-wait">Shift to confirm</span><h1>Hello ' + esc((d.ownerName || '').split(' ')[0] || 'there') + '</h1><p class="sub">Chef Nek Pro is sending a worker to your restaurant.</p>' + summary(d, 'owner') + '</div>'
+      + '<div class="card">' + agreementHtml('Restaurant terms', d.termsText || '', 'Accept & confirm shift') + '</div>'), bindAgreement();
+  }
+  const ws = d.workerStatus || 'scheduled', ci = d.clockIn || {}, co = d.clockOut || {};
+  let live = ws === 'completed' ? '<span class="badge b-done">Shift finished</span>' : ws === 'working' ? '<span class="badge b-go">Worker on site</span>' : '<span class="badge b-wait">Scheduled</span>';
+  let html = '<div class="card">' + live + '<h1>Your shift</h1>' + summary(d, 'owner')
+    + '<div class="row"><span>Worker arrived</span><span>' + esc(ci.ts ? clockTxt(ci.ts) : 'Not yet') + '</span></div>'
+    + '<div class="row"><span>Worker left</span><span>' + esc(co.ts ? clockTxt(co.ts) : '—') + '</span></div>'
+    + (ws === 'completed' ? '<div class="row"><span>Hours worked</span><span>' + esc(Number(d.hoursWorked || 0).toFixed(2)) + ' h</span></div><div class="row"><span>Amount due</span><span>$' + esc((Number(d.hoursWorked || 0) * Number(d.restaurantRate || 0)).toFixed(2)) + '</span></div>' : '')
+    + '</div>';
+  if (ws === 'completed' && !d.confirm) {
+    html += '<div class="card"><h1>Confirm the hours</h1><p class="sub">Please confirm, or tell us if something is wrong.</p>'
+      + '<button class="btn" id="ok">✅ Hours are correct</button><label for="note">Something wrong? Tell us</label><textarea id="note" placeholder="Describe the problem"></textarea><button class="btn ghost" id="bad">Report a problem</button><div class="err" id="err"></div></div>';
+  } else if (d.confirm) {
+    html += '<div class="card center"><div class="big">' + (d.confirm === 'confirmed' ? '✅' : '⚠️') + '</div><h1>' + (d.confirm === 'confirmed' ? 'Hours confirmed' : 'Problem reported') + '</h1><p class="sub">Thank you. Chef Nek will follow up.</p></div>';
+  } else {
+    html += '<div class="card"><button class="btn ghost" id="refresh">↻ Refresh</button></div>';
+  }
+  view(html);
+  const upd = async data => { try { await api.update('htShiftO', KEY, data); await load(); } catch (e) { setErr('err', 'Could not save. Try again.'); } };
+  const ok = document.getElementById('ok'), bad = document.getElementById('bad'), rf = document.getElementById('refresh');
+  if (ok) ok.onclick = () => upd({confirm: 'confirmed', confirmedAt: Date.now()});
+  if (bad) bad.onclick = () => { const n = document.getElementById('note').value.trim(); if (n.length < 5) return setErr('err', 'Please describe the problem.'); upd({confirm: 'disputed', ownerNote: n, confirmedAt: Date.now()}); };
+  if (rf) rf.onclick = load;
+  if (ws !== 'completed') setTimeout(load, 60000);
+}
+
+load();
+</script>
+</body>
+</html>

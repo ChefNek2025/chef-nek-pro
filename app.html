@@ -6448,7 +6448,7 @@ async function renderHireTrain(main, userData) {
   window._htTab = window._htTab || 'pipeline';
   const tabBar = document.createElement('div');
   tabBar.style.cssText = 'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;';
-  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'},{id:'jobs',label:'💼 Open Positions'},{id:'reviews',label:'⭐ Reviews'}].forEach(t=>{
+  [{id:'pipeline',label:'🔄 Pipeline'},{id:'certified',label:'✅ Certified'},{id:'placed',label:'🍳 Placed'},{id:'training',label:'📅 Training Schedule'},{id:'jobs',label:'💼 Open Positions'},{id:'shifts',label:'🗓️ Shift Cover'},{id:'reviews',label:'⭐ Reviews'}].forEach(t=>{
     const btn = document.createElement('button');
     btn.id = 'ht-tab-'+t.id;
     btn.style.cssText = 'height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;'
@@ -6467,7 +6467,7 @@ async function renderHireTrain(main, userData) {
 }
 
 async function htRenderTab(body) {
-  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'},{id:'jobs'},{id:'reviews'}].forEach(t=>{
+  [{id:'pipeline'},{id:'certified'},{id:'placed'},{id:'training'},{id:'jobs'},{id:'shifts'},{id:'reviews'}].forEach(t=>{
     const btn = document.getElementById('ht-tab-'+t.id);
     if (!btn) return;
     btn.style.background  = window._htTab===t.id?'var(--ink)':'transparent';
@@ -6478,6 +6478,7 @@ async function htRenderTab(body) {
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
   if (window._htTab==='jobs') { await htRenderJobs(el); return; }
+  if (window._htTab==='shifts') { await htRenderShifts(el); return; }
   const snap = await getDocs(collection(db,'htApplicants'));
   const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
@@ -6857,6 +6858,316 @@ window.htRenderJobs = async function(el) {
     el.appendChild(card);
   });
 };
+
+// ─────────────────────────────────────────────
+// SHIFT COVER (admin) — post shifts, pick workers, send links, track hours & payments
+// ─────────────────────────────────────────────
+const SC_BASE = 'https://chefnekpro.com/shift';
+const SC_RULES_DEFAULT = [
+  'SHIFT RULES — please read', '',
+  '1. ARRIVE EARLY. Be at the restaurant 10 minutes before your start time. Clock in only after you arrive.',
+  '2. LOOK THE PART. Clean black pants, clean shirt, non-slip closed shoes, hair tied back or covered.',
+  '3. FOOD SAFETY. Wash your hands before work and often. Do not come in sick. Follow the restaurant\'s safety rules and Chef Nek\'s training.',
+  '4. PHONE AWAY. Keep your phone in your pocket or locker during the shift, except on breaks.',
+  '5. RESPECT EVERYONE. Be polite to staff, managers and guests. No arguments, harassment or bad language.',
+  '6. NO ALCOHOL OR DRUGS before or during a shift.',
+  '7. LISTEN AND ASK. Follow the chef or manager on duty. Ask if you are unsure.',
+  '8. STAY THE WHOLE SHIFT. Leave early only with the manager\'s OK, and tell Chef Nek right away.',
+  '9. IF YOU CANNOT COME, tell Chef Nek at least 24 hours before. No-shows may mean no more shifts.',
+  '10. BE HONEST ABOUT HOURS. Clock in and out yourself, only at the restaurant. False hours mean removal from the platform.', '',
+  'By accepting, you agree to follow these rules.'
+].join('\n');
+const SC_TERMS_DEFAULT = [
+  'RESTAURANT TERMS — please read', '',
+  '1. PAYMENT FOR HOURS WORKED. You pay the agreed hourly rate for the hours recorded in Chef Nek Pro, with a minimum of 4 hours per shift.',
+  '2. HOW TO PAY. Pay Chef Nek Pro by Zelle or cash within 3 days of the shift (cash may be paid on the day).',
+  '3. CANCELLATION. Cancel at least 24 hours before the start time. Late cancellations, or sending a worker home early, are charged the 4-hour minimum.',
+  '4. SAFE, RESPECTFUL WORKPLACE. Follow safety rules, allow breaks as required by law, and treat the worker professionally. No harassment, unsafe equipment, or unpaid extra duties.',
+  '5. CLEAR INSTRUCTIONS. Tell the worker where to report and what to do when they arrive.',
+  '6. HOURS DISPUTES. Confirm the hours in your link after the shift, or report a problem within 24 hours. Hours not disputed within 24 hours are treated as confirmed.',
+  '7. PROBLEMS. Tell Chef Nek right away about any issue with the worker.', '',
+  'By accepting, you agree to these terms.'
+].join('\n');
+
+const scMoney = n => '$' + (Number(n) || 0).toFixed(2);
+const scKey = () => { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join(''); };
+const scDigits = p => { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '1' + d; return d; };
+const scT12 = h => { const [H, M] = String(h || '0:0').split(':').map(Number); return ((H % 12) || 12) + ':' + String(M || 0).padStart(2, '0') + ' ' + (H >= 12 ? 'PM' : 'AM'); };
+const scDateLong = d => { const [y, m, dd] = String(d || '').split('-').map(Number); return isNaN(y) ? '' : new Date(y, m - 1, dd).toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'}); };
+const scClock = ms => ms ? new Date(ms).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '—';
+const scLocalDate = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+async function scGeocode(addr) {
+  const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=' + encodeURIComponent(addr));
+  const j = await r.json();
+  return j && j.length ? {lat: +j[0].lat, lng: +j[0].lon, label: j[0].display_name} : null;
+}
+async function scGetTerms() {
+  try {
+    const s = await getDoc(doc(db, 'htSettings', 'terms'));
+    if (s.exists()) { const d = s.data(); return {rulesText: d.rulesText || SC_RULES_DEFAULT, termsText: d.termsText || SC_TERMS_DEFAULT, version: d.version || 1}; }
+  } catch (e) {}
+  return {rulesText: SC_RULES_DEFAULT, termsText: SC_TERMS_DEFAULT, version: 0};
+}
+
+window.htRenderShifts = async function(el) {
+  el.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+  let shifts = [], apps = [], W = {}, O = {};
+  try {
+    const snaps = await Promise.all(['htShifts', 'htShiftApps', 'htShiftW', 'htShiftO'].map(c => getDocs(collection(db, c))));
+    shifts = snaps[0].docs.map(d => ({id: d.id, ...d.data()}));
+    apps = snaps[1].docs.map(d => ({id: d.id, ...d.data()}));
+    snaps[2].docs.forEach(d => { W[d.id] = d.data(); });
+    snaps[3].docs.forEach(d => { O[d.id] = d.data(); });
+  } catch (e) {
+    el.innerHTML = '<div style="padding:24px;color:#C62828;font-size:0.85rem;line-height:1.6;">Could not load shifts: ' + htEsc(e.message || e) + '<br><br>If this says "permission", add the shift rules to Firestore (file: firestore-shift-rules.txt) and press Publish.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  const redraw = () => htRenderShifts(el);
+  const hoursOf = s => { const w = W[s.workerKey]; return s.finalHours != null ? Number(s.finalHours) : (w && w.hoursWorked != null ? Number(w.hoursWorked) : null); };
+  const isDone = s => s.status === 'assigned' && W[s.workerKey] && W[s.workerKey].status === 'completed';
+  const unpaid = s => isDone(s) && !(s.ownerPaid && s.workerPaid);
+
+  // ── top bar
+  let owedToMe = 0, iOwe = 0;
+  shifts.filter(unpaid).forEach(s => { const h = hoursOf(s) || 0; if (!s.ownerPaid) owedToMe += h * Number(s.restaurantRate || 0); if (!s.workerPaid) iOwe += h * Number(s.rate || 0); });
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px;';
+  bar.innerHTML = '<div style="flex:1;min-width:220px;display:flex;gap:10px;flex-wrap:wrap;">'
+    + '<div style="background:#EDFAF4;border:1.5px solid #1D9E75;border-radius:12px;padding:8px 14px;"><div style="font-size:0.62rem;font-weight:800;color:#0A5C3F;letter-spacing:.06em;">RESTAURANTS OWE YOU</div><div style="font-size:1.2rem;font-weight:800;color:#0A5C3F;">' + scMoney(owedToMe) + '</div></div>'
+    + '<div style="background:#FFF4D6;border:1.5px solid #D4920A;border-radius:12px;padding:8px 14px;"><div style="font-size:0.62rem;font-weight:800;color:#8A5A00;letter-spacing:.06em;">YOU OWE WORKERS</div><div style="font-size:1.2rem;font-weight:800;color:#8A5A00;">' + scMoney(iOwe) + '</div></div></div>';
+  const mkBtn = (txt, css, fn) => { const b = document.createElement('button'); b.style.cssText = 'height:40px;padding:0 16px;border-radius:10px;font-family:var(--font-body);font-size:0.82rem;font-weight:700;cursor:pointer;' + css; b.textContent = txt; b.onclick = fn; return b; };
+  bar.appendChild(mkBtn('⚙️ Rules & terms', 'border:1.5px solid var(--border);background:#fff;color:var(--ink);', () => scTermsModal(redraw)));
+  bar.appendChild(mkBtn('➕ Post a shift', 'border:none;background:var(--green);color:#fff;', () => scShiftModal(redraw)));
+  el.appendChild(bar);
+
+  const section = (title, list, build) => {
+    if (!list.length) return;
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:0.8rem;font-weight:800;color:var(--ink);margin:18px 0 10px;';
+    h.textContent = title + ' (' + list.length + ')';
+    el.appendChild(h);
+    list.forEach(s => el.appendChild(build(s)));
+  };
+  const byDate = (a, b) => (a.date + a.start).localeCompare(b.date + b.start);
+  const needsPay = shifts.filter(unpaid).sort(byDate);
+  const open = shifts.filter(s => s.status === 'open').sort(byDate);
+  const upcoming = shifts.filter(s => s.status === 'assigned' && !isDone(s)).sort(byDate);
+  const closed = shifts.filter(s => (s.status === 'assigned' && isDone(s) && s.ownerPaid && s.workerPaid) || s.status === 'cancelled').sort((a, b) => byDate(b, a)).slice(0, 15);
+
+  if (!shifts.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:0.85rem;background:#fff;border:1.5px dashed var(--border);border-radius:14px;';
+    empty.innerHTML = '<div style="font-size:2rem;margin-bottom:8px;">🗓️</div>No shifts yet. Press “➕ Post a shift” after you agree the pay with a restaurant.';
+    el.appendChild(empty);
+    return;
+  }
+
+  const cardBase = (s, accent) => {
+    const c = document.createElement('div');
+    c.style.cssText = 'background:#fff;border:1.5px solid ' + (accent || 'var(--border)') + ';border-radius:14px;padding:14px 16px;margin-bottom:10px;';
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><div><div style="font-size:0.95rem;font-weight:800;color:var(--ink);">' + htEsc(s.restaurant) + ' · ' + htEsc(s.position) + '</div>'
+      + '<div style="font-size:0.78rem;color:var(--ink-muted);margin-top:3px;">' + htEsc(scDateLong(s.date)) + ' · ' + htEsc(scT12(s.start)) + '–' + htEsc(scT12(s.end)) + ' · ' + htEsc(s.address) + '</div></div>'
+      + '<div style="text-align:right;font-size:0.74rem;color:var(--ink-muted);">Worker ' + scMoney(s.rate) + '/h<br>Restaurant ' + scMoney(s.restaurantRate) + '/h</div></div>';
+    return c;
+  };
+  const line = (c, html, css) => { const d = document.createElement('div'); d.style.cssText = 'font-size:0.8rem;margin-top:8px;' + (css || ''); d.innerHTML = html; c.appendChild(d); return d; };
+  const actRow = c => { const r = document.createElement('div'); r.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;'; c.appendChild(r); return r; };
+  const sBtn = (r, txt, css, fn) => { const b = document.createElement('button'); b.style.cssText = 'height:34px;padding:0 12px;border-radius:9px;font-family:var(--font-body);font-size:0.74rem;font-weight:700;cursor:pointer;' + css; b.textContent = txt; b.onclick = fn; r.appendChild(b); return b; };
+  const ghost = 'border:1.5px solid var(--border);background:transparent;color:var(--ink-muted);';
+  const copy = async t => { try { await navigator.clipboard.writeText(t); showToast('Link copied'); } catch (e) { prompt('Copy this link:', t); } };
+  const cancelShift = async s => {
+    if (!confirm('Cancel this shift? The worker and owner links will show "cancelled".')) return;
+    try {
+      await setDoc(doc(db, 'htShifts', s.id), {status: 'cancelled', cancelledAt: serverTimestamp()}, {merge: true});
+      if (s.workerKey) await setDoc(doc(db, 'htShiftW', s.workerKey), {status: 'cancelled', updatedAt: serverTimestamp()}, {merge: true});
+      if (s.ownerKey) await setDoc(doc(db, 'htShiftO', s.ownerKey), {status: 'cancelled', updatedAt: serverTimestamp()}, {merge: true});
+      await deleteDoc(doc(db, 'htOpenShifts', s.id)).catch(() => {});
+      showToast('Shift cancelled'); redraw();
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  };
+
+  // ── needs payment
+  section('💵 Needs payment', needsPay, s => {
+    const w = W[s.workerKey] || {}, o = O[s.ownerKey] || {}, h = hoursOf(s) || 0;
+    const c = cardBase(s, '#D4920A');
+    const ci = w.clockIn || {}, co = w.clockOut || {};
+    line(c, '⏱️ ' + htEsc(scClock(ci.ts)) + ' → ' + htEsc(scClock(co.ts)) + ' · <b>' + h.toFixed(2) + ' h</b> · ' + htEsc(s.workerName)
+      + (ci.flagged ? ' · <span style="color:#B8730A;font-weight:700;">⚠️ clock-in flagged: ' + htEsc(ci.note || 'location check') + '</span>' : (ci.dist != null ? ' · ' + htEsc(ci.dist) + ' m from site' : '')));
+    line(c, 'Owner: ' + (o.confirm === 'confirmed' ? '<b style="color:#0A5C3F;">✅ confirmed hours</b>' : o.confirm === 'disputed' ? '<b style="color:#C62828;">⚠️ reported a problem: ' + htEsc(o.ownerNote || '') + '</b>' : '<span style="color:var(--ink-muted);">not confirmed yet</span>'));
+    line(c, 'Margin: <b>' + scMoney(h * (Number(s.restaurantRate || 0) - Number(s.rate || 0))) + '</b>');
+    const hr = actRow(c);
+    const hin = document.createElement('input'); hin.type = 'number'; hin.step = '0.25'; hin.min = '0'; hin.value = h.toFixed(2);
+    hin.style.cssText = 'width:84px;height:34px;border:1.5px solid var(--border);border-radius:9px;padding:0 8px;font-size:0.8rem;';
+    const hl = document.createElement('span'); hl.style.cssText = 'font-size:0.74rem;color:var(--ink-muted);align-self:center;'; hl.textContent = 'Final hours:';
+    hr.appendChild(hl); hr.appendChild(hin);
+    sBtn(hr, 'Save hours', ghost, async () => { const v = parseFloat(hin.value); if (isNaN(v) || v < 0) return showToast('Enter valid hours', 'error'); await setDoc(doc(db, 'htShifts', s.id), {finalHours: v}, {merge: true}); showToast('Hours saved'); redraw(); });
+    const payRow = (label, amount, paid, field, cash) => {
+      const r = actRow(c); r.style.alignItems = 'center';
+      const t = document.createElement('div'); t.style.cssText = 'flex:1;min-width:200px;font-size:0.82rem;font-weight:700;';
+      if (paid) { t.innerHTML = '✓ ' + htEsc(label) + ' ' + scMoney(amount) + ' — <span style="color:#0A5C3F;">paid ' + htEsc(paid.method) + ' · ' + htEsc(paid.date) + '</span>'; r.appendChild(t); sBtn(r, 'Undo', ghost, async () => { await setDoc(doc(db, 'htShifts', s.id), {[field]: null}, {merge: true}); redraw(); }); }
+      else {
+        t.innerHTML = htEsc(label) + ' <span style="color:var(--ink);">' + scMoney(amount) + '</span>'; r.appendChild(t);
+        const sel = document.createElement('select'); sel.style.cssText = 'height:34px;border:1.5px solid var(--border);border-radius:9px;padding:0 8px;font-size:0.78rem;background:#fff;';
+        sel.innerHTML = '<option>Zelle</option><option>Cash</option>'; r.appendChild(sel);
+        sBtn(r, 'Mark paid', 'border:none;background:var(--green);color:#fff;', async () => {
+          const amt = Number(((parseFloat(hin.value) || 0) * Number(field === 'ownerPaid' ? s.restaurantRate : s.rate || 0)).toFixed(2));
+          await setDoc(doc(db, 'htShifts', s.id), {finalHours: parseFloat(hin.value) || 0, [field]: {method: sel.value, date: scLocalDate(), amount: amt}}, {merge: true});
+          showToast('Marked paid'); redraw();
+        });
+      }
+    };
+    payRow('Restaurant owes you', h * Number(s.restaurantRate || 0), s.ownerPaid, 'ownerPaid');
+    payRow('You owe ' + (s.workerName || 'worker'), h * Number(s.rate || 0), s.workerPaid, 'workerPaid');
+    return c;
+  });
+
+  // ── open shifts with applicants
+  section('📢 Open — pick a worker', open, s => {
+    const c = cardBase(s, '#1D9E75');
+    const list = apps.filter(a => a.shiftId === s.id && a.status !== 'chosen').sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    line(c, list.length ? '<b>' + list.length + ' applicant' + (list.length > 1 ? 's' : '') + '</b>' : '<span style="color:var(--ink-muted);">No applicants yet — it is live on your Hire page.</span>');
+    list.forEach(a => {
+      const r = actRow(c); r.style.alignItems = 'center'; r.style.background = 'var(--cream)'; r.style.borderRadius = '10px'; r.style.padding = '8px 10px';
+      const t = document.createElement('div'); t.style.cssText = 'flex:1;min-width:180px;font-size:0.82rem;';
+      t.innerHTML = '<b>' + htEsc(a.name) + '</b><br><span style="color:var(--ink-muted);font-size:0.74rem;">' + htEsc(a.phone) + (a.email ? ' · ' + htEsc(a.email) : '') + '</span>';
+      r.appendChild(t);
+      sBtn(r, '📞', ghost, () => { location.href = 'tel:' + String(a.phone).replace(/[^\d+]/g, ''); });
+      sBtn(r, 'Choose', 'border:none;background:var(--green);color:#fff;', async () => { if (!confirm('Assign ' + a.name + ' to this shift?')) return; await scAssign(s, a); showToast('Assigned — now send the links'); redraw(); });
+    });
+    const r2 = actRow(c);
+    sBtn(r2, '➕ Assign someone else', ghost, async () => {
+      const name = prompt('Worker full name:'); if (!name) return;
+      const phone = prompt('Worker phone number:'); if (!phone) return;
+      await scAssign(s, {id: null, name: name.trim(), phone: phone.trim(), email: ''}); showToast('Assigned — now send the links'); redraw();
+    });
+    sBtn(r2, 'Cancel shift', 'border:none;background:#FFF0F0;color:#E53935;', () => cancelShift(s));
+    return c;
+  });
+
+  // ── upcoming / in progress
+  section('🗓️ Assigned & in progress', upcoming, s => {
+    const w = W[s.workerKey] || {}, o = O[s.ownerKey] || {};
+    const c = cardBase(s, w.status === 'working' ? '#1D9E75' : null);
+    const ci = w.clockIn || {};
+    let ws = '⏳ Waiting for ' + htEsc(s.workerName) + ' to accept the rules';
+    if (w.status === 'agreed') ws = '✅ ' + htEsc(w.agreedName || s.workerName) + ' accepted the rules (' + htEsc(scClock(w.agreedAt)) + ')';
+    if (w.status === 'working') ws = '🟢 <b>' + htEsc(s.workerName) + ' clocked in at ' + htEsc(scClock(ci.ts)) + '</b>' + (ci.flagged ? ' · <span style="color:#B8730A;font-weight:700;">⚠️ flagged: ' + htEsc(ci.note || 'location check') + '</span>' : (ci.dist != null ? ' · ' + htEsc(ci.dist) + ' m from site' : ''));
+    line(c, ws);
+    line(c, 'Owner: ' + (o.status === 'agreed' ? '✅ ' + htEsc(o.agreedName || s.ownerName) + ' accepted the terms' : '⏳ not accepted yet'));
+    if (s.workerKey) {
+      const wl = SC_BASE + '?w=' + s.workerKey, ol = SC_BASE + '?o=' + s.ownerKey;
+      const when = scDateLong(s.date) + ' ' + scT12(s.start) + '–' + scT12(s.end);
+      const wMsg = 'Hi ' + String(s.workerName).split(' ')[0] + ', Chef Nek here. Your shift: ' + s.restaurant + ', ' + when + '. Open your link to accept the rules and to clock in/out: ' + wl;
+      const oMsg = 'Hi ' + String(s.ownerName || '').split(' ')[0] + ', Chef Nek Pro here. ' + s.workerName + ' will cover ' + when + '. Please open this link to confirm the terms (and the hours after the shift): ' + ol;
+      const r = actRow(c);
+      sBtn(r, '💬 WhatsApp worker', 'border:none;background:#25D366;color:#fff;', () => window.open('https://wa.me/' + scDigits(s.workerPhone) + '?text=' + encodeURIComponent(wMsg), '_blank'));
+      sBtn(r, '📋 Worker link', ghost, () => copy(wl));
+      sBtn(r, '💬 WhatsApp owner', 'border:none;background:#25D366;color:#fff;', () => window.open('https://wa.me/' + scDigits(s.ownerPhone) + '?text=' + encodeURIComponent(oMsg), '_blank'));
+      sBtn(r, '📋 Owner link', ghost, () => copy(ol));
+    }
+    const r3 = actRow(c);
+    sBtn(r3, '↻ Refresh', ghost, redraw);
+    sBtn(r3, 'Cancel shift', 'border:none;background:#FFF0F0;color:#E53935;', () => cancelShift(s));
+    return c;
+  });
+
+  // ── closed / cancelled
+  section('📁 Closed & cancelled (latest)', closed, s => {
+    const c = cardBase(s);
+    c.style.opacity = '0.75';
+    if (s.status === 'cancelled') {
+      line(c, '🚫 Cancelled');
+      sBtn(actRow(c), '🗑️ Remove', 'border:none;background:#FFF0F0;color:#E53935;', async () => { if (!confirm('Delete this record?')) return; await deleteDoc(doc(db, 'htShifts', s.id)); redraw(); });
+    } else {
+      const h = hoursOf(s) || 0;
+      line(c, '✓ Paid · ' + h.toFixed(2) + ' h · restaurant ' + scMoney(s.ownerPaid.amount) + ' (' + htEsc(s.ownerPaid.method) + ') · worker ' + scMoney(s.workerPaid.amount) + ' (' + htEsc(s.workerPaid.method) + ') · margin <b>' + scMoney(s.ownerPaid.amount - s.workerPaid.amount) + '</b>');
+    }
+    return c;
+  });
+};
+
+async function scAssign(s, a) {
+  const terms = await scGetTerms();
+  const wk = scKey(), ok = scKey();
+  const base = {restaurant: s.restaurant, position: s.position, date: s.date, start: s.start, end: s.end, address: s.address, shiftId: s.id};
+  await setDoc(doc(db, 'htShiftW', wk), Object.assign({}, base, {lat: s.lat, lng: s.lng, radius: s.radius || 150, rate: Number(s.rate), workerName: a.name, rulesText: terms.rulesText, rulesVersion: terms.version, status: 'assigned', ownerKey: ok, createdAt: serverTimestamp()}));
+  await setDoc(doc(db, 'htShiftO', ok), Object.assign({}, base, {restaurantRate: Number(s.restaurantRate), workerName: a.name, ownerName: s.ownerName || '', termsText: terms.termsText, termsVersion: terms.version, status: 'assigned', workerStatus: 'scheduled', createdAt: serverTimestamp()}));
+  await setDoc(doc(db, 'htShifts', s.id), {status: 'assigned', workerName: a.name, workerPhone: a.phone, workerEmail: a.email || '', workerKey: wk, ownerKey: ok, rulesVersion: terms.version, termsVersion: terms.version, assignedAt: serverTimestamp()}, {merge: true});
+  await deleteDoc(doc(db, 'htOpenShifts', s.id)).catch(() => {});
+  if (a.id) await setDoc(doc(db, 'htShiftApps', a.id), {status: 'chosen'}, {merge: true});
+}
+
+function scOverlay(inner, onClose) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:22px 20px 28px;animation:aiSlideUp .25s ease;';
+  box.innerHTML = inner;
+  ov.appendChild(box);
+  ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); if (onClose) onClose(); } });
+  document.body.appendChild(ov);
+  return {ov, box, close: () => { ov.remove(); if (onClose) onClose(); }};
+}
+const SC_INP = 'width:100%;height:42px;border-radius:10px;border:1.5px solid var(--border);padding:0 12px;font-family:var(--font-body);font-size:0.85rem;outline:none;background:#fff;color:var(--ink);box-sizing:border-box;';
+const SC_LAB = 'display:block;font-size:0.65rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin:12px 0 5px;';
+
+function scShiftModal(done) {
+  const posOpts = HT_JOB_POSITIONS.filter(p => p !== 'Multiple Positions').map(p => '<option>' + htEsc(p) + '</option>').join('');
+  const {box, close} = scOverlay(
+    '<div style="font-size:1.05rem;font-weight:800;margin-bottom:2px;">🗓️ Post a shift</div><div style="font-size:0.75rem;color:var(--ink-muted);">Rates stay private. Workers only see their own rate. The exact address is sent only to the worker you choose.</div>'
+    + '<label style="' + SC_LAB + '">Restaurant *</label><input id="sf-rest" style="' + SC_INP + '">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><label style="' + SC_LAB + '">Owner / manager *</label><input id="sf-owner" style="' + SC_INP + '"></div><div><label style="' + SC_LAB + '">Owner phone *</label><input id="sf-ophone" style="' + SC_INP + '" inputmode="tel"></div></div>'
+    + '<label style="' + SC_LAB + '">Street address *</label><input id="sf-addr" style="' + SC_INP + '" placeholder="123 Main St, Silver Spring, MD 20910">'
+    + '<label style="' + SC_LAB + '">Public area (shown on Hire page) *</label><input id="sf-area" style="' + SC_INP + '" placeholder="Silver Spring, MD">'
+    + '<div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;"><div><label style="' + SC_LAB + '">Date *</label><input id="sf-date" type="date" style="' + SC_INP + '"></div><div><label style="' + SC_LAB + '">Start *</label><input id="sf-start" type="time" style="' + SC_INP + '"></div><div><label style="' + SC_LAB + '">End *</label><input id="sf-end" type="time" style="' + SC_INP + '"></div></div>'
+    + '<label style="' + SC_LAB + '">Position *</label><select id="sf-pos" style="' + SC_INP + '">' + posOpts + '</select>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"><div><label style="' + SC_LAB + '">Worker $/hour *</label><input id="sf-rate" type="number" step="0.25" min="0" style="' + SC_INP + '"></div><div><label style="' + SC_LAB + '">Restaurant $/hour *</label><input id="sf-rrate" type="number" step="0.25" min="0" style="' + SC_INP + '"></div><div><label style="' + SC_LAB + '">Site radius (m)</label><input id="sf-rad" type="number" value="150" min="50" max="1000" style="' + SC_INP + '"></div></div>'
+    + '<div id="sf-err" style="display:none;color:#C62828;font-size:0.8rem;margin-top:12px;"></div>'
+    + '<button id="sf-save" style="width:100%;height:46px;margin-top:16px;border:none;border-radius:12px;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.9rem;font-weight:800;cursor:pointer;">Post shift</button>'
+  );
+  const $ = id => box.querySelector(id);
+  $('#sf-date').value = scLocalDate();
+  $('#sf-save').onclick = async () => {
+    const v = id => $(id).value.trim();
+    const d = {restaurant: v('#sf-rest'), ownerName: v('#sf-owner'), ownerPhone: v('#sf-ophone'), address: v('#sf-addr'), area: v('#sf-area'), date: v('#sf-date'), start: v('#sf-start'), end: v('#sf-end'), position: v('#sf-pos'), rate: parseFloat(v('#sf-rate')), restaurantRate: parseFloat(v('#sf-rrate')), radius: parseInt(v('#sf-rad')) || 150};
+    const err = $('#sf-err'); err.style.display = 'none';
+    const fail = m => { err.textContent = m; err.style.display = 'block'; };
+    if (!d.restaurant || !d.ownerName || !d.ownerPhone || !d.address || !d.area || !d.date || !d.start || !d.end) return fail('Please fill every field marked *.');
+    if (isNaN(d.rate) || isNaN(d.restaurantRate) || d.rate <= 0 || d.restaurantRate <= 0) return fail('Enter both hourly rates.');
+    if (d.restaurantRate < d.rate && !confirm('The restaurant rate is lower than the worker rate — you would lose money on every hour. Continue?')) return;
+    const btn = $('#sf-save'); btn.disabled = true; btn.textContent = 'Finding the address…';
+    try {
+      const g = await scGeocode(d.address);
+      if (!g) { btn.disabled = false; btn.textContent = 'Post shift'; return fail('Could not find that address on the map. Add the city, state and ZIP code and try again.'); }
+      if (!confirm('Found this place:\n\n' + g.label + '\n\nIs this the right restaurant location?')) { btn.disabled = false; btn.textContent = 'Post shift'; return; }
+      const id = doc(collection(db, 'htShifts')).id;
+      await setDoc(doc(db, 'htShifts', id), Object.assign({}, d, {lat: g.lat, lng: g.lng, status: 'open', createdAt: serverTimestamp()}));
+      await setDoc(doc(db, 'htOpenShifts', id), {restaurant: d.restaurant, position: d.position, area: d.area, date: d.date, start: d.start, end: d.end, pay: d.rate, createdAt: serverTimestamp()});
+      showToast('Shift posted — live on the Hire page'); close(); done();
+    } catch (e) { btn.disabled = false; btn.textContent = 'Post shift'; fail('Could not save: ' + (e.message || e)); }
+  };
+}
+
+async function scTermsModal(done) {
+  const t = await scGetTerms();
+  const {box, close} = scOverlay(
+    '<div style="font-size:1.05rem;font-weight:800;margin-bottom:2px;">⚙️ Rules & terms</div><div style="font-size:0.75rem;color:var(--ink-muted);line-height:1.5;">These are shown to workers and restaurant owners before they accept. Changes apply to shifts you assign from now on. Please have your attorney or accountant review them before your first paid shift.</div>'
+    + '<label style="' + SC_LAB + '">Worker shift rules</label><textarea id="tm-rules" style="width:100%;height:230px;border-radius:10px;border:1.5px solid var(--border);padding:10px 12px;font-family:var(--font-body);font-size:0.8rem;box-sizing:border-box;"></textarea>'
+    + '<label style="' + SC_LAB + '">Restaurant terms</label><textarea id="tm-terms" style="width:100%;height:230px;border-radius:10px;border:1.5px solid var(--border);padding:10px 12px;font-family:var(--font-body);font-size:0.8rem;box-sizing:border-box;"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:14px;"><button id="tm-reset" style="height:44px;padding:0 14px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-family:var(--font-body);font-weight:700;font-size:0.8rem;cursor:pointer;color:var(--ink-muted);">Reset to default</button><button id="tm-save" style="flex:1;height:44px;border:none;border-radius:12px;background:var(--green);color:#fff;font-family:var(--font-body);font-size:0.88rem;font-weight:800;cursor:pointer;">Save</button></div>'
+  );
+  box.querySelector('#tm-rules').value = t.rulesText;
+  box.querySelector('#tm-terms').value = t.termsText;
+  box.querySelector('#tm-reset').onclick = () => { if (!confirm('Replace both texts with the defaults?')) return; box.querySelector('#tm-rules').value = SC_RULES_DEFAULT; box.querySelector('#tm-terms').value = SC_TERMS_DEFAULT; };
+  box.querySelector('#tm-save').onclick = async () => {
+    const rulesText = box.querySelector('#tm-rules').value.trim(), termsText = box.querySelector('#tm-terms').value.trim();
+    if (rulesText.length < 20 || termsText.length < 20) return showToast('Both texts are required', 'error');
+    try { await setDoc(doc(db, 'htSettings', 'terms'), {rulesText, termsText, version: (t.version || 0) + 1, updatedAt: serverTimestamp()}); showToast('Saved (version ' + ((t.version || 0) + 1) + ')'); close(); done(); }
+    catch (e) { showToast('Error: ' + e.message, 'error'); }
+  };
+}
 
 window.htShowApplicantModal = function(existing) {
   const isEdit = !!existing;
